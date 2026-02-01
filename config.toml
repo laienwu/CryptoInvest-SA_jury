@@ -1,0 +1,4 @@
+[portfolio]
+symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "ADAUSDT"]
+interval = "1d"
+period_days = 90
