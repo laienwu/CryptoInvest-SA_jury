@@ -1,0 +1,35 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist data outside container
+      - ./data:/app/data
+      # Mount config for easy changes
+      - ./config.toml:/app/config.toml:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  # Run pipeline (ingest → transform → optimize)
+  pipeline:
+    build: .
+    volumes:
+      - ./data:/app/data
+      - ./config.toml:/app/config.toml:ro
+    command: python -c "
+      from src.pipeline import ingest_data, transform_data, optimize_portfolio;
+      from src.storage import get_storage;
+      storage = get_storage();
+      print('=== INGEST ===');
+      data = ingest_data();
+      storage.save_raw(data);
+      print('=== TRANSFORM ===');
+      transform_data();
+      print('=== OPTIMIZE ===');
+      optimize_portfolio();
+      print('=== DONE ===');
+      "
+    profiles:
+      - pipeline  # Only run with: docker compose --profile pipeline up pipeline
