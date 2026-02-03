@@ -35,6 +35,7 @@ Example workflow:
 
 from .base import Storage, StorageError
 from .parquet import ParquetStorage
+from .duckdb import DuckDBStorage
 
 # Type alias for storage names
 StorageName = str
@@ -42,6 +43,7 @@ StorageName = str
 # Registry of available storage implementations
 _STORAGE_REGISTRY: dict[str, type[Storage]] = {
     "parquet": ParquetStorage,
+    "duckdb": DuckDBStorage,
 }
 
 # Default storage backend
