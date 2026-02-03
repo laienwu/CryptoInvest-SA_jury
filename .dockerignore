@@ -1,0 +1,25 @@
+# Virtual environment
+.venv/
+__pycache__/
+*.pyc
+
+# Data (mounted as volume)
+data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Git
+.git/
+.gitignore
+
+# Docs
+*.md
+*.pdf
+docs/
+
+# Tests
+tests/
+*.test.py
