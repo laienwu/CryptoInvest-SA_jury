@@ -8,7 +8,7 @@ Contains modules for:
 - optimize: Portfolio optimization (Markowitz mean-variance)
 """
 
-from .ingest import fetch_klines, fetch_all_symbols, ingest_data, fetch_current_prices
+from .ingest import fetch_klines, fetch_all_symbols, ingest_data, ingest_incremental, fetch_current_prices
 from .transform import (
     transform_data,
     load_processed_metrics,
@@ -34,6 +34,7 @@ __all__ = [
     "fetch_klines",
     "fetch_all_symbols",
     "ingest_data",
+    "ingest_incremental",
     "fetch_current_prices",
     # Transform
     "transform_data",

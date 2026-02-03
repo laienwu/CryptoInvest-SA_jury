@@ -292,7 +292,7 @@ def ingest_data(
     period_days: int = DEFAULT_PERIOD_DAYS,
 ) -> dict[str, list[dict[str, Any]]]:
     """
-    Main entry point for data ingestion.
+    Main entry point for data ingestion (full refresh).
 
     This is the primary function to call for the INGEST pipeline step.
     Fetches historical OHLCV data for multiple cryptocurrency pairs.
@@ -316,6 +316,98 @@ def ingest_data(
         interval=interval,
         period_days=period_days,
     )
+
+
+def ingest_incremental(
+    symbols: list[str] | None = None,
+    interval: str = DEFAULT_INTERVAL,
+) -> dict[str, list[dict[str, Any]]]:
+    """
+    Incremental data ingestion - only fetch new data since last ingest.
+
+    Loads existing data, finds the last date, fetches only new records,
+    and returns merged data ready to save.
+
+    Args:
+        symbols: List of trading pair symbols. Defaults to DEFAULT_SYMBOLS.
+        interval: Kline interval (e.g., "1d", "1h").
+
+    Returns:
+        Dictionary with merged old + new data for each symbol.
+
+    Example:
+        >>> data = ingest_incremental()
+        >>> storage.save_raw(data)  # Overwrites with merged data
+    """
+    from src.storage import get_storage
+
+    if symbols is None:
+        symbols = DEFAULT_SYMBOLS.copy()
+
+    storage = get_storage()
+    result: dict[str, list[dict[str, Any]]] = {}
+
+    print("Starting incremental ingestion...")
+    print("-" * 50)
+
+    for symbol in symbols:
+        # Load existing data
+        try:
+            existing = storage.load_raw([symbol])
+            existing_records = existing.get(symbol, [])
+        except Exception:
+            existing_records = []
+
+        if existing_records:
+            # Find last date
+            last_date_str = max(r["timestamp"] for r in existing_records)
+            last_date = datetime.strptime(last_date_str, "%Y-%m-%d")
+            start_time = last_date + timedelta(days=1)  # Start from next day
+            print(f"{symbol}: Last data {last_date_str}, fetching from {start_time.date()}")
+        else:
+            # No existing data, fetch full period
+            start_time = datetime.now() - timedelta(days=DEFAULT_PERIOD_DAYS)
+            print(f"{symbol}: No existing data, fetching {DEFAULT_PERIOD_DAYS} days")
+
+        # Fetch new data
+        end_time = datetime.now()
+        if start_time >= end_time:
+            print(f"  {symbol}: Already up to date")
+            result[symbol] = existing_records
+            continue
+
+        try:
+            new_records = fetch_klines(
+                symbol=symbol,
+                interval=interval,
+                start_time=start_time,
+                end_time=end_time,
+            )
+        except BinanceAPIError as e:
+            print(f"  ERROR fetching {symbol}: {e.message}")
+            result[symbol] = existing_records
+            continue
+
+        # Merge: existing + new (dedupe by timestamp)
+        all_records = existing_records + new_records
+        seen = set()
+        merged = []
+        for r in all_records:
+            if r["timestamp"] not in seen:
+                seen.add(r["timestamp"])
+                merged.append(r)
+        merged.sort(key=lambda x: x["timestamp"])
+
+        result[symbol] = merged
+        print(f"  {symbol}: {len(existing_records)} existing + {len(new_records)} new = {len(merged)} total")
+
+        time.sleep(RATE_LIMIT_DELAY)
+
+    print("-" * 50)
+    total = sum(len(v) for v in result.values())
+    print(f"Incremental ingestion complete: {total} total records")
+
+    return result
 
 
 def fetch_current_prices(symbols: list[str] | None = None) -> dict[str, float]:
