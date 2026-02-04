@@ -1,0 +1,32 @@
+{
+  "_metadata": {
+    "name": "weights",
+    "saved_at": "2026-02-04T00:00:12.928123"
+  },
+  "symbols": [
+    "ADAUSDT",
+    "BNBUSDT",
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT"
+  ],
+  "weights": {
+    "ADAUSDT": 0.0,
+    "BNBUSDT": 1.0,
+    "BTCUSDT": 0.0,
+    "ETHUSDT": 0.0,
+    "SOLUSDT": 0.0
+  },
+  "weights_list": [
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "expected_return": -1.117308,
+  "volatility": 0.434846,
+  "sharpe_ratio": -2.684418,
+  "risk_free_rate": 0.05,
+  "method": "grid_search"
+}

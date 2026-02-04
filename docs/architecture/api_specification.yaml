@@ -1,0 +1,351 @@
+openapi: 3.0.3
+info:
+  title: Portfolio Optimization API
+  description: |
+    REST API for the Portfolio Optimization Platform.
+
+    ## Overview
+    This API provides access to cryptocurrency price data and portfolio optimization results.
+
+    ## Authentication
+    **MVP:** No authentication required (internal use only)
+
+    **Production:** API key authentication via `X-API-Key` header (to be implemented)
+
+    ## Rate Limits
+    **MVP:** No rate limits
+
+    **Production:** 100 requests/minute per IP (to be implemented)
+
+  version: 1.0.0
+  contact:
+    name: Data Engineering Team
+    email: data-team@company.com
+  license:
+    name: Internal Use Only
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://api.portfolio.company.com
+    description: Production (future)
+
+tags:
+  - name: Health
+    description: Service health endpoints
+  - name: Data
+    description: Price data endpoints
+  - name: Analytics
+    description: Financial metrics and portfolio optimization
+
+paths:
+  /:
+    get:
+      tags:
+        - Health
+      summary: Health Check
+      description: Returns service status for monitoring
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "healthy"
+                timestamp: "2025-01-15T08:32:15.123Z"
+                version: "1.0.0"
+
+  /symbols:
+    get:
+      tags:
+        - Data
+      summary: List Symbols
+      description: Returns list of available cryptocurrency trading pairs
+      operationId: listSymbols
+      responses:
+        '200':
+          description: List of symbols
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+              example:
+                - "BTCUSDT"
+                - "ETHUSDT"
+                - "BNBUSDT"
+                - "SOLUSDT"
+                - "ADAUSDT"
+
+  /klines/{symbol}:
+    get:
+      tags:
+        - Data
+      summary: Get Price History
+      description: Returns OHLCV (Open, High, Low, Close, Volume) price history for a symbol
+      operationId: getKlines
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: Trading pair symbol (e.g., BTCUSDT)
+          schema:
+            type: string
+            example: BTCUSDT
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of records to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: start_date
+          in: query
+          required: false
+          description: Start date for data range (ISO 8601)
+          schema:
+            type: string
+            format: date
+            example: "2025-01-01"
+        - name: end_date
+          in: query
+          required: false
+          description: End date for data range (ISO 8601)
+          schema:
+            type: string
+            format: date
+            example: "2025-01-31"
+      responses:
+        '200':
+          description: Price history data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Kline'
+        '404':
+          description: Symbol not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /metrics:
+    get:
+      tags:
+        - Analytics
+      summary: List Available Metrics
+      description: Returns list of available financial metrics
+      operationId: listMetrics
+      responses:
+        '200':
+          description: List of metrics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+              example:
+                - "returns"
+                - "volatility"
+                - "correlation"
+                - "covariance"
+                - "sharpe_ratio"
+
+  /metrics/{metric}:
+    get:
+      tags:
+        - Analytics
+      summary: Get Metric Data
+      description: Returns calculated financial metric
+      operationId: getMetric
+      parameters:
+        - name: metric
+          in: path
+          required: true
+          description: Metric name
+          schema:
+            type: string
+            enum:
+              - returns
+              - volatility
+              - correlation
+              - covariance
+      responses:
+        '200':
+          description: Metric data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricResponse'
+        '404':
+          description: Metric not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio:
+    get:
+      tags:
+        - Analytics
+      summary: Get Optimal Portfolio
+      description: |
+        Returns optimized portfolio weights using Markowitz mean-variance optimization.
+
+        The optimization maximizes Sharpe ratio subject to:
+        - Sum of weights = 1 (fully invested)
+        - All weights >= 0 (no short selling)
+      operationId: getPortfolio
+      responses:
+        '200':
+          description: Optimal portfolio allocation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortfolioResponse'
+              example:
+                weights:
+                  BTCUSDT: 0.352
+                  ETHUSDT: 0.248
+                  BNBUSDT: 0.185
+                  SOLUSDT: 0.123
+                  ADAUSDT: 0.092
+                expected_return: 0.185
+                volatility: 0.283
+                sharpe_ratio: 1.24
+                optimization_method: "scipy"
+                computed_at: "2025-01-15T00:05:32.123Z"
+        '404':
+          description: No portfolio computed yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+
+    Kline:
+      type: object
+      description: OHLCV candle data
+      required:
+        - timestamp
+        - open
+        - high
+        - low
+        - close
+        - volume
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Candle open timestamp
+        open:
+          type: number
+          format: double
+          description: Opening price
+        high:
+          type: number
+          format: double
+          description: Highest price
+        low:
+          type: number
+          format: double
+          description: Lowest price
+        close:
+          type: number
+          format: double
+          description: Closing price
+        volume:
+          type: number
+          format: double
+          description: Trading volume
+
+    MetricResponse:
+      type: object
+      properties:
+        metric:
+          type: string
+          description: Metric name
+        data:
+          type: object
+          description: Metric data (structure varies by metric)
+        computed_at:
+          type: string
+          format: date-time
+
+    PortfolioResponse:
+      type: object
+      required:
+        - weights
+        - expected_return
+        - volatility
+        - sharpe_ratio
+      properties:
+        weights:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+          description: Optimal weight for each symbol (sums to 1.0)
+        expected_return:
+          type: number
+          format: double
+          description: Expected annual return (decimal, e.g., 0.15 = 15%)
+        volatility:
+          type: number
+          format: double
+          description: Expected annual volatility (decimal, e.g., 0.28 = 28%)
+        sharpe_ratio:
+          type: number
+          format: double
+          description: Sharpe ratio (return / volatility)
+        optimization_method:
+          type: string
+          description: Optimization method used
+        computed_at:
+          type: string
+          format: date-time
+          description: When the optimization was computed
+
+    Error:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Error message
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication (production only)
+
+# Security disabled for MVP
+# security:
+#   - ApiKeyAuth: []

@@ -1,0 +1,11 @@
+symbol,name,sector,category,launch_year,market_cap_rank,is_stablecoin,consensus
+BTCUSDT,Bitcoin,Currency,Layer 1,2009,1,false,Proof of Work
+ETHUSDT,Ethereum,Smart Contracts,Layer 1,2015,2,false,Proof of Stake
+BNBUSDT,Binance Coin,Exchange,Utility,2017,4,false,Proof of Stake
+SOLUSDT,Solana,Smart Contracts,Layer 1,2020,5,false,Proof of History
+ADAUSDT,Cardano,Smart Contracts,Layer 1,2017,8,false,Proof of Stake
+XRPUSDT,XRP,Payments,Layer 1,2012,6,false,Consensus
+DOGEUSDT,Dogecoin,Meme,Layer 1,2013,9,false,Proof of Work
+DOTUSDT,Polkadot,Interoperability,Layer 0,2020,12,false,Nominated PoS
+MATICUSDT,Polygon,Scaling,Layer 2,2019,13,false,Proof of Stake
+AVAXUSDT,Avalanche,Smart Contracts,Layer 1,2020,10,false,Avalanche Consensus

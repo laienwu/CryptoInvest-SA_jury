@@ -1,0 +1,9 @@
+# Airflow with project dependencies
+FROM apache/airflow:2.8.1-python3.11
+
+# Install project dependencies
+RUN pip install --no-cache-dir \
+    pyarrow \
+    httpx \
+    duckdb \
+    tomli

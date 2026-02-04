@@ -1,0 +1,33 @@
+{
+  "portfolio": {
+    "name": "Crypto Diversified Portfolio",
+    "description": "Multi-asset crypto portfolio optimized for risk-adjusted returns",
+    "created_at": "2025-01-01",
+    "version": "1.0"
+  },
+  "constraints": {
+    "min_weight": 0.0,
+    "max_weight": 0.4,
+    "max_sector_concentration": 0.6,
+    "exclude_stablecoins": true
+  },
+  "risk_parameters": {
+    "risk_free_rate": 0.05,
+    "target_volatility": 0.30,
+    "rebalance_frequency": "monthly"
+  },
+  "sector_classification": {
+    "Currency": ["BTCUSDT"],
+    "Smart Contracts": ["ETHUSDT", "SOLUSDT", "ADAUSDT", "AVAXUSDT"],
+    "Exchange": ["BNBUSDT"],
+    "Payments": ["XRPUSDT"],
+    "Meme": ["DOGEUSDT"],
+    "Interoperability": ["DOTUSDT"],
+    "Scaling": ["MATICUSDT"]
+  },
+  "benchmarks": {
+    "btc_weight": 0.5,
+    "eth_weight": 0.3,
+    "altcoin_weight": 0.2
+  }
+}

@@ -74,6 +74,28 @@ services:
       - airflow
 
   # ===================
+  # BENCHMARKS DATABASE
+  # ===================
+  postgres-benchmarks:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=portfolio
+      - POSTGRES_PASSWORD=portfolio123
+      - POSTGRES_DB=portfolio_benchmarks
+    volumes:
+      - benchmarks-data:/var/lib/postgresql/data
+      - ./scripts/init-benchmarks.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "portfolio"]
+      interval: 5s
+      retries: 5
+    profiles:
+      - benchmarks
+      - full
+
+  # ===================
   # APP SERVICES
   # ===================
   api:
@@ -110,3 +132,4 @@ services:
 
 volumes:
   postgres-data:
+  benchmarks-data:
