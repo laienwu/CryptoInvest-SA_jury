@@ -11,8 +11,8 @@
 │                        DATA LAKE                            │
 ├─────────────┬─────────────┬─────────────┬───────────────────┤
 │   BRONZE    │   SILVER    │    GOLD     │     EXPOSE        │
-│  data/raw/  │ data/proc/  │ data/output │    FastAPI        │
-│  (ingest)   │ (transform) │ (optimize)  │    port 8000      │
+│  data/raw/  │ data/proc/  │ data/output │    FastAPI:8000   │
+│  (ingest)   │ (transform) │ (optimize)  │    Streamlit:8501 │
 ├─────────────┴─────────────┴─────────────┴───────────────────┤
 │                    ETL PIPELINE                             │
 │  ingest.py → transform.py → optimize.py                     │
@@ -55,6 +55,12 @@
 | Fichier | Role | Competences |
 |---------|------|-------------|
 | `portfolio_dag.py` | DAG Airflow (scheduling) | C15, C16 |
+
+### Dashboard (`src/dashboard/`)
+
+| Fichier | Role | Competences |
+|---------|------|-------------|
+| `app.py` | Streamlit dashboard (visualisation) | C12, Business |
 
 ---
 
@@ -172,6 +178,29 @@ GET /portfolio/summary  # Resume du portefeuille
 - FastAPI genere auto la doc OpenAPI sur /docs
 - Storage injecte au demarrage (parquet par defaut)
 - Pas d'auth (MVP)
+
+### dashboard/app.py
+
+```python
+# Structure du dashboard Streamlit
+# 3 pages accessibles via sidebar:
+# - Dashboard: KPIs + Pie chart + Volatility + Correlation
+# - Symbols: Selection symbole + Price chart + Raw data
+# - Metrics: Exploration des metriques calculees
+
+# Composants principaux:
+def render_kpi_cards(portfolio)     # 3 metriques: Return, Vol, Sharpe
+def render_allocation_chart(weights) # Pie chart allocation
+def render_price_chart(symbol)       # Line chart OHLCV
+def render_correlation_heatmap()     # Matrice correlation Plotly
+def render_volatility_chart()        # Bar chart volatilites
+```
+
+**A retenir:**
+- Connecte a l'API via `API_URL=http://api:8000`
+- Port 8501 (Streamlit standard)
+- Plotly pour les graphiques interactifs
+- Pandas pour la manipulation de donnees
 
 ---
 
@@ -301,6 +330,19 @@ uvicorn src.api.main:app --reload
 # Puis ouvrir http://localhost:8000/docs
 ```
 
+### Lancer le Dashboard Streamlit
+
+```bash
+# Avec Docker (API + Dashboard)
+docker compose up api streamlit
+
+# Sans Docker
+streamlit run src/dashboard/app.py
+# Puis ouvrir http://localhost:8501
+```
+
+**Dashboard:** 3 pages (Dashboard, Symbols, Metrics) avec graphiques Plotly interactifs.
+
 ### Demo DuckDB (C9 - SQL)
 
 ```python
@@ -379,6 +421,10 @@ C'est le standard en finance quantitative."
 ### Q8: "Qu'est-ce que le star schema?"
 
 **Reponse:** "C'est un modele dimensionnel avec une table de faits centrale (fact_prices avec les mesures OHLCV) et des tables de dimensions (dim_symbol, dim_date). Ca permet des requetes analytiques efficaces avec des JOIN simples."
+
+### Q9: "Pourquoi un dashboard Streamlit?"
+
+**Reponse:** "Streamlit permet de creer rapidement un dashboard Python sans frontend complexe. Il se connecte a notre API REST existante et affiche les donnees de maniere interactive. C'est le standard pour les data scientists - plus rapide que React/Vue pour un MVP."
 
 ---
 
@@ -485,12 +531,14 @@ Schema:
 
 ## 10. CHECKLIST AVANT SOUTENANCE
 
-- [ ] Docker fonctionne: `docker compose up api`
+- [ ] Docker fonctionne: `docker compose up api streamlit`
 - [ ] API accessible: http://localhost:8000/docs
+- [ ] Dashboard accessible: http://localhost:8501
 - [ ] Donnees presentes dans data/
 - [ ] Pipeline execute sans erreur
 - [ ] DuckDB queries fonctionnent
-- [ ] Connaitre les 5 endpoints API
+- [ ] Connaitre les 7 endpoints API
+- [ ] Dashboard affiche KPIs, Pie chart, Correlation
 - [ ] Savoir expliquer Markowitz en 1 phrase
 - [ ] Savoir expliquer le star schema
 - [ ] Connaitre les competences par fichier (tableau section 2)
