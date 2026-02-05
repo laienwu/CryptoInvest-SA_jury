@@ -298,93 +298,251 @@ class StorageError(Exception):
 
 ---
 
-## 6. COMMANDES DEMO
+## 6. COMMANDES DEMO (COPIER-COLLER)
 
-### Lancer les tests
+### 6.1 Setup Initial
 
 ```bash
-# Avec uv (recommande)
-uv sync --extra test && uv run pytest tests/ -v
+# Installer les dependances
+uv sync
 
-# Avec coverage
-uv run pytest tests/ --cov=src --cov-report=term-missing
+# Installer avec extras test
+uv sync --extra test
 
-# Resultat attendu: 124 tests, 43% coverage
+# Verifier l'installation
+uv run python -c "from src.pipeline import ingest_data; print('OK')"
 ```
 
-### Lancer le pipeline complet
+### 6.2 Lancer les Tests (montrer en premier)
 
 ```bash
-# Avec Docker
-docker compose --profile pipeline run pipeline
+# Tests rapides
+uv run pytest tests/ -v
 
-# Sans Docker (local)
-python -c "
+# Tests avec coverage
+uv run pytest tests/ --cov=src --cov-report=term-missing
+
+# Test un fichier specifique
+uv run pytest tests/test_transform.py -v
+```
+
+**Resultat attendu:** 124 tests passed, 43% coverage
+
+### 6.3 Docker - Demarrage Rapide
+
+```bash
+# RECOMMANDE: API + Dashboard ensemble
+docker compose up api streamlit
+
+# Verifier que ca tourne
+docker compose ps
+
+# Arreter tout
+docker compose down
+```
+
+**URLs:**
+- API: http://localhost:8000/docs
+- Dashboard: http://localhost:8501
+
+### 6.4 Docker - Services Individuels
+
+```bash
+# API seule
+docker compose up api
+
+# Dashboard seul (necessite API)
+docker compose up api streamlit
+
+# Pipeline (execution unique)
+docker compose --profile pipeline up pipeline
+
+# Airflow complet
+docker compose --profile airflow up -d
+
+# Stack complete (API + Benchmarks + Airflow)
+docker compose --profile full up -d
+
+# PostgreSQL benchmarks
+docker compose --profile benchmarks up -d postgres-benchmarks
+```
+
+### 6.5 Pipeline Python (etape par etape)
+
+```bash
+# ETAPE 1: Ingestion (C8)
+uv run python -c "
+from src.pipeline import ingest_data
+from src.storage import get_storage
+storage = get_storage()
+data = ingest_data()
+storage.save_raw(data)
+print('Symbols:', list(data.keys()))
+"
+
+# ETAPE 2: Transformation (C10)
+uv run python -c "
+from src.pipeline import transform_data
+results = transform_data()
+print('Volatility:', results['volatility'])
+"
+
+# ETAPE 3: Optimisation
+uv run python -c "
+from src.pipeline import optimize_portfolio
+result = optimize_portfolio()
+print('Weights:', result['weights'])
+print('Sharpe:', result['sharpe_ratio'])
+"
+
+# TOUT EN UNE COMMANDE
+uv run python -c "
 from src.pipeline import ingest_data, transform_data, optimize_portfolio
 from src.storage import get_storage
-
 storage = get_storage()
 data = ingest_data()
 storage.save_raw(data)
 transform_data()
-optimize_portfolio()
+result = optimize_portfolio()
+print('Done! Sharpe:', result['sharpe_ratio'])
 "
 ```
 
-### Lancer l'API
+### 6.6 API - Tests avec curl
 
 ```bash
-# Avec Docker
-docker compose up api
+# Health check
+curl http://localhost:8000/
 
-# Sans Docker
-uvicorn src.api.main:app --reload
-# Puis ouvrir http://localhost:8000/docs
+# Liste des symboles
+curl http://localhost:8000/symbols
+
+# Donnees d'un symbole
+curl http://localhost:8000/klines/BTCUSDT
+
+# Liste des metriques
+curl http://localhost:8000/metrics
+
+# Volatilite
+curl http://localhost:8000/metrics/volatility
+
+# Correlation
+curl http://localhost:8000/metrics/correlation
+
+# Portfolio complet
+curl http://localhost:8000/portfolio
+
+# Resume portfolio (KPIs)
+curl http://localhost:8000/portfolio/summary
 ```
 
-### Lancer le Dashboard Streamlit
+### 6.7 Multi-Sources (C8 - 5 sources)
 
 ```bash
-# Avec Docker (API + Dashboard)
-docker compose up api streamlit
+# Ingestion multi-sources (sans API pour rapidite)
+uv run python -c "
+from src.pipeline import ingest_all_sources
+data = ingest_all_sources(include_api=False)
+print('Sources:', data['sources'])
+print('Metadata count:', len(data.get('metadata', [])))
+"
 
-# Sans Docker
-streamlit run src/dashboard/app.py
-# Puis ouvrir http://localhost:8501
+# CSV metadata
+uv run python -c "
+from src.pipeline import load_symbols_metadata_csv
+metadata = load_symbols_metadata_csv()
+for m in metadata[:3]:
+    print(f\"{m['symbol']}: {m['sector']}\")
+"
+
+# JSON config
+uv run python -c "
+from src.pipeline import load_portfolio_config_json
+config = load_portfolio_config_json()
+print(config)
+"
 ```
 
-**Dashboard:** 3 pages (Dashboard, Symbols, Metrics) avec graphiques Plotly interactifs.
+### 6.8 DuckDB - Requetes SQL (C9, C13, C14)
 
-### Demo DuckDB (C9 - SQL)
-
-```python
+```bash
+uv run python -c "
 from src.storage import get_storage
+storage = get_storage('duckdb')
 
-storage = get_storage("duckdb")
+# Star schema - Table de faits
+print('=== FACT_PRICES ===')
+print(storage.query('SELECT * FROM fact_prices LIMIT 5'))
 
-# Requete sur le star schema
-storage.query("SELECT * FROM fact_prices LIMIT 5")
-storage.query("SELECT * FROM dim_symbol")
-storage.query("SELECT * FROM dim_date LIMIT 5")
+# Dimension symbole
+print('=== DIM_SYMBOL ===')
+print(storage.query('SELECT * FROM dim_symbol'))
 
-# Calcul returns en SQL
-storage.get_daily_returns()
+# Dimension date
+print('=== DIM_DATE ===')
+print(storage.query('SELECT * FROM dim_date LIMIT 5'))
 
 # Stats agregees
-storage.get_summary_stats()
+print('=== SUMMARY STATS ===')
+print(storage.get_summary_stats())
+"
 ```
 
-### Demo Airflow
+### 6.9 Airflow (C15, C16)
 
 ```bash
-# Lancer Airflow
-docker compose --profile airflow up -d
-
-# Init (premiere fois)
+# Premiere fois: init
 docker compose --profile airflow run airflow-init
 
-# UI: http://localhost:8081 (admin/admin)
-# DAG: portfolio_optimization
+# Demarrer Airflow
+docker compose --profile airflow up -d
+
+# Verifier les services
+docker compose --profile airflow ps
+
+# Arreter Airflow
+docker compose --profile airflow down
+```
+
+**UI:** http://localhost:8081
+**Login:** admin / admin
+**DAG:** portfolio_optimization
+
+### 6.10 Verifications Rapides
+
+```bash
+# Verifier les fichiers data
+ls -la data/raw/klines/
+ls -la data/processed/
+ls -la data/output/
+
+# Contenu du portfolio
+cat data/output/weights.json
+
+# Taille des fichiers
+du -sh data/*
+
+# Logs Docker
+docker compose logs api
+docker compose logs streamlit
+```
+
+### 6.11 Commandes de Secours
+
+```bash
+# Rebuild les images Docker
+docker compose build --no-cache
+
+# Supprimer les conteneurs
+docker compose down -v
+
+# Reset les donnees
+rm -rf data/raw/klines/*.parquet
+rm -rf data/processed/*.parquet
+rm -rf data/output/*.json
+
+# Reinstaller les deps
+uv sync --reinstall
 ```
 
 ---
