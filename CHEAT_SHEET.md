@@ -300,6 +300,18 @@ class StorageError(Exception):
 
 ## 6. COMMANDES DEMO
 
+### Lancer les tests
+
+```bash
+# Avec uv (recommande)
+uv sync --extra test && uv run pytest tests/ -v
+
+# Avec coverage
+uv run pytest tests/ --cov=src --cov-report=term-missing
+
+# Resultat attendu: 124 tests, 43% coverage
+```
+
 ### Lancer le pipeline complet
 
 ```bash
@@ -426,6 +438,17 @@ C'est le standard en finance quantitative."
 
 **Reponse:** "Streamlit permet de creer rapidement un dashboard Python sans frontend complexe. Il se connecte a notre API REST existante et affiche les donnees de maniere interactive. C'est le standard pour les data scientists - plus rapide que React/Vue pour un MVP."
 
+### Q10: "Comment sont testes les composants?"
+
+**Reponse:** "J'utilise pytest avec 124 tests unitaires couvrant:
+- Les calculs financiers (returns, volatility, correlation)
+- L'optimisation de portefeuille (Markowitz)
+- Le storage layer (parquet, factory)
+- Les endpoints API
+- L'ingestion multi-sources
+
+Coverage global: 43%. Les modules critiques (transform, optimize, API) ont 50-90% de couverture."
+
 ---
 
 ## 8. METRIQUES A CONNAITRE
@@ -531,6 +554,7 @@ Schema:
 
 ## 10. CHECKLIST AVANT SOUTENANCE
 
+- [ ] Tests passent: `uv run pytest tests/ -v` (124 tests)
 - [ ] Docker fonctionne: `docker compose up api streamlit`
 - [ ] API accessible: http://localhost:8000/docs
 - [ ] Dashboard accessible: http://localhost:8501

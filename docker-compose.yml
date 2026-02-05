@@ -141,9 +141,14 @@ services:
       - "8501:8501"
     environment:
       - API_URL=http://api:8000
+      # Streamlit runtime config (equivalent to CLI flags)
+      - STREAMLIT_CLIENT_SHOW_ERROR_DETAILS=false
+      - STREAMLIT_LOGGER_LEVEL=warning
+      - STREAMLIT_SERVER_HEADLESS=true
     depends_on:
       - api
     restart: unless-stopped
+
 
 volumes:
   postgres-data:
