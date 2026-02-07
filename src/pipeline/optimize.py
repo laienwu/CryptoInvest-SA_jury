@@ -27,6 +27,7 @@ import math
 from pathlib import Path
 from typing import Any
 
+from src.config import load_config
 from src.storage import get_storage
 
 import logging
@@ -34,15 +35,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 # =============================================================================
-# Configuration
+# Configuration (from centralized config)
 # =============================================================================
 
-# Risk-free rate for Sharpe ratio calculation (annualized)
-# Using approximate 3-month T-bill rate
-RISK_FREE_RATE: float = 0.05
+_cfg = load_config()
 
-# Grid search resolution (for fallback method)
-GRID_STEPS: int = 20
+RISK_FREE_RATE: float = _cfg.risk_free_rate
+GRID_STEPS: int = _cfg.grid_steps
 
 
 # =============================================================================

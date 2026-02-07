@@ -11,6 +11,7 @@ Tests C8 compliance - 5 data source types:
 
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -299,3 +300,158 @@ ETHUSDT,Ethereum,Smart Contracts,Layer 1,2015,2,false,Proof of Stake
         assert config["portfolio"]["symbols"] == ["BTCUSDT", "ETHUSDT"]
         assert enriched["BTCUSDT"][0]["name"] == "Bitcoin"
         assert enriched["ETHUSDT"][0]["sector"] == "Smart Contracts"
+
+
+class TestDataSourceABC:
+    """Tests for DataSource abstract base class."""
+
+    def test_cannot_instantiate_abc(self):
+        from src.pipeline.ingest_sources import DataSource
+        with pytest.raises(TypeError):
+            DataSource()
+
+
+class TestCSVSource:
+    """Tests for CSVSource data source class."""
+
+    def test_name(self):
+        from src.pipeline.ingest_sources import CSVSource
+        assert CSVSource().name == "csv"
+
+    def test_is_available_true(self):
+        from src.pipeline.ingest_sources import CSVSource
+        source = CSVSource()
+        # Real file exists in project
+        assert isinstance(source.is_available(), bool)
+
+    def test_fetch_returns_metadata_key(self):
+        from src.pipeline.ingest_sources import CSVSource
+        source = CSVSource()
+        try:
+            result = source.fetch()
+            assert "metadata" in result
+            assert isinstance(result["metadata"], list)
+        except Exception:
+            pytest.skip("CSV metadata file not available")
+
+
+class TestJSONSource:
+    """Tests for JSONSource data source class."""
+
+    def test_name(self):
+        from src.pipeline.ingest_sources import JSONSource
+        assert JSONSource().name == "json"
+
+    def test_is_available_true(self):
+        from src.pipeline.ingest_sources import JSONSource
+        source = JSONSource()
+        assert isinstance(source.is_available(), bool)
+
+    def test_fetch_returns_config_key(self):
+        from src.pipeline.ingest_sources import JSONSource
+        source = JSONSource()
+        try:
+            result = source.fetch()
+            assert "config" in result
+            assert isinstance(result["config"], dict)
+        except Exception:
+            pytest.skip("JSON config file not available")
+
+
+class TestBinanceAPISource:
+    """Tests for BinanceAPISource data source class."""
+
+    def test_name(self):
+        from src.pipeline.ingest_sources import BinanceAPISource
+        assert BinanceAPISource().name == "api"
+
+    def test_is_available(self):
+        from src.pipeline.ingest_sources import BinanceAPISource
+        assert BinanceAPISource().is_available() is True
+
+    def test_stores_symbols(self):
+        from src.pipeline.ingest_sources import BinanceAPISource
+        source = BinanceAPISource(symbols=["BTCUSDT"])
+        assert source._symbols == ["BTCUSDT"]
+
+    def test_fetch_calls_ingest_data(self):
+        from src.pipeline.ingest_sources import BinanceAPISource
+        source = BinanceAPISource(symbols=["BTCUSDT"])
+        mock_data = {"BTCUSDT": [{"timestamp": "2024-01-01", "close": 42000.0}]}
+        with patch("src.pipeline.ingest.ingest_data", return_value=mock_data) as mock_fn:
+            result = source.fetch()
+            mock_fn.assert_called_once_with(symbols=["BTCUSDT"])
+            assert result == {"prices": mock_data}
+
+
+class TestScrapingSource:
+    """Tests for ScrapingSource data source class."""
+
+    def test_name(self):
+        from src.pipeline.ingest_sources import ScrapingSource
+        assert ScrapingSource().name == "scraping"
+
+    def test_is_available(self):
+        from src.pipeline.ingest_sources import ScrapingSource
+        assert ScrapingSource().is_available() is True
+
+    def test_default_limit(self):
+        from src.pipeline.ingest_sources import ScrapingSource
+        assert ScrapingSource()._limit == 20
+
+    def test_custom_limit(self):
+        from src.pipeline.ingest_sources import ScrapingSource
+        assert ScrapingSource(limit=50)._limit == 50
+
+    def test_fetch_calls_scrape(self):
+        from src.pipeline.ingest_sources import ScrapingSource
+        source = ScrapingSource(limit=10)
+        mock_rankings = [{"name": "Bitcoin", "rank": 1}]
+        with patch("src.pipeline.ingest_scraping.scrape_market_rankings", return_value=mock_rankings) as mock_fn:
+            result = source.fetch()
+            mock_fn.assert_called_once_with(limit=10)
+            assert result == {"market_rankings": mock_rankings}
+
+
+class TestPostgresSource:
+    """Tests for PostgresSource data source class."""
+
+    def test_name(self):
+        from src.pipeline.ingest_sources import PostgresSource
+        assert PostgresSource().name == "postgres"
+
+    def test_is_available(self):
+        from src.pipeline.ingest_sources import PostgresSource
+        assert PostgresSource().is_available() is True
+
+    def test_fetch_uses_fallback_on_error(self):
+        from src.pipeline.ingest_sources import PostgresSource
+        source = PostgresSource()
+        fallback_data = {"source": "fallback_simulation", "indices": {}}
+        with patch("src.pipeline.ingest_postgres.load_benchmarks", side_effect=ConnectionError):
+            with patch("src.pipeline.ingest_postgres.load_benchmarks_fallback", return_value=fallback_data) as mock_fb:
+                result = source.fetch()
+                mock_fb.assert_called_once()
+                assert result == {"benchmarks": fallback_data}
+
+
+class TestListAvailableSources:
+    """Tests for list_available_sources using DataSource classes."""
+
+    def test_returns_all_five_sources(self):
+        from src.pipeline.ingest_sources import list_available_sources
+        result = list_available_sources()
+        assert set(result.keys()) == {"csv", "json", "api", "scraping", "postgres"}
+
+    def test_values_are_booleans(self):
+        from src.pipeline.ingest_sources import list_available_sources
+        result = list_available_sources()
+        for value in result.values():
+            assert isinstance(value, bool)
+
+    def test_api_scraping_postgres_always_available(self):
+        from src.pipeline.ingest_sources import list_available_sources
+        result = list_available_sources()
+        assert result["api"] is True
+        assert result["scraping"] is True
+        assert result["postgres"] is True

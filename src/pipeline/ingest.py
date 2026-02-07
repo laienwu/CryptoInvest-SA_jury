@@ -23,44 +23,29 @@ Example usage:
 """
 
 import time
-import tomllib
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any
 
 import logging
 import requests
 
+from src.config import load_config
+
 logger = logging.getLogger(__name__)
 
 # =============================================================================
-# Configuration
+# Configuration (from centralized config)
 # =============================================================================
 
-def _load_config() -> dict[str, Any]:
-    """Load config from config.toml."""
-    config_path = Path(__file__).parent.parent.parent / "config.toml"
-    if config_path.exists():
-        with open(config_path, "rb") as f:
-            return tomllib.load(f)
-    return {}
+_cfg = load_config()
 
-_config = _load_config()
-_portfolio = _config.get("portfolio", {})
+DEFAULT_SYMBOLS: list[str] = list(_cfg.symbols)
+DEFAULT_INTERVAL: str = _cfg.interval
+DEFAULT_PERIOD_DAYS: int = _cfg.period_days
 
-DEFAULT_SYMBOLS: list[str] = _portfolio.get("symbols", ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "ADAUSDT"])
-DEFAULT_INTERVAL: str = _portfolio.get("interval", "1d")
-DEFAULT_PERIOD_DAYS: int = _portfolio.get("period_days", 90)
-
-# Binance API base URL
-BINANCE_API_BASE: str = "https://api.binance.com"
-
-# Rate limit delay between API calls (seconds)
-# Binance allows 1200 requests/minute, but we stay conservative
-RATE_LIMIT_DELAY: float = 0.5
-
-# Maximum retries for failed requests
-MAX_RETRIES: int = 3
+BINANCE_API_BASE: str = _cfg.binance_api_base
+RATE_LIMIT_DELAY: float = _cfg.rate_limit_delay
+MAX_RETRIES: int = _cfg.max_retries
 
 # Retry delay multiplier (exponential backoff)
 RETRY_DELAY_MULTIPLIER: float = 2.0

@@ -7,6 +7,8 @@ Sources implemented:
 1. API REST (Binance) - Dynamic price data
 2. CSV File - Static symbol metadata
 3. JSON File - Portfolio configuration
+4. Web Scraping (CoinGecko) - Market rankings
+5. PostgreSQL - Historical benchmarks
 
 This module provides functions to extract and aggregate data from
 heterogeneous sources, a key requirement for the Data Engineer certification.
@@ -15,23 +17,28 @@ Example usage:
     >>> from src.pipeline.ingest_sources import ingest_all_sources
     >>> data = ingest_all_sources()
     >>> print(data["sources"])
-    ['api', 'csv', 'json']
+    ['csv', 'json', 'api', 'scraping', 'postgres']
 """
 
 import csv
 import json
 import logging
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
+
+from src.config import load_config
 
 logger = logging.getLogger(__name__)
 
 # =============================================================================
-# Configuration
+# Configuration (from centralized config)
 # =============================================================================
 
-DATA_DIR = Path(__file__).parent.parent.parent / "data"
-REFERENCE_DIR = DATA_DIR / "reference"
+_cfg = load_config()
+
+DATA_DIR: Path = _cfg.data_dir
+REFERENCE_DIR: Path = _cfg.reference_dir
 
 # Source file paths
 SYMBOLS_METADATA_CSV = REFERENCE_DIR / "symbols_metadata.csv"
@@ -50,6 +57,115 @@ class SourceError(Exception):
         self.message = message
         self.source = source
         super().__init__(self.message)
+
+
+# =============================================================================
+# DataSource ABC (clean architecture pattern)
+# =============================================================================
+
+
+class DataSource(ABC):
+    """Abstract base class for all data sources."""
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Unique identifier for this source."""
+        ...
+
+    @abstractmethod
+    def is_available(self) -> bool:
+        """Check whether the source can be reached."""
+        ...
+
+    @abstractmethod
+    def fetch(self) -> dict[str, Any]:
+        """Fetch data from the source. Returns a dict to merge into results."""
+        ...
+
+
+class CSVSource(DataSource):
+    """CSV file data source (symbols metadata)."""
+
+    @property
+    def name(self) -> str:
+        return "csv"
+
+    def is_available(self) -> bool:
+        return SYMBOLS_METADATA_CSV.exists()
+
+    def fetch(self) -> dict[str, Any]:
+        return {"metadata": load_symbols_metadata_csv()}
+
+
+class JSONSource(DataSource):
+    """JSON file data source (portfolio configuration)."""
+
+    @property
+    def name(self) -> str:
+        return "json"
+
+    def is_available(self) -> bool:
+        return PORTFOLIO_CONFIG_JSON.exists()
+
+    def fetch(self) -> dict[str, Any]:
+        return {"config": load_portfolio_config_json()}
+
+
+class BinanceAPISource(DataSource):
+    """Binance REST API data source (price data)."""
+
+    def __init__(self, symbols: list[str] | None = None):
+        self._symbols = symbols
+
+    @property
+    def name(self) -> str:
+        return "api"
+
+    def is_available(self) -> bool:
+        return True
+
+    def fetch(self) -> dict[str, Any]:
+        from src.pipeline.ingest import ingest_data
+        return {"prices": ingest_data(symbols=self._symbols)}
+
+
+class ScrapingSource(DataSource):
+    """CoinGecko web scraping data source (market rankings)."""
+
+    def __init__(self, limit: int = 20):
+        self._limit = limit
+
+    @property
+    def name(self) -> str:
+        return "scraping"
+
+    def is_available(self) -> bool:
+        return True
+
+    def fetch(self) -> dict[str, Any]:
+        from src.pipeline.ingest_scraping import scrape_market_rankings
+        return {"market_rankings": scrape_market_rankings(limit=self._limit)}
+
+
+class PostgresSource(DataSource):
+    """PostgreSQL database data source (benchmarks)."""
+
+    @property
+    def name(self) -> str:
+        return "postgres"
+
+    def is_available(self) -> bool:
+        return True
+
+    def fetch(self) -> dict[str, Any]:
+        from src.pipeline.ingest_postgres import load_benchmarks, load_benchmarks_fallback
+        try:
+            benchmarks = load_benchmarks()
+        except Exception:
+            logger.warning("PostgreSQL not available, using fallback")
+            benchmarks = load_benchmarks_fallback()
+        return {"benchmarks": benchmarks}
 
 
 # =============================================================================
@@ -308,79 +424,36 @@ def ingest_all_sources(
     sources_loaded: list[str] = []
     result: dict[str, Any] = {}
 
-    # Source 1: CSV metadata
-    logger.info("[Source 1/5] CSV File (symbols_metadata.csv)")
-    try:
-        metadata = load_symbols_metadata_csv()
-        result["metadata"] = metadata
-        sources_loaded.append("csv")
-    except SourceError as e:
-        logger.warning(f"Source csv failed: {e.message}")
-        metadata = []
-
-    # Source 2: JSON configuration
-    logger.info("[Source 2/5] JSON File (portfolio_config.json)")
-    try:
-        config = load_portfolio_config_json()
-        result["config"] = config
-        sources_loaded.append("json")
-    except SourceError as e:
-        logger.warning(f"Source json failed: {e.message}")
-        config = {}
-
-    # Source 3: API (Binance)
+    # Build source list
+    sources: list[DataSource] = [CSVSource(), JSONSource()]
     if include_api:
-        logger.info("[Source 3/5] REST API (Binance)")
-        try:
-            from src.pipeline.ingest import ingest_data
-
-            # Use symbols from config if not provided
-            if symbols is None and config:
-                sectors = config.get("sector_classification", {})
-                symbols = []
-                for sector_symbols in sectors.values():
-                    symbols.extend(sector_symbols)
-                symbols = list(set(symbols))
-
-            prices = ingest_data(symbols=symbols)
-            result["prices"] = prices
-            sources_loaded.append("api")
-
-        except Exception as e:
-            logger.warning(f"API source failed: {e}")
-
-    # Source 4: Web Scraping (CoinGecko)
-    if include_scraping:
-        logger.info("[Source 4/5] Web Scraping (CoinGecko)")
-        try:
-            from src.pipeline.ingest_scraping import scrape_market_rankings
-
-            rankings = scrape_market_rankings(limit=20)
-            result["market_rankings"] = rankings
-            sources_loaded.append("scraping")
-
-        except Exception as e:
-            logger.warning(f"Scraping source failed: {e}")
-
-    # Source 5: PostgreSQL Database
-    if include_postgres:
-        logger.info("[Source 5/5] PostgreSQL Database (benchmarks)")
-        try:
-            from src.pipeline.ingest_postgres import load_benchmarks, load_benchmarks_fallback
-
+        # Resolve symbols from config if needed
+        api_symbols = symbols
+        if api_symbols is None:
             try:
-                benchmarks = load_benchmarks()
-            except Exception:
-                logger.warning("PostgreSQL not available, using fallback")
-                benchmarks = load_benchmarks_fallback()
+                config = load_portfolio_config_json()
+                sectors = config.get("sector_classification", {})
+                api_symbols = list({s for syms in sectors.values() for s in syms})
+            except SourceError:
+                api_symbols = None
+        sources.append(BinanceAPISource(symbols=api_symbols))
+    if include_scraping:
+        sources.append(ScrapingSource())
+    if include_postgres:
+        sources.append(PostgresSource())
 
-            result["benchmarks"] = benchmarks
-            sources_loaded.append("postgres")
-
-        except Exception as e:
-            logger.warning(f"Database source failed: {e}")
+    # Fetch from each source
+    for i, source in enumerate(sources, 1):
+        logger.info(f"[Source {i}/{len(sources)}] {source.name}")
+        try:
+            data = source.fetch()
+            result.update(data)
+            sources_loaded.append(source.name)
+        except (SourceError, Exception) as e:
+            logger.warning(f"Source {source.name} failed: {e}")
 
     # Data Aggregation (C10)
+    metadata = result.get("metadata", [])
     if metadata and "prices" in result:
         logger.info("Merging sources (C10)")
         enriched = enrich_prices_with_metadata(result["prices"], metadata)
@@ -436,11 +509,14 @@ def list_available_sources() -> dict[str, bool]:
     Returns:
         Dictionary of source -> availability status.
     """
-    return {
-        "csv": SYMBOLS_METADATA_CSV.exists(),
-        "json": PORTFOLIO_CONFIG_JSON.exists(),
-        "api": True,  # Always available (network dependent)
-    }
+    all_sources: list[DataSource] = [
+        CSVSource(),
+        JSONSource(),
+        BinanceAPISource(),
+        ScrapingSource(),
+        PostgresSource(),
+    ]
+    return {source.name: source.is_available() for source in all_sources}
 
 
 def get_symbols_by_sector(sector: str) -> list[str]:
