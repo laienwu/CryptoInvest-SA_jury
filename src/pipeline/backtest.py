@@ -19,8 +19,11 @@ Example usage:
     >>> print(result["metrics"]["strategy"])
 """
 
+import logging
 import math
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from src.storage import get_storage
 from src.pipeline.transform import (
@@ -345,11 +348,10 @@ def run_backtest(
     Raises:
         BacktestError: If backtest fails.
     """
-    print("Running walk-forward backtest...")
-    print("=" * 50)
-    print(f"  Strategy: {strategy}")
-    print(f"  Train window: {train_window} days")
-    print(f"  Test window: {test_window} days")
+    logger.info("Running walk-forward backtest")
+    logger.info(f"Strategy: {strategy}")
+    logger.info(f"Train window: {train_window} days")
+    logger.info(f"Test window: {test_window} days")
 
     storage = get_storage(storage_backend)
 
@@ -365,12 +367,12 @@ def run_backtest(
     # Align data
     symbols, dates, prices_matrix = _align_data_by_date(raw_data)
     n_symbols = len(symbols)
-    print(f"  Symbols: {symbols}")
-    print(f"  Data points: {len(dates)}")
+    logger.info(f"Symbols: {symbols}")
+    logger.info(f"Data points: {len(dates)}")
 
     # Create rolling windows
     windows = _create_rolling_windows(dates, prices_matrix, train_window, test_window)
-    print(f"  Windows: {len(windows)}")
+    logger.info(f"Windows: {len(windows)}")
 
     # Walk-forward loop
     all_strategy_returns: list[float] = []
@@ -420,7 +422,7 @@ def run_backtest(
             "test_return": round(test_return, 6),
         })
 
-        print(f"  Window {window['window_id']}: test return = {test_return:+.4f}")
+        logger.info(f"Window {window['window_id']}: test return = {test_return:+.4f}")
 
     # Build cumulative value series
     strategy_values = _cumulative_values(all_strategy_returns)
@@ -454,28 +456,25 @@ def run_backtest(
         },
     }
 
-    # Print summary
-    print("\n" + "=" * 50)
-    print("BACKTEST RESULTS")
-    print("=" * 50)
-    print(f"\n{'Metric':<25} {'Strategy':>12} {'Equal Wt':>12} {'BTC Only':>12}")
-    print("-" * 61)
+    # Log summary
+    logger.info("BACKTEST RESULTS")
+    logger.info(f"{'Metric':<25} {'Strategy':>12} {'Equal Wt':>12} {'BTC Only':>12}")
     for metric_name in ["cumulative_return", "annualized_return", "max_drawdown", "sharpe_ratio", "calmar_ratio"]:
         s = strategy_metrics[metric_name]
         e = equal_metrics[metric_name]
         b = btc_metrics[metric_name]
-        print(f"{metric_name:<25} {s:>12.4f} {e:>12.4f} {b:>12.4f}")
+        logger.info(f"{metric_name:<25} {s:>12.4f} {e:>12.4f} {b:>12.4f}")
 
     if save:
         try:
             output_path = storage.save_output(result, "backtest")
-            print(f"\n  Saved to: {output_path}")
+            logger.info(f"Saved backtest to: {output_path}")
         except Exception as e:
             raise BacktestError(
                 f"Failed to save backtest results: {e}", operation="save"
             ) from e
 
-    print("\nBacktest complete!")
+    logger.info("Backtest complete")
     return result
 
 

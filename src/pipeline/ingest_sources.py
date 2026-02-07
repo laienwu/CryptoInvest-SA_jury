@@ -20,8 +20,11 @@ Example usage:
 
 import csv
 import json
+import logging
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Configuration
@@ -95,7 +98,7 @@ def load_symbols_metadata_csv(
             source="csv"
         )
 
-    print(f"Loading CSV: {file_path.name}")
+    logger.info(f"Loading CSV: {file_path.name}")
 
     try:
         records: list[dict[str, Any]] = []
@@ -117,7 +120,7 @@ def load_symbols_metadata_csv(
                 }
                 records.append(record)
 
-        print(f"  Loaded {len(records)} symbols from CSV")
+        logger.info(f"Loaded {len(records)} symbols from CSV")
         return records
 
     except Exception as e:
@@ -184,13 +187,13 @@ def load_portfolio_config_json(
             source="json"
         )
 
-    print(f"Loading JSON: {file_path.name}")
+    logger.info(f"Loading JSON: {file_path.name}")
 
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             config = json.load(f)
 
-        print(f"  Loaded config: {config['portfolio']['name']}")
+        logger.info(f"Loaded config: {config['portfolio']['name']}")
         return config
 
     except json.JSONDecodeError as e:
@@ -298,39 +301,36 @@ def ingest_all_sources(
         >>> print(data["sources"])
         ['csv', 'json', 'api', 'scraping', 'postgres']
     """
-    print("=" * 60)
-    print("MULTI-SOURCE INGESTION (C8) - 5 Source Types")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("MULTI-SOURCE INGESTION (C8) - 5 Source Types")
+    logger.info("=" * 60)
 
     sources_loaded: list[str] = []
     result: dict[str, Any] = {}
 
     # Source 1: CSV metadata
-    print("\n[Source 1/5] CSV File (symbols_metadata.csv)")
-    print("-" * 40)
+    logger.info("[Source 1/5] CSV File (symbols_metadata.csv)")
     try:
         metadata = load_symbols_metadata_csv()
         result["metadata"] = metadata
         sources_loaded.append("csv")
     except SourceError as e:
-        print(f"  WARNING: {e.message}")
+        logger.warning(f"Source csv failed: {e.message}")
         metadata = []
 
     # Source 2: JSON configuration
-    print("\n[Source 2/5] JSON File (portfolio_config.json)")
-    print("-" * 40)
+    logger.info("[Source 2/5] JSON File (portfolio_config.json)")
     try:
         config = load_portfolio_config_json()
         result["config"] = config
         sources_loaded.append("json")
     except SourceError as e:
-        print(f"  WARNING: {e.message}")
+        logger.warning(f"Source json failed: {e.message}")
         config = {}
 
     # Source 3: API (Binance)
     if include_api:
-        print("\n[Source 3/5] REST API (Binance)")
-        print("-" * 40)
+        logger.info("[Source 3/5] REST API (Binance)")
         try:
             from src.pipeline.ingest import ingest_data
 
@@ -347,12 +347,11 @@ def ingest_all_sources(
             sources_loaded.append("api")
 
         except Exception as e:
-            print(f"  WARNING: API error: {e}")
+            logger.warning(f"API source failed: {e}")
 
     # Source 4: Web Scraping (CoinGecko)
     if include_scraping:
-        print("\n[Source 4/5] Web Scraping (CoinGecko)")
-        print("-" * 40)
+        logger.info("[Source 4/5] Web Scraping (CoinGecko)")
         try:
             from src.pipeline.ingest_scraping import scrape_market_rankings
 
@@ -361,34 +360,32 @@ def ingest_all_sources(
             sources_loaded.append("scraping")
 
         except Exception as e:
-            print(f"  WARNING: Scraping error: {e}")
+            logger.warning(f"Scraping source failed: {e}")
 
     # Source 5: PostgreSQL Database
     if include_postgres:
-        print("\n[Source 5/5] PostgreSQL Database (benchmarks)")
-        print("-" * 40)
+        logger.info("[Source 5/5] PostgreSQL Database (benchmarks)")
         try:
             from src.pipeline.ingest_postgres import load_benchmarks, load_benchmarks_fallback
 
             try:
                 benchmarks = load_benchmarks()
             except Exception:
-                print("  PostgreSQL not available, using fallback...")
+                logger.warning("PostgreSQL not available, using fallback")
                 benchmarks = load_benchmarks_fallback()
 
             result["benchmarks"] = benchmarks
             sources_loaded.append("postgres")
 
         except Exception as e:
-            print(f"  WARNING: Database error: {e}")
+            logger.warning(f"Database source failed: {e}")
 
     # Data Aggregation (C10)
     if metadata and "prices" in result:
-        print("\n[Aggregation] Merging sources (C10)")
-        print("-" * 40)
+        logger.info("Merging sources (C10)")
         enriched = enrich_prices_with_metadata(result["prices"], metadata)
         result["enriched"] = enriched
-        print(f"  Enriched {len(enriched)} symbols with CSV metadata")
+        logger.info(f"Enriched {len(enriched)} symbols with CSV metadata")
 
         # Add market rankings if available
         if "market_rankings" in result:
@@ -398,33 +395,31 @@ def ingest_all_sources(
                 result["market_rankings"]
             )
             result["market_data"] = market_data
-            print(f"  Added market rankings for {len(market_data)} symbols")
+            logger.info(f"Added market rankings for {len(market_data)} symbols")
 
     result["sources"] = sources_loaded
 
     # Summary
-    print("\n" + "=" * 60)
-    print("INGESTION SUMMARY")
-    print("=" * 60)
-    print(f"Sources loaded: {sources_loaded}")
-    print(f"Total source types: {len(sources_loaded)}/5")
-    print()
-    print("Source breakdown:")
-    print(f"  [{'✓' if 'csv' in sources_loaded else '✗'}] CSV File")
-    print(f"  [{'✓' if 'json' in sources_loaded else '✗'}] JSON File")
-    print(f"  [{'✓' if 'api' in sources_loaded else '✗'}] REST API")
-    print(f"  [{'✓' if 'scraping' in sources_loaded else '✗'}] Web Scraping")
-    print(f"  [{'✓' if 'postgres' in sources_loaded else '✗'}] PostgreSQL DB")
+    logger.info("=" * 60)
+    logger.info("INGESTION SUMMARY")
+    logger.info("=" * 60)
+    logger.info(f"Sources loaded: {sources_loaded}")
+    logger.info(f"Total source types: {len(sources_loaded)}/5")
+    logger.info("Source breakdown:")
+    logger.info(f"[{'Y' if 'csv' in sources_loaded else 'N'}] CSV File")
+    logger.info(f"[{'Y' if 'json' in sources_loaded else 'N'}] JSON File")
+    logger.info(f"[{'Y' if 'api' in sources_loaded else 'N'}] REST API")
+    logger.info(f"[{'Y' if 'scraping' in sources_loaded else 'N'}] Web Scraping")
+    logger.info(f"[{'Y' if 'postgres' in sources_loaded else 'N'}] PostgreSQL DB")
 
     if "metadata" in result:
-        print(f"\nData loaded:")
-        print(f"  Symbols (CSV): {len(result.get('metadata', []))}")
+        logger.info(f"Symbols (CSV): {len(result.get('metadata', []))}")
     if "prices" in result:
-        print(f"  Symbols (API): {len(result.get('prices', {}))}")
+        logger.info(f"Symbols (API): {len(result.get('prices', {}))}")
     if "market_rankings" in result:
-        print(f"  Rankings (Scraping): {len(result.get('market_rankings', []))}")
+        logger.info(f"Rankings (Scraping): {len(result.get('market_rankings', []))}")
     if "benchmarks" in result:
-        print(f"  Indices (Postgres): {len(result.get('benchmarks', {}).get('indices', {}))}")
+        logger.info(f"Indices (Postgres): {len(result.get('benchmarks', {}).get('indices', {}))}")
 
     return result
 

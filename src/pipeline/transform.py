@@ -21,6 +21,7 @@ Example usage:
     >>> print(results["correlation"]["matrix"])
 """
 
+import logging
 import math
 import tomllib
 from pathlib import Path
@@ -30,6 +31,8 @@ import pyarrow as pa
 import pyarrow.compute as pc
 
 from src.storage import get_storage
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Configuration
@@ -134,8 +137,8 @@ def _align_data_by_date(
     # Sort dates chronologically
     dates = sorted(common_dates)
 
-    print(f"Aligned data: {len(symbols)} symbols, {len(dates)} common dates")
-    print(f"  Date range: {dates[0]} to {dates[-1]}")
+    logger.info(f"Aligned data: {len(symbols)} symbols, {len(dates)} common dates")
+    logger.info(f"Date range: {dates[0]} to {dates[-1]}")
 
     # Build price matrix [n_symbols][n_dates]
     prices_matrix: list[list[float]] = []
@@ -411,47 +414,46 @@ def transform_data(
         >>> print(results["volatility"])
         {'symbols': ['BTCUSDT', ...], 'values': [0.45, ...]}
     """
-    print("Starting data transformation...")
-    print("=" * 50)
+    logger.info("Starting data transformation")
 
     # Get storage instance
     storage = get_storage(storage_backend)
 
     # Load raw data
-    print("\nLoading raw data...")
+    logger.info("Loading raw data")
     try:
         raw_data = storage.load_raw(symbols)
     except Exception as e:
         raise TransformError(f"Failed to load raw data: {e}", operation="load") from e
 
     # Align data by date
-    print("\nAligning data across symbols...")
+    logger.info("Aligning data across symbols")
     symbols_list, dates, prices_matrix = _align_data_by_date(raw_data)
 
     # Calculate log returns
-    print("\nCalculating log returns...")
+    logger.info("Calculating log returns")
     returns = calculate_log_returns(prices_matrix)
     # Dates for returns (one less than prices due to differencing)
     returns_dates = dates[1:]
 
-    print(f"  Returns shape: {len(returns)} symbols x {len(returns[0])} periods")
-    print(f"  Returns date range: {returns_dates[0]} to {returns_dates[-1]}")
+    logger.info(f"Returns shape: {len(returns)} symbols x {len(returns[0])} periods")
+    logger.info(f"Returns date range: {returns_dates[0]} to {returns_dates[-1]}")
 
     # Calculate metrics
-    print("\nCalculating volatility...")
+    logger.info("Calculating volatility")
     volatility = calculate_volatility(returns)
     for i, symbol in enumerate(symbols_list):
-        print(f"  {symbol}: {volatility[i]:.2%} annualized")
+        logger.debug(f"{symbol}: {volatility[i]:.2%} annualized")
 
-    print("\nCalculating mean returns...")
+    logger.info("Calculating mean returns")
     mean_returns = calculate_mean_returns(returns)
     for i, symbol in enumerate(symbols_list):
-        print(f"  {symbol}: {mean_returns[i]:.2%} annualized")
+        logger.debug(f"{symbol}: {mean_returns[i]:.2%} annualized")
 
-    print("\nCalculating correlation matrix...")
+    logger.info("Calculating correlation matrix")
     correlation = calculate_correlation_matrix(returns)
 
-    print("\nCalculating covariance matrix...")
+    logger.info("Calculating covariance matrix")
     covariance = calculate_covariance_matrix(returns)
 
     # Prepare results in storage-compatible format
@@ -481,7 +483,7 @@ def transform_data(
 
     # Save to storage
     if save:
-        print("\nSaving processed data...")
+        logger.info("Saving processed data")
         try:
             storage.save_processed(results["returns"], "returns")
             storage.save_processed(results["volatility"], "volatility")
@@ -493,10 +495,9 @@ def transform_data(
                 f"Failed to save processed data: {e}", operation="save"
             ) from e
 
-    print("\n" + "=" * 50)
-    print("Transformation complete!")
-    print(f"  Symbols: {len(symbols_list)}")
-    print(f"  Data points per symbol: {len(returns_dates)}")
+    logger.info("Transformation complete")
+    logger.info(f"Symbols: {len(symbols_list)}")
+    logger.info(f"Data points per symbol: {len(returns_dates)}")
 
     return results
 

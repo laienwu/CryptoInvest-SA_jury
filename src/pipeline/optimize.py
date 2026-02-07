@@ -29,6 +29,10 @@ from typing import Any
 
 from src.storage import get_storage
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # =============================================================================
 # Configuration
 # =============================================================================
@@ -248,7 +252,7 @@ def _try_scipy_optimization(
     if result.success:
         return list(result.x)
     else:
-        print(f"  Warning: scipy optimization did not converge: {result.message}")
+        logger.warning(f"scipy optimization did not converge: {result.message}")
         return None
 
 
@@ -579,8 +583,7 @@ def compute_and_save_frontier(
     Returns:
         Frontier data with symbols attached.
     """
-    print("Computing efficient frontier...")
-    print("=" * 50)
+    logger.info("Computing efficient frontier")
 
     storage = get_storage(storage_backend)
 
@@ -598,27 +601,27 @@ def compute_and_save_frontier(
     cov_matrix = covariance_data["matrix"]
     mean_returns = mean_returns_data["values"]
 
-    print(f"  Loaded data for {len(symbols)} symbols: {symbols}")
+    logger.info(f"Loaded data for {len(symbols)} symbols: {symbols}")
 
     result = compute_efficient_frontier(
         mean_returns, cov_matrix, n_points, risk_free_rate
     )
     result["symbols"] = symbols
 
-    print(f"  Frontier points: {len(result['frontier'])}")
-    print(f"  Max Sharpe return: {result['max_sharpe']['return']:.2%}")
-    print(f"  Min Variance vol:  {result['min_variance']['volatility']:.2%}")
+    logger.info(f"Frontier points: {len(result['frontier'])}")
+    logger.info(f"Max Sharpe return: {result['max_sharpe']['return']:.2%}")
+    logger.info(f"Min Variance vol: {result['min_variance']['volatility']:.2%}")
 
     if save:
         try:
             output_path = storage.save_output(result, "frontier")
-            print(f"  Saved to: {output_path}")
+            logger.info(f"Saved frontier to: {output_path}")
         except Exception as e:
             raise OptimizeError(
                 f"Failed to save frontier: {e}", operation="save"
             ) from e
 
-    print("Frontier computation complete!")
+    logger.info("Frontier computation complete")
     return result
 
 
@@ -702,14 +705,13 @@ def optimize_portfolio(
     Raises:
         OptimizeError: If optimization fails.
     """
-    print("Starting portfolio optimization...")
-    print("=" * 50)
+    logger.info("Starting portfolio optimization")
 
     # Get storage instance
     storage = get_storage(storage_backend)
 
     # Load required data
-    print("\nLoading processed data...")
+    logger.info("Loading processed data")
     try:
         covariance_data = storage.load_processed("covariance")
         mean_returns_data = storage.load_processed("mean_returns")
@@ -724,10 +726,10 @@ def optimize_portfolio(
     cov_matrix = covariance_data["matrix"]
     mean_returns = mean_returns_data["values"]
 
-    print(f"  Loaded data for {len(symbols)} symbols: {symbols}")
+    logger.info(f"Loaded data for {len(symbols)} symbols: {symbols}")
 
     # Optimization
-    print("\nRunning optimization...")
+    logger.info("Running optimization")
     method = "scipy"
 
     # Try scipy first
@@ -736,13 +738,13 @@ def optimize_portfolio(
     )
 
     if optimal_weights is None:
-        print("  scipy not available, using grid search...")
+        logger.info("scipy not available, using grid search")
         method = "grid_search"
         optimal_weights = _grid_search_max_sharpe(
             mean_returns, cov_matrix, risk_free_rate
         )
     else:
-        print("  Using scipy SLSQP optimization")
+        logger.info("Using scipy SLSQP optimization")
 
     # Calculate portfolio metrics
     expected_return = calculate_portfolio_return(optimal_weights, mean_returns)
@@ -768,31 +770,28 @@ def optimize_portfolio(
         "method": method,
     }
 
-    # Print summary
-    print("\n" + "=" * 50)
-    print("OPTIMAL PORTFOLIO")
-    print("=" * 50)
-    print("\nWeights:")
+    # Log summary
+    logger.info("OPTIMAL PORTFOLIO")
+    logger.info("Weights:")
     for symbol, weight in weights_dict.items():
-        print(f"  {symbol}: {weight:.2%}")
-    print(f"\nExpected Return: {expected_return:.2%}")
-    print(f"Volatility:      {volatility:.2%}")
-    print(f"Sharpe Ratio:    {sharpe_ratio:.4f}")
-    print(f"Method:          {method}")
+        logger.info(f"  {symbol}: {weight:.2%}")
+    logger.info(f"Expected Return: {expected_return:.2%}")
+    logger.info(f"Volatility: {volatility:.2%}")
+    logger.info(f"Sharpe Ratio: {sharpe_ratio:.4f}")
+    logger.info(f"Method: {method}")
 
     # Save to storage
     if save:
-        print("\nSaving results...")
+        logger.info("Saving results")
         try:
             output_path = storage.save_output(result, "weights")
-            print(f"  Saved to: {output_path}")
+            logger.info(f"Saved to: {output_path}")
         except Exception as e:
             raise OptimizeError(
                 f"Failed to save results: {e}", operation="save"
             ) from e
 
-    print("\n" + "=" * 50)
-    print("Optimization complete!")
+    logger.info("Optimization complete")
 
     return result
 

@@ -41,6 +41,11 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from .base import Storage, StorageError
+from ._utils import KLINES_SCHEMA, write_klines_parquet
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -49,23 +54,6 @@ from .base import Storage, StorageError
 
 # Default base data directory (relative to project root)
 DEFAULT_DATA_DIR = Path(__file__).parent.parent.parent / "data"
-
-
-# =============================================================================
-# Parquet Schema Definitions
-# =============================================================================
-
-# Schema for raw klines data
-KLINES_SCHEMA = pa.schema(
-    [
-        pa.field("timestamp", pa.string(), nullable=False),
-        pa.field("open", pa.float64(), nullable=False),
-        pa.field("high", pa.float64(), nullable=False),
-        pa.field("low", pa.float64(), nullable=False),
-        pa.field("close", pa.float64(), nullable=False),
-        pa.field("volume", pa.float64(), nullable=False),
-    ]
-)
 
 
 # =============================================================================
@@ -139,58 +127,21 @@ class ParquetStorage(Storage):
 
         for symbol, records in data.items():
             if not records:
-                print(f"  Skipping {symbol}: no records")
+                logger.debug(f"Skipping {symbol}: no records")
                 continue
 
             try:
-                # Convert list of dicts to columnar format for pyarrow
-                arrays = {
-                    "timestamp": pa.array(
-                        [r["timestamp"] for r in records], type=pa.string()
-                    ),
-                    "open": pa.array(
-                        [r["open"] for r in records], type=pa.float64()
-                    ),
-                    "high": pa.array(
-                        [r["high"] for r in records], type=pa.float64()
-                    ),
-                    "low": pa.array(
-                        [r["low"] for r in records], type=pa.float64()
-                    ),
-                    "close": pa.array(
-                        [r["close"] for r in records], type=pa.float64()
-                    ),
-                    "volume": pa.array(
-                        [r["volume"] for r in records], type=pa.float64()
-                    ),
-                }
-
-                # Create table with schema
-                table = pa.table(arrays, schema=KLINES_SCHEMA)
-
-                # Add metadata if provided
-                if metadata:
-                    existing_meta = table.schema.metadata or {}
-                    new_meta = {
-                        **existing_meta,
-                        b"storage_metadata": json.dumps(metadata).encode(),
-                        b"saved_at": datetime.now().isoformat().encode(),
-                        b"symbol": symbol.encode(),
-                    }
-                    table = table.replace_schema_metadata(new_meta)
-
-                # Write to Parquet file
                 file_path = self._get_raw_path(symbol)
-                pq.write_table(table, file_path, compression="snappy")
+                write_klines_parquet(symbol, records, file_path, metadata)
                 saved_count += 1
-                print(f"  Saved {symbol}: {len(records)} records to {file_path.name}")
+                logger.debug(f"Saved {symbol}: {len(records)} records to {file_path.name}")
 
             except Exception as e:
                 raise StorageError(
                     f"Failed to save {symbol}: {e}", operation="save_raw"
                 ) from e
 
-        print(f"Saved raw data for {saved_count} symbols to {klines_dir}")
+        logger.info(f"Saved raw data for {saved_count} symbols to {klines_dir}")
         return str(klines_dir)
 
     def load_raw(
@@ -225,7 +176,7 @@ class ParquetStorage(Storage):
             file_path = self._get_raw_path(symbol)
 
             if not file_path.exists():
-                print(f"  Warning: No data found for {symbol}")
+                logger.warning(f"No data found for {symbol}")
                 continue
 
             try:
@@ -247,7 +198,7 @@ class ParquetStorage(Storage):
                     )
 
                 result[symbol] = records
-                print(f"  Loaded {symbol}: {len(records)} records")
+                logger.debug(f"Loaded {symbol}: {len(records)} records")
 
             except Exception as e:
                 raise StorageError(
@@ -260,7 +211,7 @@ class ParquetStorage(Storage):
                 operation="load_raw",
             )
 
-        print(f"Loaded raw data for {len(result)} symbols")
+        logger.info(f"Loaded raw data for {len(result)} symbols")
         return result
 
     # -------------------------------------------------------------------------
@@ -314,7 +265,7 @@ class ParquetStorage(Storage):
             table = table.replace_schema_metadata(meta)
 
             pq.write_table(table, file_path, compression="snappy")
-            print(f"Saved processed data '{name}' to {file_path}")
+            logger.info(f"Saved processed data '{name}' to {file_path}")
             return str(file_path)
 
         except Exception as e:
@@ -513,7 +464,7 @@ class ParquetStorage(Storage):
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(output_data, f, indent=2, ensure_ascii=False)
 
-            print(f"Saved output '{name}' to {file_path}")
+            logger.info(f"Saved output '{name}' to {file_path}")
             return str(file_path)
 
         except Exception as e:
@@ -549,7 +500,7 @@ class ParquetStorage(Storage):
             if "_metadata" in data:
                 del data["_metadata"]
 
-            print(f"Loaded output '{name}' from {file_path}")
+            logger.debug(f"Loaded output '{name}' from {file_path}")
             return data
 
         except json.JSONDecodeError as e:

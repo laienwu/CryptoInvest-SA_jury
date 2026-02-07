@@ -28,7 +28,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import logging
 import requests
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Configuration
@@ -106,7 +109,7 @@ def _make_request(url: str, params: dict[str, Any]) -> list[list[Any]]:
             # Check for rate limiting
             if response.status_code == 429:
                 retry_after = int(response.headers.get("Retry-After", 60))
-                print(f"Rate limited. Waiting {retry_after} seconds...")
+                logger.warning(f"Rate limited. Waiting {retry_after} seconds...")
                 time.sleep(retry_after)
                 continue
 
@@ -121,15 +124,15 @@ def _make_request(url: str, params: dict[str, Any]) -> list[list[Any]]:
 
         except requests.exceptions.Timeout:
             last_exception = BinanceAPIError("Request timed out")
-            print(f"Timeout on attempt {attempt + 1}/{MAX_RETRIES}")
+            logger.warning(f"Timeout on attempt {attempt + 1}/{MAX_RETRIES}")
 
         except requests.exceptions.ConnectionError as e:
             last_exception = BinanceAPIError(f"Connection error: {e}")
-            print(f"Connection error on attempt {attempt + 1}/{MAX_RETRIES}")
+            logger.warning(f"Connection error on attempt {attempt + 1}/{MAX_RETRIES}")
 
         except requests.exceptions.RequestException as e:
             last_exception = BinanceAPIError(f"Request error: {e}")
-            print(f"Request error on attempt {attempt + 1}/{MAX_RETRIES}")
+            logger.warning(f"Request error on attempt {attempt + 1}/{MAX_RETRIES}")
 
         # Exponential backoff
         if attempt < MAX_RETRIES - 1:
@@ -188,7 +191,7 @@ def fetch_klines(
     }
 
     url = f"{BINANCE_API_BASE}/api/v3/klines"
-    print(f"Fetching {symbol} klines from {start_time.date()} to {end_time.date()}...")
+    logger.info(f"Fetching {symbol} klines from {start_time.date()} to {end_time.date()}...")
 
     # Make API request
     raw_klines = _make_request(url, params)
@@ -212,7 +215,7 @@ def fetch_klines(
             }
         )
 
-    print(f"  Retrieved {len(klines)} klines for {symbol}")
+    logger.info(f"Retrieved {len(klines)} klines for {symbol}")
     return klines
 
 
@@ -254,9 +257,8 @@ def fetch_all_symbols(
     result: dict[str, list[dict[str, Any]]] = {}
     failed_symbols: list[str] = []
 
-    print(f"Starting data ingestion for {len(symbols)} symbols...")
-    print(f"Period: {start_time.date()} to {end_time.date()} ({period_days} days)")
-    print("-" * 50)
+    logger.info(f"Starting data ingestion for {len(symbols)} symbols...")
+    logger.info(f"Period: {start_time.date()} to {end_time.date()} ({period_days} days)")
 
     for i, symbol in enumerate(symbols):
         try:
@@ -273,15 +275,14 @@ def fetch_all_symbols(
                 time.sleep(RATE_LIMIT_DELAY)
 
         except BinanceAPIError as e:
-            print(f"  ERROR fetching {symbol}: {e.message}")
+            logger.error(f"Failed to fetch {symbol}: {e.message}")
             failed_symbols.append(symbol)
             continue
 
     total_records = sum(len(klines) for klines in result.values())
-    print("-" * 50)
-    print(f"Ingestion complete: {total_records} total records for {len(result)} symbols")
+    logger.info(f"Ingestion complete: {total_records} total records for {len(result)} symbols")
     if failed_symbols:
-        print(f"Failed symbols: {failed_symbols}")
+        logger.warning(f"Failed symbols: {failed_symbols}")
 
     return result
 
@@ -347,8 +348,7 @@ def ingest_incremental(
     storage = get_storage()
     result: dict[str, list[dict[str, Any]]] = {}
 
-    print("Starting incremental ingestion...")
-    print("-" * 50)
+    logger.info("Starting incremental ingestion...")
 
     for symbol in symbols:
         # Load existing data
@@ -363,16 +363,16 @@ def ingest_incremental(
             last_date_str = max(r["timestamp"] for r in existing_records)
             last_date = datetime.strptime(last_date_str, "%Y-%m-%d")
             start_time = last_date + timedelta(days=1)  # Start from next day
-            print(f"{symbol}: Last data {last_date_str}, fetching from {start_time.date()}")
+            logger.info(f"{symbol}: Last data {last_date_str}, fetching from {start_time.date()}")
         else:
             # No existing data, fetch full period
             start_time = datetime.now() - timedelta(days=DEFAULT_PERIOD_DAYS)
-            print(f"{symbol}: No existing data, fetching {DEFAULT_PERIOD_DAYS} days")
+            logger.info(f"{symbol}: No existing data, fetching {DEFAULT_PERIOD_DAYS} days")
 
         # Fetch new data
         end_time = datetime.now()
         if start_time >= end_time:
-            print(f"  {symbol}: Already up to date")
+            logger.info(f"{symbol}: Already up to date")
             result[symbol] = existing_records
             continue
 
@@ -384,7 +384,7 @@ def ingest_incremental(
                 end_time=end_time,
             )
         except BinanceAPIError as e:
-            print(f"  ERROR fetching {symbol}: {e.message}")
+            logger.error(f"Failed to fetch {symbol}: {e.message}")
             result[symbol] = existing_records
             continue
 
@@ -399,13 +399,12 @@ def ingest_incremental(
         merged.sort(key=lambda x: x["timestamp"])
 
         result[symbol] = merged
-        print(f"  {symbol}: {len(existing_records)} existing + {len(new_records)} new = {len(merged)} total")
+        logger.info(f"{symbol}: {len(existing_records)} existing + {len(new_records)} new = {len(merged)} total")
 
         time.sleep(RATE_LIMIT_DELAY)
 
-    print("-" * 50)
     total = sum(len(v) for v in result.values())
-    print(f"Incremental ingestion complete: {total} total records")
+    logger.info(f"Incremental ingestion complete: {total} total records")
 
     return result
 
@@ -441,7 +440,7 @@ def fetch_current_prices(symbols: list[str] | None = None) -> dict[str, float]:
             prices[symbol] = float(response["price"])
             time.sleep(RATE_LIMIT_DELAY)
         except BinanceAPIError as e:
-            print(f"  ERROR fetching price for {symbol}: {e.message}")
+            logger.error(f"Failed to fetch price for {symbol}: {e.message}")
             continue
 
     return prices

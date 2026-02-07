@@ -19,6 +19,9 @@ Example usage:
 import time
 from typing import Any
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Configuration
@@ -145,7 +148,7 @@ def scrape_market_rankings(limit: int = 20) -> list[dict[str, Any]]:
         >>> print(data[0]['name'])
         'Bitcoin'
     """
-    print(f"Scraping CoinGecko market rankings (limit={limit})...")
+    logger.info(f"Scraping CoinGecko market rankings (limit={limit})")
 
     url = f"{COINGECKO_URL}/en"
     html = _get_page(url)
@@ -159,7 +162,7 @@ def scrape_market_rankings(limit: int = 20) -> list[dict[str, Any]]:
 
     if not table:
         # Fallback: try to find data in divs (CoinGecko uses dynamic loading)
-        print("  Note: Table not found, using alternative parsing...")
+        logger.warning("Table not found, using alternative parsing")
         return _scrape_coingecko_alternative(soup, limit)
 
     rows = table.find_all("tr")[1:]  # Skip header
@@ -217,10 +220,10 @@ def scrape_market_rankings(limit: int = 20) -> list[dict[str, Any]]:
             })
 
         except Exception as e:
-            print(f"  Warning: Failed to parse row {i}: {e}")
+            logger.warning(f"Failed to parse row {i}: {e}")
             continue
 
-    print(f"  Scraped {len(rankings)} coins")
+    logger.info(f"Scraped {len(rankings)} coins")
     return rankings
 
 
@@ -231,7 +234,7 @@ def _scrape_coingecko_alternative(soup, limit: int) -> list[dict[str, Any]]:
     Falls back to generating sample data structure that matches
     what would be scraped, for demonstration purposes.
     """
-    print("  Using demonstration data (site structure may have changed)")
+    logger.warning("Using demonstration data (site structure may have changed)")
 
     # Sample data matching scraped structure
     sample_data = [

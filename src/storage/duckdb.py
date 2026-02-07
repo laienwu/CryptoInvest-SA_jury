@@ -132,18 +132,8 @@ class DuckDBStorage(Storage):
     # -------------------------------------------------------------------------
 
     def save_raw(self, data: dict[str, list[dict]], metadata: dict | None = None) -> str:
-        """Save raw data as Parquet files (same as ParquetStorage)."""
-        import pyarrow as pa
-        import pyarrow.parquet as pq
-
-        KLINES_SCHEMA = pa.schema([
-            pa.field("timestamp", pa.string(), nullable=False),
-            pa.field("open", pa.float64(), nullable=False),
-            pa.field("high", pa.float64(), nullable=False),
-            pa.field("low", pa.float64(), nullable=False),
-            pa.field("close", pa.float64(), nullable=False),
-            pa.field("volume", pa.float64(), nullable=False),
-        ])
+        """Save raw data as Parquet files, then refresh SQL views."""
+        from ._utils import write_klines_parquet
 
         if not data:
             raise StorageError("No data provided", operation="save_raw")
@@ -152,16 +142,9 @@ class DuckDBStorage(Storage):
         for symbol, records in data.items():
             if not records:
                 continue
-            arrays = {
-                "timestamp": pa.array([r["timestamp"] for r in records]),
-                "open": pa.array([r["open"] for r in records]),
-                "high": pa.array([r["high"] for r in records]),
-                "low": pa.array([r["low"] for r in records]),
-                "close": pa.array([r["close"] for r in records]),
-                "volume": pa.array([r["volume"] for r in records]),
-            }
-            table = pa.table(arrays, schema=KLINES_SCHEMA)
-            pq.write_table(table, klines_dir / f"{symbol}.parquet")
+            write_klines_parquet(
+                symbol, records, klines_dir / f"{symbol}.parquet", metadata
+            )
 
         # Refresh views after new data
         self._setup_views()
@@ -288,7 +271,7 @@ class DuckDBStorage(Storage):
         try:
             rows = self.query("SELECT DISTINCT symbol FROM dim_symbol ORDER BY symbol")
             return [r["symbol"] for r in rows]
-        except:
+        except (StorageError, Exception):
             return []
 
     def list_processed(self) -> list[str]:

@@ -20,20 +20,23 @@ Example usage:
 """
 
 import os
+import logging
 from datetime import datetime, date, timedelta
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Configuration
 # =============================================================================
 
-# Database connection (from environment or defaults)
+# Database connection (from environment variables)
 DB_CONFIG = {
     "host": os.getenv("POSTGRES_HOST", "localhost"),
     "port": int(os.getenv("POSTGRES_PORT", "5432")),
     "database": os.getenv("POSTGRES_DB", "portfolio_benchmarks"),
     "user": os.getenv("POSTGRES_USER", "portfolio"),
-    "password": os.getenv("POSTGRES_PASSWORD", "portfolio123"),
+    "password": os.getenv("POSTGRES_PASSWORD", ""),
 }
 
 
@@ -169,7 +172,7 @@ def initialize_schema() -> None:
     - portfolio_snapshots
     - benchmark_comparison
     """
-    print("Initializing PostgreSQL schema...")
+    logger.info("Initializing PostgreSQL schema")
 
     try:
         conn = _get_connection()
@@ -178,9 +181,9 @@ def initialize_schema() -> None:
         conn.commit()
         cursor.close()
         conn.close()
-        print("  Schema initialized successfully")
+        logger.info("Schema initialized successfully")
     except DatabaseError as e:
-        print(f"  Schema initialization failed: {e.message}")
+        logger.error(f"Schema initialization failed: {e.message}")
         raise
 
 
@@ -336,7 +339,7 @@ def load_benchmarks(
         >>> benchmarks = load_benchmarks()
         >>> print(benchmarks["indices"]["SP500"])
     """
-    print("Loading benchmarks from PostgreSQL...")
+    logger.info("Loading benchmarks from PostgreSQL")
 
     if end_date is None:
         end_date = date.today()
@@ -353,7 +356,7 @@ def load_benchmarks(
         cursor = conn.cursor()
 
         # Load index data
-        print("  Loading market indices...")
+        logger.info("Loading market indices")
         cursor.execute("""
             SELECT mi.index_name, id.date, id.close_value
             FROM index_daily id
@@ -373,10 +376,10 @@ def load_benchmarks(
             })
 
         result["indices"] = indices
-        print(f"    Loaded {len(indices)} indices")
+        logger.info(f"Loaded {len(indices)} indices")
 
         # Load portfolio history
-        print("  Loading portfolio history...")
+        logger.info("Loading portfolio history")
         cursor.execute("""
             SELECT snapshot_date, portfolio_name, total_value,
                    daily_return, cumulative_return, volatility_30d,
@@ -400,10 +403,10 @@ def load_benchmarks(
             })
 
         result["portfolio_history"] = portfolio_history
-        print(f"    Loaded {len(portfolio_history)} snapshots")
+        logger.info(f"Loaded {len(portfolio_history)} snapshots")
 
         # Load benchmark comparison
-        print("  Loading benchmark comparisons...")
+        logger.info("Loading benchmark comparisons")
         cursor.execute("""
             SELECT date, portfolio_name, benchmark_name,
                    portfolio_return, benchmark_return, alpha, beta
@@ -426,7 +429,7 @@ def load_benchmarks(
             })
 
         result["comparisons"] = comparisons
-        print(f"    Loaded {len(comparisons)} comparisons")
+        logger.info(f"Loaded {len(comparisons)} comparisons")
 
         cursor.close()
         conn.close()
@@ -544,7 +547,7 @@ def generate_sample_data() -> None:
     """
     import random
 
-    print("Generating sample benchmark data...")
+    logger.info("Generating sample benchmark data")
 
     # Generate 90 days of index data
     end_date = date.today()
@@ -584,12 +587,12 @@ def generate_sample_data() -> None:
 
     # Insert data
     insert_index_data("SP500", sp500_data)
-    print(f"  Inserted {len(sp500_data)} S&P 500 records")
+    logger.info(f"Inserted {len(sp500_data)} S&P 500 records")
 
     insert_index_data("BTC_INDEX", btc_data)
-    print(f"  Inserted {len(btc_data)} BTC index records")
+    logger.info(f"Inserted {len(btc_data)} BTC index records")
 
-    print("  Sample data generation complete")
+    logger.info("Sample data generation complete")
 
 
 # =============================================================================
@@ -604,7 +607,7 @@ def load_benchmarks_fallback() -> dict[str, Any]:
     Returns simulated benchmark data from memory.
     Useful for testing without database setup.
     """
-    print("Using fallback benchmark data (PostgreSQL not available)")
+    logger.warning("Using fallback benchmark data (PostgreSQL not available)")
 
     import random
     random.seed(42)  # Reproducible
