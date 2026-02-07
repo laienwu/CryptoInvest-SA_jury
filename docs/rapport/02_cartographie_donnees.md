@@ -94,7 +94,7 @@ value      : FLOAT64
 ## 4. Modèle dimensionnel (Star Schema)
 
 ### 4.1 Table de faits
-
+```
 **fact_prices** :
 | Colonne | Type | Description |
 |---------|------|-------------|
@@ -106,8 +106,10 @@ value      : FLOAT64
 | close | FLOAT64 | Prix de clôture |
 | volume | FLOAT64 | Volume échangé |
 
+```
 ### 4.2 Tables de dimensions
 
+```
 **dim_symbol** :
 | Colonne | Type | Description |
 |---------|------|-------------|
@@ -123,7 +125,7 @@ value      : FLOAT64
 | month | INT | Mois |
 | day | INT | Jour |
 | day_of_week | INT | Jour de semaine |
-
+```
 ### 4.3 Schéma visuel
 
 ```

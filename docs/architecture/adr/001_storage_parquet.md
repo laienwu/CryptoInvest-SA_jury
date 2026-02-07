@@ -1,105 +1,105 @@
-# ADR-001: Parquet as Primary Storage Format
+# ADR-001 : Parquet comme format de stockage principal
 
-**Status:** Accepted
-**Date:** 2025-01-06
-**Deciders:** [Your Name] (Data Engineer), Pierre Durand (DevOps)
-**Technical Story:** US-001, US-002
-
----
-
-## Context
-
-We need to store time-series price data from multiple cryptocurrency sources. The storage format must support:
-
-- Efficient columnar queries (aggregations, filtering by date)
-- Schema enforcement for data quality
-- Compression for cost efficiency
-- Compatibility with our analytics stack (DuckDB, Python)
-
-Options considered:
-1. CSV files
-2. JSON files
-3. Apache Parquet
-4. Delta Lake
-5. PostgreSQL tables
+**Statut :** Accepté
+**Date :** 2025-01-06
+**Décideurs :** Laien Wu (Data Engineer), Pierre Durand (DevOps)
+**Histoire technique :** US-001, US-002
 
 ---
 
-## Decision
+## Contexte
 
-**We will use Apache Parquet as the primary storage format for the Data Lake.**
+Nous devons stocker des données de prix de séries chronologiques provenant de plusieurs sources de crypto-monnaie. Le format de stockage doit prendre en charge :
+
+- Requêtes en colonnes efficaces (agrégations, filtrage par date)
+- Application du schéma pour la qualité des données
+- Compression pour une meilleure rentabilité
+- Compatibilité avec notre pile d'analyse (DuckDB, Python)
+
+Options considérées :
+1. Fichiers CSV
+2. Fichiers JSON
+3. Parquet Apache
+4. Lac Delta
+5. Tables PostgreSQL
 
 ---
 
-## Rationale
+## Décision
 
-### Why Parquet over alternatives:
+**Nous utiliserons Apache Parquet comme format de stockage principal pour les données Lac.**
 
-| Criterion | CSV | JSON | Parquet | Delta Lake | PostgreSQL |
+---
+
+## Justification
+
+### Pourquoi le parquet plutôt que les alternatives :
+
+| Critère | CSV | JSON | Parquet | Lac Delta | PostgreSQL |
 |-----------|-----|------|---------|------------|------------|
-| Columnar queries | Poor | Poor | Excellent | Excellent | Good |
-| Compression | None | None | Snappy/Zstd | Snappy/Zstd | Limited |
-| Schema enforcement | None | Partial | Strong | Strong | Strong |
-| Tooling complexity | Low | Low | Low | Medium | Medium |
-| Native DuckDB support | Yes | Yes | Excellent | Limited | External |
-| File-based (no server) | Yes | Yes | Yes | Yes | No |
+| Requêtes en colonnes | Pauvre | Pauvre | Excellent | Excellent | Bon |
+| Compression | Aucun | Aucun | Snappy/Zstd | Snappy/Zstd | Limité |
+| Application du schéma | Aucun | Partielle | Fort | Fort | Fort |
+| Complexité de l'outillage | Faible | Faible | Faible | Moyen | Moyen |
+| Prise en charge native de DuckDB | Oui | Oui | Excellent | Limité | Externe |
+| Basé sur des fichiers (pas de serveur) | Oui | Oui | Oui | Oui | Non |
 
-### Key factors in decision:
+### Facteurs clés de la décision :
 
-1. **Performance**: Parquet's columnar format is 10-100x faster for analytical queries (SELECT specific columns, aggregations) compared to row-based formats.
+1. **Performances** : le format en colonnes de Parquet est 10 à 100 fois plus rapide pour les requêtes analytiques (colonnes spécifiques SELECT, agrégations) par rapport aux formats basés sur les lignes.
 
-2. **Compression**: Snappy compression achieves 5-10x size reduction vs CSV while maintaining fast decompression.
+2. **Compression** : la compression Snappy permet d'obtenir une réduction de taille de 5 à 10 fois par rapport au CSV tout en maintenant une décompression rapide.
 
-3. **Schema**: Built-in schema prevents data type drift and documents structure.
+3. **Schéma** : le schéma intégré empêche la dérive du type de données et la structure des documents.
 
-4. **DuckDB native**: DuckDB reads Parquet directly with zero-copy, enabling SQL queries without ETL.
+4. **DuckDB natif** : DuckDB lit Parquet directement sans copie, permettant des requêtes SQL sans ETL.
 
-5. **Simplicity**: Unlike Delta Lake, Parquet requires no additional runtime or dependencies.
+5. **Simplicité** : contrairement à Delta Lake, Parquet ne nécessite aucun runtime ni dépendance supplémentaire.
 
-### Why not Delta Lake:
-- Adds complexity (delta-rs dependency, transaction logs)
-- ACID transactions not required for daily batch loads
-- Would be overkill for current data volume (~50KB/day)
+### Pourquoi pas Delta Lake :
+- Ajoute de la complexité (dépendance delta-rs, journaux de transactions)
+- Transactions ACID non requises pour les chargements par lots quotidiens
+- Ce serait excessif pour le volume de données actuel (~ 50 Ko/jour)
 
-### Why not PostgreSQL for raw data:
-- Requires server management
-- Data Lake pattern prefers file-based storage
-- DuckDB provides SQL without the operational overhead
-
----
-
-## Consequences
-
-### Positive
-- Fast analytical queries via DuckDB
-- Self-documenting schema in files
-- 80% storage reduction vs CSV
-- No database server to manage
-- Easy backup (just copy files)
-
-### Negative
-- Not human-readable (unlike CSV/JSON)
-- Requires PyArrow library
-- No row-level updates (append-only pattern)
-- Less familiar to some team members
-
-### Neutral
-- Learning curve for PyArrow API
-- Need parquet-tools for file inspection
+### Pourquoi pas PostgreSQL pour les données brutes :
+- Nécessite une gestion de serveur
+- Le modèle Data Lake préfère le stockage basé sur des fichiers
+- DuckDB fournit SQL sans surcharge opérationnelle
 
 ---
 
-## Compliance
+## Conséquences
 
-| Requirement | Status |
+### Positif
+- Requêtes analytiques rapides via DuckDB
+- Schéma auto-documenté dans les fichiers
+- 80 % de réduction de stockage par rapport à CSV
+- Aucun serveur de base de données à gérer
+- Sauvegarde facile (il suffit de copier fichiers)
+
+### Négatif
+- Non lisible par l'homme (contrairement à CSV/JSON)
+- Nécessite la bibliothèque PyArrow
+- Aucune mise à jour au niveau des lignes (modèle d'ajout uniquement)
+- Moins familier à certaines équipes membres
+
+### Neutre
+- Courbe d'apprentissage pour l'API PyArrow
+- Besoin d'outils de parquet pour l'inspection des fichiers
+
+---
+
+## Conformité
+
+| Exigence | Statut |
 |-------------|--------|
-| C11 - Database creation | Parquet schema = implicit DB schema |
-| C18 - Data Lake architecture | File-based storage fits lake pattern |
-| C19 - Component integration | Native DuckDB/PyArrow integration |
+| C11 - Création de base de données | Schéma Parquet = schéma DB implicite |
+| C18 - Architecture du lac de données | Le stockage basé sur des fichiers correspond au modèle Lake |
+| C19 - Intégration de composants | Intégration native DuckDB/PyArrow |
 
 ---
 
-## Implementation
+## Implémentation
 
 ```python
 # Writing Parquet with PyArrow
@@ -122,13 +122,14 @@ pq.write_table(table, "data/raw/klines/BTCUSDT.parquet")
 
 ---
 
-## References
+## Références
 
-- [Apache Parquet Documentation](https://parquet.apache.org/)
-- [DuckDB Parquet Support](https://duckdb.org/docs/data/parquet)
-- [PyArrow Parquet Guide](https://arrow.apache.org/docs/python/parquet.html)
+- [Documentation Apache Parquet](https://parquet.apache.org/)
+- [Support DuckDB Parquet](https://duckdb.org/docs/data/parquet)
+- [Guide Parquet PyArrow](https://arrow.apache.org/docs/python/parquet.html)
 
 ---
 
-*Reviewed by: Pierre Durand (DevOps)*
-*Approved by: Marie Dupont (Product Owner)*
+*Révisé par : Pierre Durand (DevOps)*
+*Approuvé par : Marie Dupont (Propriétaire du produit)*
+

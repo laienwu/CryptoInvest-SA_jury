@@ -1,12 +1,12 @@
-# Monitoring & Alerting Guide
+# Guide de surveillance et d'alerte
 
-## Overview
+## Présentation
 
-This document describes the monitoring strategy for the Portfolio Optimization Platform. It covers metrics collection, alerting rules, and dashboard specifications.
+Ce document décrit la stratégie de surveillance de la plateforme d'optimisation de portefeuille. Il couvre la collecte de métriques, les règles d'alerte et les spécifications des tableaux de bord.
 
 ---
 
-## 1. Monitoring Architecture
+## 1. Architecture de surveillance
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -35,45 +35,45 @@ This document describes the monitoring strategy for the Portfolio Optimization P
 
 ---
 
-## 2. Key Metrics
+## 2. Indicateurs clés
 
-### 2.1 Application Metrics
+### 2.1 Indicateurs d'application
 
-| Metric | Type | Source | Alert Threshold |
+| Métrique | Tapez | Source | Seuil d'alerte |
 |--------|------|--------|-----------------|
-| API response time | Gauge | FastAPI | > 500ms |
-| API error rate | Counter | FastAPI logs | > 5% |
-| API requests/min | Counter | FastAPI | < 1 (no traffic warning) |
-| Pipeline duration | Gauge | Airflow | > 10 minutes |
-| Pipeline success rate | Percentage | Airflow | < 95% |
-| Data freshness | Gauge | File mtime | > 24 hours |
+| Temps de réponse API | Jauge | API rapide | > 500 ms |
+| Taux d'erreur API | Compteur | Journaux FastAPI | > 5 % |
+| Requêtes API/min | Compteur | API rapide | < 1 (pas d'avertissement de circulation) |
+| Durée du pipeline | Jauge | Flux d'air | > 10 minutes |
+| Taux de réussite des pipelines | Pourcentage | Flux d'air | < 95 % |
+| Fraîcheur des données | Jauge | Fichier mtime | > 24 heures |
 
-### 2.2 Infrastructure Metrics
+### 2.2 Métriques d'infrastructure
 
-| Metric | Type | Source | Alert Threshold |
+| Métrique | Tapez | Source | Seuil d'alerte |
 |--------|------|--------|-----------------|
-| Container CPU | Gauge | Docker stats | > 80% |
-| Container memory | Gauge | Docker stats | > 80% |
-| Disk usage | Gauge | df | > 85% |
-| Container restarts | Counter | Docker events | > 3/hour |
+| Processeur du conteneur | Jauge | Statistiques Docker | > 80 % |
+| Mémoire de conteneur | Jauge | Statistiques Docker | > 80 % |
+| Utilisation du disque | Jauge | df | > 85 % |
+| Le conteneur redémarre | Compteur | Événements Dockers | > 3/heure |
 
-### 2.3 Business Metrics
+### 2.3 Métriques commerciales
 
-| Metric | Type | Source | Alert Threshold |
+| Métrique | Tapez | Source | Seuil d'alerte |
 |--------|------|--------|-----------------|
-| Portfolio Sharpe ratio | Gauge | weights.json | < 0.5 |
-| Data records count | Gauge | DuckDB | < expected |
-| Symbol coverage | Percentage | Data Lake | < 100% |
+| Ratio de Sharpe du portefeuille | Jauge | poids.json | < 0,5 |
+| Nombre d'enregistrements de données | Jauge | CanardDB | < attendu |
+| Couverture des symboles | Pourcentage | Lac de données | < 100 % |
 
 ---
 
-## 3. Health Checks
+## 3. Vérifications de l'état
 
-### 3.1 API Health Check
+### 3.1 Vérification de l'état de l'API
 
-**Endpoint:** `GET /`
+**Point de terminaison :** `GET /`
 
-**Implementation:**
+**Mise en œuvre :**
 ```python
 @app.get("/")
 def health_check():
@@ -84,7 +84,7 @@ def health_check():
     }
 ```
 
-**Docker health check:**
+**Vérification de l'état de Docker :**
 ```yaml
 healthcheck:
   test: ["CMD", "curl", "-f", "http://localhost:8000/"]
@@ -94,14 +94,14 @@ healthcheck:
   start_period: 10s
 ```
 
-### 3.2 Deep Health Check
+### 3.2 Bilan de santé approfondi
 
-**Endpoint:** `GET /health/deep` (to implement)
+**Point de terminaison :** `GET /health/deep` (à implémenter)
 
-**Checks:**
-- Database connectivity (DuckDB)
-- Data freshness (file timestamps)
-- External API reachability (Binance)
+**Contrôles :**
+- Connectivité de la base de données (DuckDB)
+- Fraîcheur des données (fichier horodatages)
+- Accessibilité de l'API externe (Binance)
 
 ```python
 @app.get("/health/deep")
@@ -115,22 +115,22 @@ def deep_health_check():
     return {"status": status, "checks": checks}
 ```
 
-### 3.3 Airflow Health Check
+### 3.3 Contrôle de l'état du flux d'air
 
-**Endpoint:** `GET http://localhost:8081/health`
+**Point de terminaison :** `GET http://localhost:8081/health`
 
-**CLI check:**
+**Vérification CLI :**
 ```bash
 docker compose exec airflow-webserver airflow jobs check --job-type SchedulerJob
 ```
 
 ---
 
-## 4. Logging
+## 4. Journalisation
 
-### 4.1 Log Format
+### 4.1 Format de journal
 
-**Standard format (JSON):**
+**Format standard (JSON) :**
 ```json
 {
   "timestamp": "2025-01-15T08:32:15.123Z",
@@ -143,16 +143,16 @@ docker compose exec airflow-webserver airflow jobs check --job-type SchedulerJob
 }
 ```
 
-### 4.2 Log Levels
+### 4.2 Niveaux de journalisation
 
-| Level | Usage | Examples |
+| Niveau | Utilisation | Exemples |
 |-------|-------|----------|
-| ERROR | Failures requiring attention | API errors, pipeline failures |
-| WARNING | Potential issues | Slow responses, rate limiting |
-| INFO | Normal operations | Request processed, task completed |
-| DEBUG | Detailed debugging | Query results, intermediate values |
+| ERREUR | Pannes nécessitant une attention | Erreurs d'API, échecs de pipeline |
+| AVERTISSEMENT | Problèmes potentiels | Réponses lentes, limitation du débit |
+| INFOS | Opérations normales | Demande traitée, tâche terminée |
+| DÉBOGAGE | Débogage détaillé | Résultats de la requête, valeurs intermédiaires |
 
-### 4.3 Log Collection
+### 4.3 Collecte de journaux
 
 ```bash
 # View real-time logs
@@ -165,49 +165,49 @@ docker compose logs api | grep ERROR
 docker compose logs > logs/$(date +%Y%m%d).log
 ```
 
-### 4.4 Log Retention
+### 4.4 Conservation des journaux
 
-| Log Type | Retention | Location |
+| Type de journal | Rétention | Emplacement |
 |----------|-----------|----------|
-| Application logs | 30 days | Docker/journald |
-| Airflow task logs | 90 days | ./logs/airflow/ |
-| Access logs | 90 days | ./logs/access/ |
+| Journaux d'applications | 30 jours | Docker/journal |
+| Journaux de tâches Airflow | 90 jours | ./logs/airflow/ |
+| Journaux d'accès | 90 jours | ./logs/access/ |
 
 ---
 
-## 5. Alerting Rules
+## 5. Règles d'alerte
 
-### 5.1 Critical Alerts (P1)
+### 5.1 Alertes critiques (P1)
 
-**Trigger immediate notification (email + Slack)**
+**Déclencher une notification immédiate (e-mail + Slack)**
 
-| Alert | Condition | Action |
+| Alerte | État | Action |
 |-------|-----------|--------|
-| API Down | Health check fails 3x | Restart container, escalate |
-| Pipeline Failed | DAG run failed | Check logs, manual retry |
-| Data Corruption | Invalid data detected | Stop pipeline, investigate |
+| API en panne | Le contrôle de santé échoue 3x | Redémarrer le conteneur, faire remonter |
+| Échec du pipeline | L'exécution du DAG a échoué | Vérifier les journaux, nouvelle tentative manuelle |
+| Corruption des données | Données invalides détectées | Arrêter le pipeline, enquêter |
 
-### 5.2 Warning Alerts (P2)
+### 5.2 Alertes d'avertissement (P2)
 
-**Trigger notification within 1 hour**
+**Déclencher une notification dans un délai d'une heure**
 
-| Alert | Condition | Action |
+| Alerte | État | Action |
 |-------|-----------|--------|
-| High Latency | API p95 > 500ms | Check resources |
-| Data Stale | No update in 24h | Check Airflow scheduler |
-| Low Sharpe | Sharpe < 0.5 | Notify analysts |
+| Latence élevée | API p95 > 500 ms | Vérifier les ressources |
+| Données obsolètes | Aucune mise à jour en 24h | Vérifier le planificateur de flux d'air |
+| Faible Sharpe | Sharpe < 0,5 | Notifier les analystes |
 
-### 5.3 Informational Alerts (P3)
+### 5.3 Alertes informatives (P3)
 
-**Logged, reviewed daily**
+**Enregistré, examiné quotidiennement**
 
-| Alert | Condition | Action |
+| Alerte | État | Action |
 |-------|-----------|--------|
-| High CPU | > 70% sustained | Consider scaling |
-| Disk 75% | Disk usage > 75% | Plan cleanup |
-| Rate Limited | Binance 429 error | Monitor frequency |
+| Processeur élevé | > 70% soutenu | Envisagez de mettre à l'échelle |
+| Disque 75% | Utilisation du disque > 75 % | Planifier le nettoyage |
+| Tarif Limité | Erreur Binance 429 | Fréquence de surveillance |
 
-### 5.4 Alert Configuration
+### 5.4 Configuration des alertes
 
 ```yaml
 # alerts.yml
@@ -241,9 +241,9 @@ alerts:
 
 ---
 
-## 6. Monitoring Scripts
+## 6. Scripts de surveillance
 
-### 6.1 Health Check Script
+### 6.1 Script de vérification de l'état
 
 ```bash
 #!/bin/bash
@@ -277,7 +277,7 @@ echo "OK: All checks passed"
 exit 0
 ```
 
-### 6.2 Metrics Collection Script
+### 6.2 Script de collecte de métriques
 
 ```python
 #!/usr/bin/env python3
@@ -328,19 +328,19 @@ if __name__ == "__main__":
 
 ---
 
-## 7. Dashboards
+## 7. Tableaux de bord
 
-### 7.1 Airflow Dashboard
+### 7.1 Tableau de bord du flux d'air
 
-**URL:** http://localhost:8081
+**URL :** http://localhost:8081
 
-**Key views:**
-- DAGs: List of all DAGs with status
-- Grid: Task execution history
-- Graph: DAG structure visualization
-- Logs: Task-level logs
+**Vues clés :**
+- DAG : liste de tous les DAG avec un statut
+- Grille : historique d'exécution des tâches
+- Graphique : visualisation de la structure du DAG
+- Journaux : niveau de la tâche logs
 
-### 7.2 Custom Monitoring Dashboard
+### 7.2 Tableau de bord de surveillance personnalisé
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -375,9 +375,9 @@ if __name__ == "__main__":
 
 ---
 
-## 8. Notification Channels
+## 8. Canaux de notification
 
-### 8.1 Email Configuration
+### 8.1 Configuration de la messagerie
 
 ```yaml
 # For Airflow email alerts
@@ -393,7 +393,7 @@ recipients:
   info: [data-team@company.com]
 ```
 
-### 8.2 Slack Integration
+### 8.2 Intégration Slack
 
 ```bash
 # Send Slack alert
@@ -404,6 +404,6 @@ curl -X POST -H 'Content-type: application/json' \
 
 ---
 
-*Document version: 1.0*
-*Last updated: 2025-02-17*
-*Owner: Pierre Durand (DevOps)*
+*Version du document : 1.0*
+*Dernière mise à jour : 2025-02-17*
+*Propriétaire : Pierre Durand (DevOps)*

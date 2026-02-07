@@ -1,12 +1,12 @@
-# Operations Runbook
+# Runbook d'opérations
 
-## Overview
+## Présentation
 
-This runbook provides operational procedures for the Portfolio Optimization Platform. Target audience: DevOps engineers, on-call support, system administrators.
+Ce runbook fournit des procédures opérationnelles pour la plateforme d'optimisation de portefeuille. Public cible : ingénieurs DevOps, assistance d'astreinte, administrateurs système.
 
 ---
 
-## 1. System Architecture
+## 1. Architecture système
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -35,9 +35,9 @@ This runbook provides operational procedures for the Portfolio Optimization Plat
 
 ---
 
-## 2. Service Management
+## 2. Gestion des services
 
-### 2.1 Start Services
+### 2.1 Démarrer les services
 
 ```bash
 # Start API only (minimal)
@@ -53,7 +53,7 @@ docker compose --profile full up -d
 docker compose ps
 ```
 
-### 2.2 Stop Services
+### 2.2 Arrêter les services
 
 ```bash
 # Stop all services
@@ -66,7 +66,7 @@ docker compose down -v
 docker compose stop api
 ```
 
-### 2.3 Restart Services
+### 2.3 Redémarrer les services
 
 ```bash
 # Restart API (zero-downtime)
@@ -80,7 +80,7 @@ docker compose restart airflow-scheduler
 docker compose restart airflow-webserver
 ```
 
-### 2.4 Service Health Checks
+### 2.4 Vérifications de l'état du service
 
 ```bash
 # API health
@@ -95,9 +95,9 @@ docker inspect --format='{{.State.Health.Status}}' portfolio-api
 
 ---
 
-## 3. Common Operations
+## 3. Opérations courantes
 
-### 3.1 Manual Pipeline Run
+### 3.1 Exécution manuelle du pipeline
 
 ```bash
 # Run full pipeline manually
@@ -106,13 +106,18 @@ docker compose --profile pipeline up pipeline
 # Or run from inside container
 docker compose exec api python -c "
 from src.pipeline import ingest_all_sources, transform_data, optimize_portfolio
+from src.pipeline.optimize import compute_and_save_frontier
+from src.pipeline.backtest import run_backtest
+
 ingest_all_sources()
 transform_data()
 optimize_portfolio()
+compute_and_save_frontier()
+run_backtest()
 "
 ```
 
-### 3.2 View Logs
+### 3.2 Afficher les journaux
 
 ```bash
 # All logs
@@ -128,7 +133,7 @@ docker compose logs --tail=100 api
 docker compose exec airflow-webserver cat /opt/airflow/logs/dag_id=portfolio_optimization/run_id=*/task_id=ingest_data/*.log
 ```
 
-### 3.3 Access Container Shell
+### 3.3 Accéder au shell du conteneur
 
 ```bash
 # API container
@@ -141,7 +146,7 @@ docker compose exec airflow-webserver /bin/bash
 docker compose exec api python
 ```
 
-### 3.4 Database Operations
+### 3.4 Opérations de base de données
 
 ```bash
 # DuckDB CLI (read-only)
@@ -160,13 +165,13 @@ cp data/warehouse.duckdb data/warehouse.duckdb.backup
 
 ---
 
-## 4. Troubleshooting
+## 4. Dépannage
 
-### 4.1 API Not Responding
+### L'API 4.1 ne répond pas
 
-**Symptoms:** `curl localhost:8000` times out or returns error
+**Symptômes :** `curl localhost:8000` expire ou revient erreur
 
-**Diagnosis:**
+**Diagnostic :**
 ```bash
 # Check if container is running
 docker compose ps api
@@ -178,7 +183,7 @@ docker compose logs --tail=50 api
 netstat -tlnp | grep 8000
 ```
 
-**Resolution:**
+**Résolution :**
 ```bash
 # Restart container
 docker compose restart api
@@ -190,11 +195,11 @@ docker compose up -d --force-recreate api
 lsof -i :8000
 ```
 
-### 4.2 Airflow DAG Not Running
+### 4.2 Le DAG Airflow ne fonctionne pas
 
-**Symptoms:** DAG shows "No runs" or stuck in "queued"
+**Symptômes :** Le DAG affiche « Aucune exécution » ou est bloqué dans « en file d'attente »
 
-**Diagnosis:**
+**Diagnostic :**
 ```bash
 # Check scheduler is running
 docker compose ps airflow-scheduler
@@ -206,7 +211,7 @@ docker compose logs --tail=100 airflow-scheduler
 # Visit http://localhost:8081 → Toggle DAG on
 ```
 
-**Resolution:**
+**Résolution :**
 ```bash
 # Restart scheduler
 docker compose restart airflow-scheduler
@@ -218,16 +223,16 @@ docker compose exec airflow-webserver airflow tasks clear portfolio_optimization
 docker compose exec airflow-webserver airflow dags trigger portfolio_optimization
 ```
 
-### 4.3 Data Quality Issues
+### 4.3 Problèmes de qualité des données
 
-**Symptoms:** API returns unexpected values, empty responses
+**Symptômes :** L'API renvoie des valeurs inattendues et des réponses vides
 
-**Diagnosis:**
+**Diagnostic :**
 ```bash
 # Check data files exist
 ls -la data/raw/klines/
 ls -la data/processed/
-ls -la data/output/
+ls -la data/output/  # Should contain weights.json, frontier.json, backtest.json
 
 # Check file contents
 docker compose exec api python -c "
@@ -245,21 +250,29 @@ print(conn.execute('SELECT symbol, COUNT(*) FROM fact_prices GROUP BY symbol').f
 "
 ```
 
-**Resolution:**
+**Résolution :**
 ```bash
-# Re-run ingestion
+# Re-run full pipeline (including frontier and backtest)
 docker compose --profile pipeline up pipeline
+
+# Or re-run frontier/backtest individually
+docker compose exec api python -c "
+from src.pipeline.optimize import compute_and_save_frontier
+from src.pipeline.backtest import run_backtest
+compute_and_save_frontier()
+run_backtest()
+"
 
 # Clear and rebuild warehouse
 rm data/warehouse.duckdb
 docker compose exec api python -c "from src.storage.duckdb import DuckDBStorage; DuckDBStorage().initialize()"
 ```
 
-### 4.4 Out of Disk Space
+### 4.4 Espace disque insuffisant
 
-**Symptoms:** Containers crash, "no space left on device" errors
+**Symptômes :** Crash des conteneurs, erreurs « aucun espace restant sur l'appareil »
 
-**Diagnosis:**
+**Diagnostic :**
 ```bash
 # Check disk usage
 df -h
@@ -271,7 +284,7 @@ docker system df
 du -sh data/*
 ```
 
-**Resolution:**
+**Résolution :**
 ```bash
 # Remove old Docker artifacts
 docker system prune -a
@@ -287,11 +300,11 @@ conn.execute('VACUUM')
 "
 ```
 
-### 4.5 Binance API Errors
+### Erreurs de l'API Binance 4.5
 
-**Symptoms:** Ingestion fails with "429 Too Many Requests" or "IP banned"
+**Symptômes :** L'ingestion échoue avec "429 demandes de trop" ou "IP interdite"
 
-**Diagnosis:**
+**Diagnostic :**
 ```bash
 # Check ingestion logs
 docker compose logs api | grep -i "binance\|429\|banned"
@@ -300,7 +313,7 @@ docker compose logs api | grep -i "binance\|429\|banned"
 curl -s "https://api.binance.com/api/v3/ping"
 ```
 
-**Resolution:**
+**Résolution :**
 ```bash
 # Wait for rate limit reset (usually 1 minute)
 sleep 60
@@ -313,9 +326,9 @@ sleep 60
 
 ---
 
-## 5. Backup & Recovery
+## 5. Sauvegarde et récupération
 
-### 5.1 Backup Procedures
+### 5.1 Procédures de sauvegarde
 
 ```bash
 # Daily backup script
@@ -336,7 +349,7 @@ docker compose exec airflow-webserver airflow db export $BACKUP_DIR/airflow.json
 echo "Backup completed: $BACKUP_DIR"
 ```
 
-### 5.2 Recovery Procedures
+### 5.2 Procédures de récupération
 
 ```bash
 # Stop services
@@ -349,12 +362,12 @@ tar -xzf /backups/YYYYMMDD/data.tar.gz
 docker compose up -d
 ```
 
-### 5.3 Disaster Recovery
+### 5.3 Reprise après sinistre
 
-**Scenario:** Complete data loss
+**Scénario :** Perte complète de données
 
-**Recovery Time Objective (RTO):** < 1 hour
-**Recovery Point Objective (RPO):** < 24 hours
+**Objectif de temps de récupération (RTO) :** < 1 heure
+**Objectif de point de récupération (RPO) :** < 24 heures
 
 ```bash
 # 1. Deploy fresh infrastructure
@@ -372,13 +385,15 @@ docker compose --profile pipeline up pipeline
 
 # 4. Verify data
 curl http://localhost:8000/portfolio
+curl http://localhost:8000/portfolio/frontier
+curl http://localhost:8000/portfolio/backtest
 ```
 
 ---
 
-## 6. Performance Tuning
+## 6. Optimisation des performances
 
-### 6.1 API Performance
+### 6.1 Performances de l'API
 
 ```bash
 # Increase Uvicorn workers
@@ -389,7 +404,7 @@ curl http://localhost:8000/portfolio
 # Add nginx reverse proxy with caching
 ```
 
-### 6.2 Pipeline Performance
+### 6.2 Performances du pipeline
 
 ```bash
 # Run ingestion in parallel
@@ -401,20 +416,21 @@ curl http://localhost:8000/portfolio
 
 ---
 
-## 7. Contact & Escalation
+## 7. Contact et escalade
 
-| Level | Contact | Response Time |
+| Niveau | Contacter | Temps de réponse |
 |-------|---------|---------------|
-| L1 - On-call | devops@company.com | < 15 min |
-| L2 - Data Engineering | data-team@company.com | < 1 hour |
-| L3 - Architecture | [Your Name] | < 4 hours |
+| L1 - Astreinte | devops@company.com | < 15 min |
+| L2 - Ingénierie des Données | data-team@company.com | < 1 heure |
+| L3 -Architecture | Laien Wu | < 4 heures |
 
-**Escalation Criteria:**
-- L1 → L2: Issue not resolved in 30 minutes
-- L2 → L3: Data corruption, security incident, architecture change needed
+**Critères d'escalade :**
+- L1 → L2 : problème non résolu en 30 minutes
+- L2 → L3 : corruption de données, incident de sécurité, changement d'architecture nécessaire
 
 ---
 
-*Document version: 1.0*
-*Last updated: 2025-02-17*
-*Owner: Pierre Durand (DevOps)*
+*Version du document : 1.0*
+*Dernière mise à jour : 2025-02-17*
+*Propriétaire : Pierre Durand (DevOps)*
+

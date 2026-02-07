@@ -231,6 +231,56 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /portfolio/frontier:
+    get:
+      tags:
+        - Analytics
+      summary: Get Efficient Frontier
+      description: |
+        Returns the efficient frontier showing optimal risk-return tradeoffs.
+
+        Includes the frontier curve, max Sharpe portfolio, min variance portfolio,
+        individual asset positions, and the Capital Market Line.
+      operationId: getEfficientFrontier
+      responses:
+        '200':
+          description: Efficient frontier data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrontierResponse'
+        '404':
+          description: Frontier not yet computed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/backtest:
+    get:
+      tags:
+        - Analytics
+      summary: Get Backtest Results
+      description: |
+        Returns walk-forward backtest results comparing the optimized strategy
+        against equal-weight and BTC-only benchmarks.
+
+        Uses rolling windows (train/test split) to validate out-of-sample performance.
+      operationId: getBacktestResults
+      responses:
+        '200':
+          description: Backtest results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BacktestResponse'
+        '404':
+          description: Backtest not yet computed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   schemas:
     HealthResponse:
@@ -329,6 +379,193 @@ components:
           type: string
           format: date-time
           description: When the optimization was computed
+
+    FrontierResponse:
+      type: object
+      required:
+        - frontier
+        - max_sharpe
+        - min_variance
+        - assets
+      properties:
+        frontier:
+          type: array
+          description: Points along the efficient frontier
+          items:
+            type: object
+            properties:
+              volatility:
+                type: number
+                format: double
+              return:
+                type: number
+                format: double
+              weights:
+                type: array
+                items:
+                  type: number
+        max_sharpe:
+          type: object
+          description: Maximum Sharpe ratio portfolio
+          properties:
+            volatility:
+              type: number
+              format: double
+            return:
+              type: number
+              format: double
+            weights:
+              type: array
+              items:
+                type: number
+        min_variance:
+          type: object
+          description: Minimum variance portfolio
+          properties:
+            volatility:
+              type: number
+              format: double
+            return:
+              type: number
+              format: double
+            weights:
+              type: array
+              items:
+                type: number
+        assets:
+          type: array
+          description: Individual asset risk-return positions
+          items:
+            type: object
+            properties:
+              symbol_index:
+                type: integer
+              volatility:
+                type: number
+                format: double
+              return:
+                type: number
+                format: double
+        capital_market_line:
+          type: object
+          description: CML from risk-free rate through tangency portfolio
+          properties:
+            x:
+              type: array
+              items:
+                type: number
+            y:
+              type: array
+              items:
+                type: number
+        risk_free_rate:
+          type: number
+          format: double
+        symbols:
+          type: array
+          items:
+            type: string
+
+    BacktestResponse:
+      type: object
+      required:
+        - windows
+        - cumulative_values
+        - metrics
+        - config
+      properties:
+        windows:
+          type: array
+          description: Per-window optimization results
+          items:
+            type: object
+            properties:
+              window_id:
+                type: integer
+              train_start:
+                type: string
+                format: date
+              train_end:
+                type: string
+                format: date
+              test_start:
+                type: string
+                format: date
+              test_end:
+                type: string
+                format: date
+              weights:
+                type: object
+                additionalProperties:
+                  type: number
+              test_return:
+                type: number
+                format: double
+        cumulative_values:
+          type: object
+          properties:
+            dates:
+              type: array
+              items:
+                type: string
+                format: date
+            strategy:
+              type: array
+              items:
+                type: number
+            equal_weight:
+              type: array
+              items:
+                type: number
+            btc_only:
+              type: array
+              items:
+                type: number
+        metrics:
+          type: object
+          description: Performance metrics for each strategy
+          properties:
+            strategy:
+              $ref: '#/components/schemas/BacktestMetrics'
+            equal_weight:
+              $ref: '#/components/schemas/BacktestMetrics'
+            btc_only:
+              $ref: '#/components/schemas/BacktestMetrics'
+        symbols:
+          type: array
+          items:
+            type: string
+        config:
+          type: object
+          properties:
+            train_window:
+              type: integer
+            test_window:
+              type: integer
+            strategy:
+              type: string
+            risk_free_rate:
+              type: number
+              format: double
+
+    BacktestMetrics:
+      type: object
+      properties:
+        cumulative_return:
+          type: number
+          format: double
+        annualized_return:
+          type: number
+          format: double
+        max_drawdown:
+          type: number
+          format: double
+        sharpe_ratio:
+          type: number
+          format: double
+        calmar_ratio:
+          type: number
+          format: double
 
     Error:
       type: object

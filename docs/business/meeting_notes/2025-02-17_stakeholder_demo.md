@@ -1,71 +1,71 @@
-# Stakeholder Demo - Portfolio Optimization MVP
+# Démo des parties prenantes - MVP de l'optimisation du portefeuille
 
-**Date:** 2025-02-17
-**Time:** 15:00 - 16:30
-**Type:** Executive Demo
+**Date :** 2025-02-17
+**Heure :** 15h00 - 16h30
+**Type :** Démo exécutive
 
-## Attendees
+## Participants
 
-| Name | Role | Department |
+| Nom | Rôle | Département |
 |------|------|------------|
-| François Martin | CTO | Executive |
-| Marie Dupont | Product Owner | Business |
-| Claire Rousseau | Head of Trading | Business |
-| Jean Martin | Business Analyst | Business |
-| [Your Name] | Data Engineer | Development |
-| Sophie Bernard | Data Analyst | Development |
-| Pierre Durand | DevOps Engineer | IT Operations |
-| Lucas Petit | Scrum Master | PMO |
+| François Martin | Directeur technique | Exécutif |
+| Marie Dupont | Propriétaire de produit | Affaires |
+| Claire Rousseau | Responsable du commerce | Affaires |
+| Jean-Martin | Analyste d'affaires | Affaires |
+| Laien Wu | Ingénieur de données | Développement |
+| Sophie Bernard | Analyste de données | Développement |
+| Pierre Durand | Ingénieur DevOps | Opérations informatiques |
+| Lucas Petit | Maître Scrum | PMO |
 
 ---
 
-## Executive Summary
+## Résumé
 
-The Portfolio Optimization Platform MVP is **feature complete** and ready for user acceptance testing. The system automates data collection, analysis, and portfolio optimization for cryptocurrency investments.
+Le MVP de la plateforme d'optimisation de portefeuille est **fonctionnalité complète** et prêt pour les tests d'acceptation des utilisateurs. Le système automatise la collecte de données, l'analyse et l'optimisation de portefeuille pour les investissements en crypto-monnaie.
 
-**Key Achievement:** End-to-end pipeline running daily with < 5 minute execution time.
-
----
-
-## Demo Agenda
-
-1. Business Value Overview (5 min)
-2. Live System Demo (30 min)
-3. Technical Architecture (10 min)
-4. Certification Compliance (10 min)
-5. Roadmap & Next Steps (10 min)
-6. Q&A (25 min)
+**Réalisation clé :** Pipeline de bout en bout exécuté quotidiennement avec un temps d'exécution < 5 minutes.
 
 ---
 
-## 1. Business Value Overview (Marie)
+## Démo Ordre du jour
 
-### Problem Statement
-- Manual data collection: 2 hours/day
-- Excel-based analysis: Error-prone, not scalable
-- No systematic optimization: Gut-feel decisions
+1. Aperçu de la valeur commerciale (5 min)
+2. Démo du système en direct (30 min)
+3. Architecture technique (10 min)
+4. Conformité à la certification (10 minutes)
+5. Feuille de route et prochaines étapes (10 min)
+6. Questions et réponses (25 min)
 
-### Solution Delivered
-- Automated daily data pipeline
-- Professional-grade portfolio optimization
-- API for integration with trading systems
+---
 
-### ROI Projection
+## 1. Aperçu de la valeur commerciale (Marie)
 
-| Metric | Before | After | Improvement |
+### Énoncé du problème
+- Collecte manuelle de données : 2 heures/jour
+- Basé sur Excel analyse : sujette aux erreurs, non évolutive
+- Aucune optimisation systématique : décisions instinctives
+
+### Solution fournie
+- Pipeline de données quotidien automatisé
+- Optimisation de portefeuille de qualité professionnelle
+- API pour l'intégration avec le trading systèmes
+
+### Projection du retour sur investissement
+
+| Métrique | Avant | Après | Amélioration |
 |--------|--------|-------|-------------|
-| Data collection time | 2h/day | 0h/day | -100% |
-| Analysis time | 1h/day | 5 min/day | -92% |
-| Data freshness | T+1 day | T+0 | Real-time |
-| Portfolio Sharpe | ~0.5 | ~1.2 | +140% |
+| Temps de collecte des données | 2h/jour | 0h/jour | -100 % |
+| Temps d'analyse | 1h/jour | 5 min/jour | -92% |
+| Fraîcheur des données | J+1 jour | T+0 | En temps réel |
+| Portefeuille Sharpe | ~0,5 | ~1.2 | +140 % |
 
 ---
 
-## 2. Live System Demo ([Your Name])
+## 2. Démo du système en direct (Laien Wu)
 
-### Demo Flow
+### Démo Flow
 
-**Step 1: Data Ingestion**
+**Étape 1 : Ingestion de données**
 ```
 $ python -c "from src.pipeline import ingest_all_sources; ingest_all_sources()"
 
@@ -82,9 +82,9 @@ MULTI-SOURCE INGESTION (C8) - 5 Source Types
 Sources loaded: 5/5
 ```
 
-**Stakeholder Reaction:** Claire impressed by multi-source capability
+**Réaction des parties prenantes :** Claire impressionnée par la capacité multi-sources
 
-**Step 2: Data Transformation**
+**Étape 2 : Transformation des données**
 ```
 $ python -c "from src.pipeline import transform_data; transform_data()"
 
@@ -97,7 +97,7 @@ Correlation Matrix computed.
 Covariance Matrix computed.
 ```
 
-**Step 3: Portfolio Optimization**
+**Étape 3 : Optimisation du portefeuille**
 ```
 $ python -c "from src.pipeline import optimize_portfolio; optimize_portfolio()"
 
@@ -119,22 +119,22 @@ Sharpe Ratio:    1.24
 Method: scipy (SLSQP optimization)
 ```
 
-**François (CTO):** "What's the Sharpe ratio of equal weighting?"
-**Answer:** "0.89 - our optimization improves it by 39%"
+**François (CTO) :** "Quel est le ratio de Sharpe à pondération égale ?"
+**Réponse :** "0,89 - notre optimisation l'améliore de 39 %"
 
-**Step 4: API Demo**
-- Showed Swagger UI at `http://localhost:8000/docs`
-- Live calls to `/symbols`, `/klines/BTCUSDT`, `/portfolio`
-- Response times all < 200ms
+**Étape 4 : Démo de l'API**
+ - Affichage de l'interface utilisateur Swagger à `http://localhost:8000/docs`
+- Appels en direct vers `/symbols`, `/klines/BTCUSDT`, `/portfolio`
+- Temps de réponse tous < 200 ms
 
-**Step 5: Airflow DAG**
-- Showed DAG visualization
-- Daily schedule at 00:00 UTC
-- Task dependencies: ingest → transform → optimize
+**Étape 5 : DAG de flux d'air**
+- DAG affiché visualisation
+- Planning quotidien à 00:00 UTC
+- Dépendances des tâches : ingérer → transformer → optimiser
 
 ---
 
-## 3. Technical Architecture (Pierre)
+## 3. Architecture technique (Pierre)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -168,88 +168,89 @@ Method: scipy (SLSQP optimization)
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**François:** "All containerized?"
-**Pierre:** "Yes, `docker compose up` starts everything."
+**François :** "Tout conteneurisé ?"
+**Pierre :** "Oui, `docker compose up` démarre tout."
 
 ---
 
-## 4. Certification Compliance (Jean)
+## 4. Conformité à la certification (Jean)
 
-| Bloc | Competencies | Status |
+| Bloc | Compétences | Statut |
 |------|--------------|--------|
-| Bloc 1: Project Management | C1-C7 | ✅ 100% |
-| Bloc 2: Data Collection | C8-C12 | ✅ 100% |
-| Bloc 3: Data Warehouse | C13-C17 | ✅ 100% |
-| Bloc 4: Data Lake | C18-C21 | ✅ 100% |
+| Bloc 1 : Gestion de projet | C1-C7 | ✅100% |
+| Bloc 2 : Collecte de données | C8-C12 | ✅100% |
+| Bloc 3 : Entrepôt de données | C13-C17 | ✅100% |
+| Bloc 4 : Lac de données | C18-C21 | ✅ 100 % |
 
-**All 21 competencies covered.**
+**Toutes les 21 compétences couvertes.**
 
-Documentation:
-- 10 rapport chapters
-- MERISE modeling (MCD/MLD/MPD)
-- RGPD compliance analysis
-- SCD Type 1/2 documentation
+Documentation :
+- 10 chapitres de rapport
+- Modélisation MERISE (MCD/MLD/MPD)
+- Analyse de conformité RGPD
+- Documentation SCD Type 1/2
 
 ---
 
-## 5. Roadmap
+## 5. Feuille de route
 
-### Completed (MVP)
+### Terminé (MVP)
 - ✅ Multi-source ingestion
-- ✅ Data Lake architecture
-- ✅ Star schema DWH
-- ✅ Portfolio optimization
-- ✅ REST API
-- ✅ Airflow orchestration
-- ✅ Docker deployment
-- ✅ Full documentation
+- ✅ Architecture Data Lake
+- ✅ Schéma en étoile DWH
+- ✅ Optimisation du portefeuille
+- ✅ API REST
+- ✅ Orchestration des flux d'air
+- ✅ Docker déploiement
+- ✅ Documentation complète
 
-### Post-MVP Backlog
-| Feature | Priority | Effort |
+### Backlog post-MVP
+| Fonctionnalité | Priorité | Effort |
 |---------|----------|--------|
-| API authentication | High | 2 days |
-| Email alerts | Medium | 1 day |
-| More assets (top 20) | Medium | 1 day |
-| Backtesting module | Low | 1 week |
-| Web dashboard | Low | 2 weeks |
+| Authentification API | Élevé | 2 jours |
+| Alertes par e-mail | Moyen | 1 jour |
+| Plus d'actifs (top 20) | Moyen | 1 jour |
+| Module de backtesting | Faible | 1 semaine |
+| Tableau de bord Web | Faible | 2 semaines |
 
 ---
 
-## 6. Q&A
+## 6. Questions et réponses
 
-**Q (François):** What's the disaster recovery plan?
-**A (Pierre):** Docker volumes are persistent. Full rebuild from scratch takes < 10 minutes. Data can be re-fetched from APIs.
+**Q (François) :** Quel est le plan de reprise après sinistre ?
+**A (Pierre) :** Les volumes Docker sont persistants. La reconstruction complète à partir de zéro prend moins de 10 minutes. Les données peuvent être récupérées à partir des API.
 
-**Q (Claire):** Can this connect to our trading system?
-**A ([Your Name]):** Yes, the API returns JSON. We'd need to build an adapter for your specific system.
+**Q (Claire) :** Cela peut-il se connecter à notre système commercial ?
+**A (Laien) :** Oui, l'API renvoie du JSON. Nous aurions besoin de créer un adaptateur pour votre système spécifique.
 
-**Q (François):** What's the total cost?
-**A (Marie):** Zero licensing costs - all open source. Only compute resources (1 VM, 2 CPU, 2GB RAM).
+**Q (François) :** Quel est le coût total ?
+**A (Marie) :** Zéro frais de licence - tout en open source. Uniquement les ressources de calcul (1 VM, 2 processeurs, 2 Go de RAM).
 
-**Q (Claire):** How accurate is the optimization?
-**A (Sophie):** Backtested on 90 days shows the optimized portfolio outperforms equal-weight by 15-20% on risk-adjusted basis.
-
----
-
-## Decisions
-
-1. ✅ **MVP Approved** for production deployment
-2. ✅ **UAT Phase** starts 2025-02-18 (1 week)
-3. ✅ **Go-live target:** 2025-02-28
-4. ✅ **Post-MVP:** API auth to be added before external exposure
+**Q (Claire) :** Quelle est la précision de l'optimisation ?
+**A (Sophie) :** Un backtest sur 90 jours montre que le portefeuille optimisé surclasse de 15 à 20 % à pondération égale en fonction du risque. base.
 
 ---
 
-## Action Items
+## Décisions
 
-| Action | Owner | Due |
+1. ✅ **Approuvé MVP** pour le déploiement en production
+2. ✅ **La phase UAT** commence le 18/02/2025 (1 semaine)
+3. ✅ **Objectif de mise en ligne :** 2025-02-28
+4. ✅ **Post-MVP :** L'authentification API doit être ajoutée avant l'exposition externe
+
+---
+
+## Éléments d'action
+
+| Actions | Propriétaire | À payer |
 |--------|-------|-----|
-| UAT test plan | Jean | 2025-02-18 |
-| Production deployment | Pierre | 2025-02-25 |
-| User training session | Sophie | 2025-02-27 |
-| Certification submission | [Your Name] | 2025-03-10 |
+| Plan de test UAT | Jean | 2025-02-18 |
+| Déploiement en production | Pierre | 2025-02-25 |
+| Session de formation des utilisateurs | Sophie | 2025-02-27 |
+| Soumission de certification | Laïen | 2025-03-10 |
 
 ---
 
-*Minutes recorded by: Lucas Petit*
-*Approved by: François Martin (CTO)*
+*Procès-verbal enregistré par : Lucas Petit*
+*Approuvé par : François Martin (CTO)*
+

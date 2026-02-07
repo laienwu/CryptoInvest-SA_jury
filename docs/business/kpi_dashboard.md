@@ -1,18 +1,18 @@
-# KPI Dashboard Specification
+# Spécification du tableau de bord KPI
 
-## 1. Executive Summary Dashboard
+## 1. Tableau de bord de synthèse
 
-### 1.1 Portfolio Performance KPIs
+### 1.1 KPI de performance du portefeuille
 
-| KPI | Target | Threshold | Data Source |
+| KPI | Cible | Seuil | Source de données |
 |-----|--------|-----------|-------------|
-| **Sharpe Ratio** | > 1.0 | < 0.5 = Red | optimize.py |
-| **Annual Return** | > 15% | < 5% = Red | optimize.py |
-| **Volatility** | < 30% | > 50% = Red | optimize.py |
-| **Max Drawdown** | < 20% | > 30% = Red | calculated |
-| **Tracking Error vs Benchmark** | < 10% | > 20% = Red | benchmark comparison |
+| **Rapport de Sharpe** | > 1,0 | < 0,5 = Rouge | optimiser.py |
+| **Rapport annuel** | > 15% | < 5% = Rouge | optimiser.py |
+| **Volatilité** | < 30 % | > 50% = Rouge | optimiser.py |
+| **Réduction maximale** | < 20 % | > 30% = Rouge | calculé |
+| **Erreur de suivi par rapport à la référence** | < 10 % | > 20% = Rouge | comparaison de référence |
 
-### 1.2 Dashboard Layout
+### 1.2 Présentation du tableau de bord
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -56,19 +56,42 @@
 
 ---
 
-## 2. Operational KPIs
+## 1b. KPI Frontier efficaces
 
-### 2.1 Data Pipeline Health
+| KPI | Cible | Seuil | Source de données |
+|-----|--------|-----------|-------------|
+| **Points frontières** | 50 | < 10 = Rouge | frontière.json |
+| **Rapport de Sharpe maximum** | > 1,0 | < 0,5 = Rouge | frontière.json |
+| **Vol d'écart minimum** | < Max Sharpe Vol | Violation = Rouge | frontière.json |
+| **Écart de retour** | > 10% | < 5% = Rouge | frontier.json |
 
-| KPI | Target | Measurement | Alert Threshold |
+---
+
+## 1c. KPI de backtest
+
+| KPI | Cible | Seuil | Source de données |
+|-----|--------|-----------|-------------|
+| **Stratégie Sharpe** | > 1,0 | < 0,5 = Rouge | backtest.json |
+| **Stratégie vs poids égal** | Surperformer | Sous-performance = Avertissement | backtest.json |
+| **Réduction maximale** | < 20 % | > 30% = Rouge | backtest.json |
+| **Rapport Calmar** | > 2.0 | < 1,0 = Rouge | backtest.json |
+| **Nombre de fenêtres** | > 3 | < 3 = Avertissement | backtest.json |
+
+---
+
+## 2. KPI opérationnels
+
+### 2.1 État du pipeline de données
+
+| KPI | Cible | Mesure | Seuil d'alerte |
 |-----|--------|-------------|-----------------|
-| **Pipeline Success Rate** | 99% | Successful runs / Total runs | < 95% |
-| **Data Freshness** | < 24h | Time since last update | > 48h |
-| **Ingestion Latency** | < 5 min | End-to-end pipeline time | > 15 min |
-| **Data Completeness** | 100% | Non-null records / Expected records | < 98% |
-| **API Uptime** | 99.5% | Uptime / Total time | < 99% |
+| **Taux de réussite du pipeline** | 99% | Exécutions réussies / Nombre total d'exécutions | < 95 % |
+| **Fraîcheur des données** | < 24h | Temps depuis la dernière mise à jour | > 48h |
+| **Latence d'ingestion** | < 5 minutes | Temps de pipeline de bout en bout | > 15 minutes |
+| **Exhaustivité des données** | 100% | Enregistrements non nuls / Enregistrements attendus | < 98 % |
+| **Disponibilité de l'API** | 99,5% | Temps de disponibilité / Temps total | < 99 % |
 
-### 2.2 Operational Dashboard Layout
+### 2.2 Présentation du tableau de bord opérationnel
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -107,31 +130,31 @@
 
 ---
 
-## 3. Business Value KPIs
+## 3. KPI de valeur commerciale
 
-### 3.1 ROI Metrics
+### 3.1 Mesures du retour sur investissement
 
-| Metric | Calculation | Target |
+| Métrique | Calcul | Cible |
 |--------|-------------|--------|
-| **Time Saved** | Manual hours before - Manual hours after | > 20h/month |
-| **Decision Speed** | Time to generate portfolio recommendation | < 5 minutes |
-| **Data Coverage** | Assets tracked / Assets in market | > 80% top 100 |
-| **Analysis Accuracy** | Backtested return vs Actual return | < 5% deviation |
+| **Gain de temps** | Heures manuelles avant - Heures manuelles après | > 20h/mois |
+| **Vitesse de décision** | Il est temps de générer une recommandation de portefeuille | < 5 minutes |
+| **Couverture des données** | Actifs suivis / Actifs sur le marché | > 80 % parmi les 100 premiers |
+| **Précision de l'analyse** | Rendement backtesté vs rendement réel | Écart < 5 % |
 
-### 3.2 Adoption Metrics
+### 3.2 Paramètres d'adoption
 
-| Metric | Target | Current |
+| Métrique | Cible | Actuel |
 |--------|--------|---------|
-| API calls per day | > 100 | Tracking |
-| Unique users per week | > 5 | Tracking |
-| Reports generated per month | > 20 | Tracking |
-| Feature requests addressed | > 80% | Tracking |
+| Appels API par jour | > 100 | Suivi |
+| Utilisateurs uniques par semaine | > 5 | Suivi |
+| Rapports générés par mois | > 20 | Suivi |
+| Demandes de fonctionnalités traitées | > 80% | Suivi |
 
 ---
 
-## 4. Technical Implementation
+## 4. Mise en œuvre technique
 
-### 4.1 Data Sources for KPIs
+### 4.1 Sources de données pour les KPI
 
 ```python
 # KPI Data Sources
@@ -139,6 +162,11 @@ KPI_SOURCES = {
     "sharpe_ratio": "data/output/weights.json",
     "annual_return": "data/output/weights.json",
     "volatility": "data/output/weights.json",
+    "frontier_points": "data/output/frontier.json",
+    "max_sharpe": "data/output/frontier.json",
+    "strategy_sharpe": "data/output/backtest.json",
+    "max_drawdown": "data/output/backtest.json",
+    "calmar_ratio": "data/output/backtest.json",
     "pipeline_status": "airflow_api/dag_runs",
     "data_freshness": "data/raw/klines/*.parquet (mtime)",
     "api_uptime": "docker_healthcheck",
@@ -146,15 +174,15 @@ KPI_SOURCES = {
 }
 ```
 
-### 4.2 Refresh Frequency
+### 4.2 Fréquence d'actualisation
 
-| Dashboard | Refresh Rate | Data Latency |
+| Tableau de bord | Taux de rafraîchissement | Latence des données |
 |-----------|--------------|--------------|
-| Executive | Daily | T+1 day |
-| Operational | Real-time | < 1 minute |
-| Business Value | Weekly | T+1 week |
+| Exécutif | Quotidien | T+1 jour |
+| Opérationnel | En temps réel | < 1 minute |
+| Valeur commerciale | Hebdomadaire | T+1 semaine |
 
-### 4.3 Alert Configuration
+### 4.3 Configuration des alertes
 
 ```yaml
 alerts:
@@ -176,11 +204,11 @@ alerts:
 
 ---
 
-## 5. Access Control
+## 5. Contrôle d'accès
 
-| Role | Executive Dashboard | Operations Dashboard | Raw Data |
+| Rôle | Tableau de bord exécutif | Tableau de bord des opérations | Données brutes |
 |------|--------------------|--------------------|----------|
-| Executive | View | View summary | No |
-| Portfolio Manager | View | View | Read |
-| Data Engineer | View | Full access | Full access |
-| DevOps | View summary | Full access | Read |
+| Exécutif | Voir | Voir le résumé | Non |
+| Gestionnaire de portefeuille | Voir | Voir | Lire |
+| Ingénieur de données | Voir | Accès complet | Accès complet |
+| DevOps | Voir le résumé | Accès complet | Lire |

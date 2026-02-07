@@ -172,6 +172,8 @@ GET /metrics       # Liste des metriques calculees
 GET /metrics/{name}# Une metrique specifique
 GET /portfolio     # Poids optimaux complets
 GET /portfolio/summary  # Resume du portefeuille
+GET /portfolio/frontier # Frontiere efficiente
+GET /portfolio/backtest # Resultats backtest
 ```
 
 **A retenir:**
@@ -183,10 +185,12 @@ GET /portfolio/summary  # Resume du portefeuille
 
 ```python
 # Structure du dashboard Streamlit
-# 3 pages accessibles via sidebar:
+# 5 pages accessibles via sidebar:
 # - Dashboard: KPIs + Pie chart + Volatility + Correlation
 # - Symbols: Selection symbole + Price chart + Raw data
 # - Metrics: Exploration des metriques calculees
+# - Frontier: Frontiere efficiente + CML + poids
+# - Backtest: Courbes cumulatives + metriques + drawdown
 
 # Composants principaux:
 def render_kpi_cards(portfolio)     # 3 metriques: Return, Vol, Sharpe
@@ -326,7 +330,7 @@ uv run pytest tests/ --cov=src --cov-report=term-missing
 uv run pytest tests/test_transform.py -v
 ```
 
-**Resultat attendu:** 124 tests passed, 43% coverage
+**Resultat attendu:** 165 tests passed, 46% coverage
 
 ### 6.3 Docker - Demarrage Rapide
 
@@ -434,6 +438,12 @@ curl http://localhost:8000/portfolio
 
 # Resume portfolio (KPIs)
 curl http://localhost:8000/portfolio/summary
+
+# Frontiere efficiente
+curl http://localhost:8000/portfolio/frontier
+
+# Backtest
+curl http://localhost:8000/portfolio/backtest
 ```
 
 ### 6.7 Multi-Sources (C8 - 5 sources)
@@ -511,16 +521,16 @@ docker compose --profile airflow down
 ### 6.10 Verifications Rapides
 
 ```bash
-# Verifier les fichiers data
-ls -la data/raw/klines/
-ls -la data/processed/
-ls -la data/output/
+# Verifier les fichiers data (PowerShell / Windows)
+Get-ChildItem data/raw/klines/
+Get-ChildItem data/processed/
+Get-ChildItem data/output/
 
 # Contenu du portfolio
-cat data/output/weights.json
+Get-Content data/output/weights.json
 
 # Taille des fichiers
-du -sh data/*
+Get-ChildItem data -Recurse | Select-Object FullName, Length
 
 # Logs Docker
 docker compose logs api
@@ -536,13 +546,35 @@ docker compose build --no-cache
 # Supprimer les conteneurs
 docker compose down -v
 
-# Reset les donnees
-rm -rf data/raw/klines/*.parquet
-rm -rf data/processed/*.parquet
-rm -rf data/output/*.json
+# Reset les donnees (PowerShell / Windows)
+Remove-Item data/raw/klines/*.parquet -Force -ErrorAction SilentlyContinue
+Remove-Item data/processed/*.parquet -Force -ErrorAction SilentlyContinue
+Remove-Item data/output/*.json -Force -ErrorAction SilentlyContinue
 
 # Reinstaller les deps
 uv sync --reinstall
+```
+
+### 6.12 Mode Secours (sans Internet)
+
+```bash
+# 1) Montrer la collecte multi-sources sans appels reseau
+uv run python -c "
+from src.pipeline import ingest_all_sources
+data = ingest_all_sources(include_api=False, include_scraping=False, include_postgres=False)
+print('Sources chargees:', data['sources'])
+"
+
+# 2) Travailler sur les donnees locales deja presentes dans data/
+uv run python -c "
+from src.pipeline import transform_data, optimize_portfolio
+transform_data()
+result = optimize_portfolio()
+print('Sharpe:', result['sharpe_ratio'])
+"
+
+# 3) API + Dashboard sur resultat local
+docker compose up api streamlit
 ```
 
 ---
@@ -577,7 +609,7 @@ Le code pipeline ne change pas grace a l'abstraction Storage."
 
 **Reponse:** "Les log returns ont deux avantages:
 1. Ils sont additifs dans le temps (r_total = r1 + r2 + r3)
-2. Ils sont symetriques (+10% puis -10% = 0, contrairement aux returns simples)
+2. Ils sont plus stables pour la modelisation statistique et coherents avec la capitalisation continue
 C'est le standard en finance quantitative."
 
 ### Q7: "Comment tu geres les erreurs API Binance?"
@@ -598,14 +630,14 @@ C'est le standard en finance quantitative."
 
 ### Q10: "Comment sont testes les composants?"
 
-**Reponse:** "J'utilise pytest avec 124 tests unitaires couvrant:
+**Reponse:** "J'utilise pytest avec 165 tests unitaires couvrant:
 - Les calculs financiers (returns, volatility, correlation)
 - L'optimisation de portefeuille (Markowitz)
 - Le storage layer (parquet, factory)
 - Les endpoints API
 - L'ingestion multi-sources
 
-Coverage global: 43%. Les modules critiques (transform, optimize, API) ont 50-90% de couverture."
+Coverage global: 46%. Les modules critiques (transform, optimize, API) ont environ 59-74% de couverture."
 
 ---
 
@@ -712,14 +744,14 @@ Schema:
 
 ## 10. CHECKLIST AVANT SOUTENANCE
 
-- [ ] Tests passent: `uv run pytest tests/ -v` (124 tests)
+- [ ] Tests passent: `uv run pytest tests/ -v` (165 tests)
 - [ ] Docker fonctionne: `docker compose up api streamlit`
 - [ ] API accessible: http://localhost:8000/docs
 - [ ] Dashboard accessible: http://localhost:8501
 - [ ] Donnees presentes dans data/
 - [ ] Pipeline execute sans erreur
 - [ ] DuckDB queries fonctionnent
-- [ ] Connaitre les 7 endpoints API
+- [ ] Connaitre les 9 endpoints API
 - [ ] Dashboard affiche KPIs, Pie chart, Correlation
 - [ ] Savoir expliquer Markowitz en 1 phrase
 - [ ] Savoir expliquer le star schema
@@ -742,6 +774,24 @@ Schema:
 | **Covariance** | Mesure de co-mouvement |
 | **SCD** | Slowly Changing Dimension |
 | **RGPD** | Reglement protection donnees |
+
+---
+
+## 12. LIMITES ACTUELLES ET NEXT STEPS
+
+### Limites actuelles (a assumer clairement au jury)
+
+- API sans authentification (mode MVP interne)
+- Credentials Docker de demonstration (a externaliser en `.env`/secrets)
+- Couverture de tests plus faible sur certains modules d'ingestion reseau
+- Optimiseur en mode long-only avec contraintes de base (somme=1, poids >= 0)
+
+### Prochaines evolutions credibles
+
+- Ajouter auth API key + rate limiting
+- Externaliser secrets et durcir la configuration securite
+- Ajouter tests d'integration end-to-end (API + storage + dashboard)
+- Etendre l'optimisation avec contraintes metier (max poids, contraintes sectorielles)
 
 ---
 

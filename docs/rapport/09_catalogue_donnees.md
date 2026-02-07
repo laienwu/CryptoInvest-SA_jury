@@ -14,7 +14,9 @@ data/
 │   ├── correlation.parquet
 │   └── covariance.parquet
 └── output/        # GOLD - Résultats métier
-    └── weights.json
+    ├── weights.json
+    ├── frontier.json
+    └── backtest.json
 ```
 
 ### 1.2 Résumé du catalogue
@@ -23,7 +25,7 @@ data/
 |------|----------|--------|--------------|-----------|
 | Bronze | 5 fichiers | Parquet | ~50 KB | 1 an |
 | Silver | 5 fichiers | Parquet | ~20 KB | 1 an |
-| Gold | 1 fichier | JSON | ~1 KB | 30 jours |
+| Gold | 3 fichiers | JSON | ~5 KB | 30 jours |
 
 ---
 
@@ -205,6 +207,74 @@ dataset:
 }
 ```
 
+### 4.2 Dataset: frontier.json
+
+| Métadonnée | Valeur |
+|------------|--------|
+| **Identifiant** | `output.frontier` |
+| **Localisation** | `data/output/frontier.json` |
+| **Source** | `processed.covariance`, `processed.mean_returns` |
+| **Transformation** | Frontière efficiente (50 points, Markowitz) |
+| **Consommateurs** | API REST (`/portfolio/frontier`), Dashboard (page Frontier) |
+
+#### Schéma
+
+```json
+{
+  "frontier": [
+    {"volatility": 0.18, "return": 0.12, "weights": [0.6, 0.3, 0.1]}
+  ],
+  "max_sharpe": {"volatility": 0.28, "return": 0.18, "weights": [...]},
+  "min_variance": {"volatility": 0.15, "return": 0.10, "weights": [...]},
+  "assets": [{"symbol_index": 0, "volatility": 0.45, "return": 0.15}],
+  "capital_market_line": {"x": [0.0, 0.5], "y": [0.05, 0.35]},
+  "risk_free_rate": 0.05,
+  "symbols": ["BTCUSDT", "ETHUSDT", ...]
+}
+```
+
+---
+
+### 4.3 Dataset: backtest.json
+
+| Métadonnée | Valeur |
+|------------|--------|
+| **Identifiant** | `output.backtest` |
+| **Localisation** | `data/output/backtest.json` |
+| **Source** | `raw.klines.*` (validation walk-forward) |
+| **Transformation** | Fenêtres glissantes : 60j train / 30j test |
+| **Consommateurs** | API REST (`/portfolio/backtest`), Dashboard (page Backtest) |
+
+#### Schéma
+
+```json
+{
+  "windows": [
+    {
+      "window_id": 0,
+      "train_start": "2025-01-01", "train_end": "2025-03-01",
+      "test_start": "2025-03-02", "test_end": "2025-04-01",
+      "weights": {"BTCUSDT": 0.4, "ETHUSDT": 0.35, "BNBUSDT": 0.25},
+      "test_return": 0.0512
+    }
+  ],
+  "cumulative_values": {
+    "dates": [...],
+    "strategy": [1.0, 1.005, ...],
+    "equal_weight": [1.0, 1.004, ...],
+    "btc_only": [1.0, 1.003, ...]
+  },
+  "metrics": {
+    "strategy": {"cumulative_return": 0.25, "annualized_return": 0.35,
+                  "max_drawdown": 0.12, "sharpe_ratio": 1.85, "calmar_ratio": 2.92},
+    "equal_weight": {...},
+    "btc_only": {...}
+  },
+  "symbols": [...],
+  "config": {"train_window": 60, "test_window": 30, "strategy": "max_sharpe"}
+}
+```
+
 ---
 
 ## 5. Lignage des données (Data Lineage)
@@ -239,10 +309,10 @@ dataset:
                      ▼
 ┌─────────────────────────────────────────────────┐
 │                     GOLD                         │
-│           ┌─────────────────┐                   │
-│           │ weights.json    │                   │
-│           └────────┬────────┘                   │
-└────────────────────┼────────────────────────────┘
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────┐ │
+│  │ weights.json │ │frontier.json │ │backtest  │ │
+│  └──────┬───────┘ └──────┬───────┘ └────┬─────┘ │
+└─────────┼────────────────┼──────────────┼───────┘
                      │
                      ▼
                [FastAPI REST]
@@ -259,6 +329,8 @@ dataset:
 | processed.correlation | processed.returns | transform.py |
 | processed.covariance | processed.returns | transform.py |
 | output.weights | processed.covariance, processed.mean_returns | optimize.py |
+| output.frontier | processed.covariance, processed.mean_returns | optimize.py |
+| output.backtest | raw.klines.* | backtest.py |
 
 ---
 
@@ -312,6 +384,8 @@ def cleanup_old_data():
 | raw.klines | Fraîcheur | < 24h | Alerte |
 | processed.* | Valeurs nulles | 0% | Erreur pipeline |
 | output.weights | Somme weights | = 1.0 | Erreur pipeline |
+| output.frontier | Somme weights | = 1.0 par point | Erreur pipeline |
+| output.backtest | 3 stratégies | Présentes | Erreur pipeline |
 
 ### 7.2 Métriques de monitoring
 

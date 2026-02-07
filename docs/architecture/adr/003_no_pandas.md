@@ -1,57 +1,57 @@
-# ADR-003: PyArrow Instead of Pandas
+# ADR-003 : PyArrow au lieu de Pandas
 
-**Status:** Accepted
-**Date:** 2025-01-08
-**Deciders:** [Your Name] (Data Engineer)
-**Technical Story:** Performance optimization
+**Statut :** Accepté
+**Date :** 2025-01-08
+**Décideurs :** Laien Wu (ingénieur de données)
+**Histoire technique :** Performance optimisation
 
 ---
 
-## Context
+## Contexte
 
-Data manipulation library choice for ETL pipeline. The pipeline processes OHLCV data with operations:
+Choix de bibliothèque de manipulation de données pour le pipeline ETL. Le pipeline traite les données OHLCV avec les opérations :
 
-- Type conversions
-- Column transformations
-- Aggregations (mean, std, correlation)
-- File I/O (Parquet read/write)
+- Conversions de types
+- Transformations de colonnes
+- Agrégations (moyenne, standard, corrélation)
+- E/S de fichier (lecture/écriture de parquet)
 
-Options considered:
+Options considéré :
 1. Pandas
-2. PyArrow (Apache Arrow)
-3. Polars
+2. PyArrow (Flèche Apache)
+3. Polaires
 4. Pure Python + NumPy
 
 ---
 
-## Decision
+## Décision
 
-**We will use PyArrow directly for data manipulation, avoiding Pandas dependency.**
+**Nous utiliserons PyArrow directement pour la manipulation des données, en évitant les Pandas dépendance.**
 
 ---
 
-## Rationale
+## Justification
 
-### Comparison:
+### Comparaison :
 
-| Criterion | Pandas | PyArrow | Polars |
+| Critère | Pandas | PyArrow | Polaires |
 |-----------|--------|---------|--------|
-| Memory efficiency | Poor | Excellent | Excellent |
-| Parquet native | Via PyArrow | Native | Native |
-| Type safety | Weak | Strong | Strong |
-| API complexity | Low | Medium | Medium |
-| Ecosystem maturity | Excellent | Good | Growing |
-| Dependency weight | Heavy | Light | Light |
+| Efficacité de la mémoire | Pauvre | Excellent | Excellent |
+| Parquet natif | Via PyArrow | Natif | Natif |
+| Type de sécurité | Faible | Fort | Fort |
+| Complexité des API | Faible | Moyen | Moyen |
+| Maturité de l'écosystème | Excellent | Bon | Croissance |
+| Poids de dépendance | Lourd | Lumière | Lumière |
 
-### Key factors:
+### Facteurs clés :
 
-1. **Memory efficiency**: PyArrow uses zero-copy reads and columnar memory layout. For our 450-record dataset:
-   - Pandas: ~2MB memory overhead
-   - PyArrow: ~50KB actual data size
+1. **Efficacité de la mémoire** : PyArrow utilise des lectures sans copie et une disposition de la mémoire en colonnes. Pour notre ensemble de données de 450 enregistrements :
+ - Pandas : ~2 Mo de surcharge de mémoire
+ - PyArrow : ~50 Ko de taille réelle des données
 
-2. **Type safety**: Arrow schema enforces types at read time, preventing silent type coercion bugs common in Pandas.
+2. **Sécurité des types** : le schéma Arrow applique les types au moment de la lecture, empêchant ainsi les bogues de coercition de type silencieux courants dans Pandas.
 
-3. **Parquet native**: PyArrow is the underlying Parquet library. Using it directly avoids conversion overhead:
+3. **Parquet natif** : PyArrow est la bibliothèque Parquet sous-jacente. Son utilisation directe évite les frais de conversion :
    ```python
    # Pandas (2 conversions)
    df = pd.read_parquet("file.parquet")  # Arrow → Pandas
@@ -62,54 +62,54 @@ Options considered:
    pq.write_table(table, "out.parquet")   # Native Arrow
    ```
 
-4. **Lighter dependency**: PyArrow ~30MB vs Pandas ~50MB (includes NumPy).
+4. **Dépendance plus légère** : PyArrow ~ 30 Mo contre Pandas ~ 50 Mo (inclut NumPy).
 
-5. **DuckDB integration**: DuckDB can query Arrow tables with zero-copy, impossible with Pandas DataFrames.
+5. **Intégration DuckDB** : DuckDB peut interroger les tables Arrow sans copie, impossible avec les Pandas DataFrames.
 
-### Why not Polars:
-- Adds another dependency
-- Less mature ecosystem
-- Team more familiar with Arrow/Pandas concepts
-- Would be good choice for larger datasets
+### Pourquoi pas Polars :
+- Ajoute une autre dépendance
+- Écosystème moins mature
+- Équipe plus familiarisée avec les concepts Arrow/Pandas
+- Ce serait un bon choix pour les ensembles de données plus volumineux
 
-### Trade-off accepted:
-- PyArrow API more verbose than Pandas for some operations
-- Fewer "convenience" methods
-- Less Stack Overflow coverage
-
----
-
-## Consequences
-
-### Positive
-- 10-50x lower memory usage
-- Faster Parquet I/O (no conversion)
-- Stronger type guarantees
-- Zero-copy DuckDB integration
-- Lighter Docker image
-
-### Negative
-- More verbose code for transformations
-- Team learning curve
-- Fewer tutorials/examples online
-- Some operations need manual implementation
-
-### Neutral
-- NumPy still used for numerical computations (correlation, covariance)
-- Can convert to Pandas if absolutely needed: `table.to_pandas()`
+### Compromis accepté :
+- L'API PyArrow est plus détaillée que Pandas pour certaines opérations
+- Moins de méthodes « pratiques »
+- Moins de débordement de pile couverture
 
 ---
 
-## Compliance
+## Conséquences
 
-| Requirement | Status |
+### Positif[
+- Utilisation de la mémoire 10 à 50 fois inférieure
+- E/S Parquet plus rapides (non conversion)
+- Garanties de type plus fortes
+- Intégration DuckDB sans copie
+- Image Docker plus légère
+
+### Négatif
+- Code plus détaillé pour les transformations
+- Apprentissage en équipe courbe
+- Moins de tutoriels/exemples en ligne
+- Certaines opérations nécessitent une implémentation manuelle
+
+### Neutre
+- NumPy toujours utilisé pour les calculs numériques (corrélation, covariance)
+- Peut se convertir en Pandas si absolument nécessaire : `table.to_pandas()`
+
+---
+
+## Conformité
+
+| Exigence | Statut |
 |-------------|--------|
-| C10 - Aggregation rules | Implemented with PyArrow compute |
-| C19 - Component integration | Native integration with DuckDB |
+| C10 - Règles d'agrégation | Implémenté avec le calcul PyArrow |
+| C19 - Intégration de composants | Intégration native avec DuckDB |
 
 ---
 
-## Implementation Examples
+## Exemples d'implémentation
 
 ### Reading Parquet
 ```python
@@ -122,7 +122,7 @@ table = pq.read_table(
 )
 ```
 
-### Column Transformation
+### Transformation de colonne
 ```python
 import pyarrow.compute as pc
 
@@ -134,14 +134,14 @@ returns = pc.subtract(
 )
 ```
 
-### Aggregation
+### Agrégation
 ```python
 # Mean and standard deviation
 mean_price = pc.mean(table.column("close")).as_py()
 std_price = pc.stddev(table.column("close")).as_py()
 ```
 
-### Type-Safe Schema
+### Schéma de type sécurisé
 ```python
 schema = pa.schema([
     ("symbol", pa.string()),
@@ -159,9 +159,9 @@ table = pa.Table.from_pydict(data, schema=schema)
 
 ---
 
-## Migration Path
+## Chemin de migration
 
-If we ever need Pandas functionality:
+Si jamais nous avons besoin de la fonctionnalité Pandas :
 
 ```python
 # One-way conversion (last resort)
@@ -179,13 +179,14 @@ result = duckdb.query("""
 
 ---
 
-## References
+## Références
 
-- [Apache Arrow Python Documentation](https://arrow.apache.org/docs/python/)
-- [Why Arrow over Pandas](https://towardsdatascience.com/stop-using-pandas-and-start-using-arrow-7e12e63c2fca)
-- [PyArrow Compute Functions](https://arrow.apache.org/docs/python/compute.html)
+- [Documentation Apache Arrow Python](https://arrow.apache.org/docs/python/)
+- [Pourquoi la flèche sur les pandas](https://towardsdatascience.com/stop-using-pandas-and-start-using-arrow-7e12e63c2fca)
+- [Fonctions de calcul PyArrow](https://arrow.apache.org/docs/python/compute.html)
 
 ---
 
-*Reviewed by: Sophie Bernard (Data Analyst)*
-*Approved by: [Your Name] (Data Engineer)*
+*Révisé par : Sophie Bernard (analyste de données)*
+*Approuvé par : Laien Wu (ingénieur de données)*
+

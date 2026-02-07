@@ -1,187 +1,187 @@
-# Service Level Agreement (SLA)
+# Accord de niveau de service (SLA)
 
-## Document Information
+## Informations sur le document
 
-| Item | Details |
+| Article | Détails |
 |------|---------|
-| Document ID | SLA-PORTFOLIO-001 |
+| Numéro d'identification du document | SLA-PORTFOLIO-001 |
 | Version | 1.0 |
-| Effective Date | 2025-02-28 |
-| Review Date | 2025-08-28 |
-| Owner | Pierre Durand (DevOps) |
-| Approver | François Martin (CTO) |
+| Date d'entrée en vigueur | 2025-02-28 |
+| Date de révision | 2025-08-28 |
+| Propriétaire | Pierre Durand (DevOps) |
+| Approbateur | François Martin (CTO) |
 
 ---
 
-## 1. Service Description
+## 1. Description du service
 
-### 1.1 Overview
+### 1.1 Présentation
 
-The Portfolio Optimization Platform provides automated cryptocurrency portfolio analysis and optimization services. The platform consists of:
+La plateforme d'optimisation de portefeuille fournit des services automatisés d'analyse et d'optimisation de portefeuille de cryptomonnaies. La plateforme se compose de :
 
-- **Data Pipeline**: Automated daily data collection and processing
-- **REST API**: Data access and portfolio recommendations
-- **Airflow Dashboard**: Pipeline monitoring and management
+- **Data Pipeline** : collecte et traitement quotidiens automatisés des données
+- **API REST** : accès aux données et recommandations de portefeuille
+- **Airflow Dashboard** : surveillance et gestion du pipeline
 
-### 1.2 Service Hours
+### 1.2 Service Horaires
 
-| Component | Availability Window |
+| Composant | Fenêtre de disponibilité |
 |-----------|---------------------|
-| REST API | 24/7 |
-| Data Pipeline | Daily at 00:00-01:00 UTC |
-| Airflow Dashboard | 24/7 (best effort) |
-| Support | Business hours (09:00-18:00 CET) |
+| API REST | 24h/24 et 7j/7 |
+| Pipeline de données | Tous les jours de 00h00 à 01h00 UTC |
+| Tableau de bord du flux d'air | 24h/24 et 7j/7 (au mieux) |
+| Assistance | Heures d'ouverture (09h00-18h00 CET) |
 
 ---
 
-## 2. Service Level Objectives (SLOs)
+## 2. Objectifs de niveau de service (SLO)
 
-### 2.1 Availability
+### 2.1 Disponibilité
 
-| Service | Target | Measurement Period | Calculation |
+| Services | Cible | Période de mesure | Calcul |
 |---------|--------|-------------------|-------------|
-| REST API | 99.5% | Monthly | Uptime / Total time |
-| Data Pipeline | 99.0% | Monthly | Successful runs / Scheduled runs |
-| Airflow Dashboard | 99.0% | Monthly | Uptime / Total time |
+| API REST | 99,5% | Mensuel | Temps de disponibilité/Durée totale |
+| Pipeline de données | 99,0% | Mensuel | Exécutions réussies/Exécutions planifiées |
+| Tableau de bord du flux d'air | 99,0% | Mensuel | Disponibilité / Durée totale |
 
-**Exclusions from availability calculation:**
-- Scheduled maintenance windows (announced 48h in advance)
-- External API outages (Binance, CoinGecko)
-- Force majeure events
+**Exclusions du calcul de disponibilité :**
+- Fenêtres de maintenance planifiées (annoncées 48h à l'avance)
+- Pannes d'API externes (Binance, CoinGecko)
+- Force majeure événements
 
-### 2.2 Performance
+### 2.2 Performances
 
-| Metric | Target | Percentile |
+| Métrique | Cible | Centile |
 |--------|--------|------------|
-| API response time | < 200ms | p50 |
-| API response time | < 500ms | p95 |
-| API response time | < 1000ms | p99 |
-| Pipeline execution time | < 5 minutes | p95 |
+| Temps de réponse API | < 200 ms | p50 |
+| Temps de réponse API | < 500 ms | p95 |
+| Temps de réponse API | < 1000 ms | p99 |
+| Temps d'exécution du pipeline | < 5 minutes | p95 |
 
-### 2.3 Data Quality
+### 2.3 Qualité des données
 
-| Metric | Target |
+| Métrique | Cible |
 |--------|--------|
-| Data freshness | < 24 hours |
-| Data completeness | > 99% (non-null values) |
-| Data accuracy | Validated against source |
+| Fraîcheur des données | < 24 heures |
+| Complétude des données | > 99 % (valeurs non nulles) |
+| Exactitude des données | Validé par rapport à la source |
 
-### 2.4 Support Response Times
+### 2.4 Temps de réponse du support
 
-| Priority | Initial Response | Resolution Target |
+| Priorité | Réponse initiale | Objectif de résolution |
 |----------|-----------------|-------------------|
-| P1 - Critical | 15 minutes | 4 hours |
-| P2 - High | 1 hour | 8 hours |
-| P3 - Medium | 4 hours | 24 hours |
-| P4 - Low | 24 hours | Best effort |
+| P1 - Critique | 15 minutes | 4 heures |
+| P2 - Élevé | 1 heure | 8 heures |
+| P3 - Moyen | 4 heures | 24 heures |
+| P4 - Faible | 24 heures | Meilleur effort |
 
 ---
 
-## 3. Priority Definitions
+## 3. Définitions des priorités
 
-### P1 - Critical
+### P1 – Critique
 
-**Definition:** Complete service outage affecting all users, data corruption, or security incident.
+**Définition :** Panne complète du service affectant tous les utilisateurs, corruption des données ou sécurité incident.
 
-**Examples:**
-- API returns 5xx errors for all requests
-- Pipeline produces incorrect data
-- Security breach detected
+**Exemples :**
+- L'API renvoie des erreurs 5xx pour toutes les demandes
+- Le pipeline produit des données incorrectes
+- Faille de sécurité détectée
 
-**Response:**
-- Immediate escalation to on-call engineer
-- Status page updated within 15 minutes
-- All hands on deck until resolved
+**Réponse :**
+- Immédiate escalade vers un ingénieur de garde
+- Page d'état mise à jour dans les 15 minutes
+- Tout le monde sur le pont jusqu'à résolution
 
-### P2 - High
+### P2 - Élevé
 
-**Definition:** Major functionality impaired, significant performance degradation, or data delays.
+**Définition :** Fonctionnalité majeure altérée, dégradation significative des performances ou des données retards.
 
-**Examples:**
-- API response time > 2 seconds
-- Pipeline execution time > 30 minutes
-- Data not updated for > 24 hours
+**Exemples :**
+- Temps de réponse de l'API > 2 secondes
+- Temps d'exécution du pipeline > 30 minutes
+- Données non mises à jour depuis > 24 heures
 
-**Response:**
-- Assigned to available engineer
-- Status page updated if customer-facing
-- Resolved within business day
+**Réponse :**
+- Attribué à un ingénieur disponible
+- Page d'état mise à jour si elle est destinée au client
+- Résolu dans un délai d'un jour ouvrable
 
-### P3 - Medium
+### P3 - Moyen
 
-**Definition:** Minor functionality impaired, partial service degradation, non-urgent improvements.
+**Définition :** Fonctionnalité mineure altérée, dégradation partielle du service, améliorations non urgentes.
 
-**Examples:**
-- Single endpoint returning errors
-- Dashboard loading slowly
-- Non-critical alert firing
+**Exemples :**
+- Un point de terminaison unique renvoie des erreurs
+- Chargement lent du tableau de bord
+- Alerte non critique tir
 
-**Response:**
-- Added to sprint backlog
-- Addressed within normal development cycle
+**Réponse :**
+- Ajouté au backlog du sprint
+- Traité dans le cadre du cycle de développement normal
 
-### P4 - Low
+### P4 - Faible
 
-**Definition:** Cosmetic issues, feature requests, documentation updates.
+**Définition :** Problèmes esthétiques, fonctionnalité demandes, mises à jour de la documentation.
 
-**Examples:**
-- UI improvements
-- Documentation gaps
-- Minor configuration changes
+**Exemples :**
+- Améliorations de l'interface utilisateur
+- Lacunes dans la documentation
+- Modifications mineures de la configuration
 
-**Response:**
-- Tracked in backlog
-- Addressed as capacity allows
+**Réponse :**
+- Suivi dans le backlog
+- Adressé dans la mesure où la capacité le permet
 
 ---
 
-## 4. Maintenance Windows
+## 4. Fenêtres de maintenance
 
-### 4.1 Scheduled Maintenance
+### 4.1 Maintenance planifiée
 
-| Type | Frequency | Duration | Notice |
+| Tapez | Fréquence | Durée | Avis |
 |------|-----------|----------|--------|
-| Security patches | As needed | < 30 min | 24 hours |
-| Minor updates | Weekly | < 15 min | 48 hours |
-| Major updates | Monthly | < 2 hours | 1 week |
-| Infrastructure | Quarterly | < 4 hours | 2 weeks |
+| Correctifs de sécurité | Au besoin | < 30 minutes | 24 heures |
+| Mises à jour mineures | Hebdomadaire | < 15 minutes | 48 heures |
+| Mises à jour majeures | Mensuel | < 2 heures | 1 semaine |
+| Infrastructures | Trimestriel | < 4 heures | 2 semaines |
 
-### 4.2 Maintenance Notification
+### 4.2 Notification de maintenance
 
-Maintenance windows will be communicated via:
-- Email to registered stakeholders
-- Slack channel (#portfolio-platform)
-- Status page update
+Les fenêtres de maintenance seront communiquées via :
+- E-mail aux parties prenantes enregistrées
+- Canal Slack (#portfolio-platform)
+- Page d'état mise à jour
 
-### 4.3 Emergency Maintenance
+### 4.3 Maintenance d'urgence
 
-In case of security vulnerability or critical bug:
-- Minimum 1-hour notice when possible
-- Immediate action if zero-day vulnerability
-- Post-incident report within 24 hours
+En cas de vulnérabilité de sécurité ou de bug critique :
+- Préavis minimum d'une heure lorsque cela est possible
+- Action immédiate en cas de vulnérabilité zero-day
+- Rapport post-incident dans les 24 heures heures
 
 ---
 
-## 5. Incident Management
+## 5. Gestion des incidents
 
-### 5.1 Incident Severity Matrix
+### 5.1 Matrice de gravité des incidents
 
-| Impact → | High | Medium | Low |
+| Impact → | Élevé | Moyen | Faible |
 |----------|------|--------|-----|
-| **All users** | P1 | P2 | P3 |
-| **Some users** | P2 | P3 | P4 |
-| **Single user** | P3 | P4 | P4 |
+| **Tous les utilisateurs** | P1 | P2 | P3 |
+| **Certains utilisateurs** | P2 | P3 | P4 |
+| **Utilisateur unique** | P3 | P4 | P4 |
 
-### 5.2 Incident Communication
+### 5.2 Communication des incidents
 
-| Severity | Initial Update | Ongoing Updates | Post-Incident |
+| Gravité | Mise à jour initiale | Mises à jour continues | Post-incident |
 |----------|----------------|-----------------|---------------|
-| P1 | 15 min | Every 30 min | Within 24h |
-| P2 | 1 hour | Every 2 hours | Within 48h |
-| P3 | 4 hours | Daily | Within 1 week |
-| P4 | As resolved | N/A | N/A |
+| P1 | 15 minutes | Toutes les 30 minutes | Dans les 24h |
+| P2 | 1 heure | Toutes les 2 heures | Sous 48h |
+| P3 | 4 heures | Quotidien | Dans un délai d'une semaine |
+| P4 | Tel que résolu | N/A | N/A |
 
-### 5.3 Escalation Path
+### 5.3 Chemin de remontée
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -207,94 +207,95 @@ In case of security vulnerability or critical bug:
 
 ---
 
-## 6. Service Credits
+## 6. Crédits de service
 
-### 6.1 Credit Calculation
+### 6.1 Calcul du crédit
 
-If monthly availability falls below SLO:
+Si la disponibilité mensuelle tombe en dessous du SLO :
 
-| Availability | Service Credit |
+| Disponibilité | Crédit de service |
 |--------------|----------------|
 | 99.0% - 99.5% | 10% |
 | 95.0% - 99.0% | 25% |
 | < 95.0% | 50% |
 
-*Note: For internal project, credits are notional (resource allocation priority)*
+*Remarque : Pour les projets internes, les crédits sont notionnels (priorité d'allocation des ressources)*
 
-### 6.2 Credit Exclusions
+### 6.2 Exclusions de crédits
 
-Credits do not apply when outage is caused by:
-- User error or misconfiguration
-- External dependencies (Binance API outage)
-- Scheduled maintenance
+Les crédits ne s'appliquent pas lorsque la panne est causée par :
+- Erreur de l'utilisateur ou une mauvaise configuration
+- Dépendances externes (panne de l'API Binance)
+- Maintenance planifiée
 - Force majeure
 
 ---
 
-## 7. Reporting
+## 7. Rapports
 
-### 7.1 Monthly Reports
+### 7.1 Rapports mensuels
 
-Delivered by 5th of each month:
-- Availability metrics (uptime %)
-- Performance metrics (latency percentiles)
-- Incident summary
-- Maintenance log
+Livrés le 5 de chaque mois :
+- Mesures de disponibilité (% de disponibilité)
+- Mesures de performances (centiles de latence)
+- Incident résumé
+- Journal de maintenance
 
-### 7.2 Quarterly Reviews
+### 7.2 Examens trimestriels
 
-Scheduled with stakeholders:
-- SLA compliance review
-- Trend analysis
-- Improvement recommendations
-- SLA adjustment proposals
+Planifié avec les parties prenantes :
+- Examen de la conformité aux SLA
+- Analyse des tendances
+- Amélioration recommandations
+- Propositions d'ajustement des SLA
 
 ---
 
-## 8. Dependencies & Assumptions
+## 8. Dépendances et hypothèses
 
-### 8.1 External Dependencies
+### 8.1 Externe Dépendances
 
-| Dependency | SLA | Fallback |
+| Dépendance | ANS | Repli |
 |------------|-----|----------|
-| Binance API | Best effort | Cached data, manual alert |
-| CoinGecko | Best effort | Fallback scraping method |
-| Docker Hub | Best effort | Local image cache |
-| Cloud hosting | 99.9% | N/A (hosting provider SLA) |
+| API Binance | Meilleur effort | Données mises en cache, alerte manuelle |
+| CoinGecko | Meilleur effort | Méthode de scraping de secours |
+| Centre Docker | Meilleur effort | Cache d'images local |
+| Hébergement cloud | 99,9% | N/A (SLA du fournisseur d'hébergement) |
 
-### 8.2 Assumptions
+### 8.2 Hypothèses
 
-- Network connectivity between components is reliable
-- Sufficient compute resources are allocated
-- Security patches are applied within maintenance windows
-- Team has adequate capacity for support
-
----
-
-## 9. Agreement & Signatures
-
-### 9.1 Service Provider
-
-| Role | Name | Signature | Date |
-|------|------|-----------|------|
-| DevOps Lead | Pierre Durand | ____________ | ______ |
-| Data Engineer | [Your Name] | ____________ | ______ |
-
-### 9.2 Service Consumer
-
-| Role | Name | Signature | Date |
-|------|------|-----------|------|
-| Product Owner | Marie Dupont | ____________ | ______ |
-| CTO (Approver) | François Martin | ____________ | ______ |
+- La connectivité réseau entre les composants est fiable
+- Des ressources de calcul suffisantes sont allouées
+- Les correctifs de sécurité sont appliqués dans les fenêtres de maintenance
+- L'équipe dispose d'un capacité d'assistance
 
 ---
 
-## 10. Revision History
+## 9. Accord et signatures
 
-| Version | Date | Author | Changes |
+### 9.1 Fournisseur de services
+
+| Rôle | Nom | Signature | Date |
+|------|------|-----------|------|
+| Responsable DevOps | Pierre Durand | ____________ | ______ |
+| Ingénieur de données | Laien Wu | ____________ | ______ |
+
+### 9.2 Consommateur de services
+
+| Rôle | Nom | Signature | Date |
+|------|------|-----------|------|
+| Propriétaire de produit | Marie Dupont | ____________ | ______ |
+| CTO (approbateur) | François Martin | ____________ | ______ |
+
+---
+
+## 10. Historique des révisions
+
+| Version | Dates | Auteur | Modifications |
 |---------|------|--------|---------|
-| 1.0 | 2025-02-17 | Pierre Durand | Initial release |
+| 1.0 | 2025-02-17 | Pierre Durand | Version initiale |
 
 ---
 
-*This SLA is subject to annual review and may be updated with 30 days notice.*
+*Ce SLA est soumis à un examen annuel et peut être mis à jour avec un préavis de 30 jours.*
+

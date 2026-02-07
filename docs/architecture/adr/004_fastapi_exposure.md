@@ -1,64 +1,64 @@
-# ADR-004: FastAPI for Data Exposure
+# ADR-004 : FastAPI pour l'exposition des données
 
-**Status:** Accepted
-**Date:** 2025-01-15
-**Deciders:** [Your Name] (Data Engineer), Pierre Durand (DevOps)
-**Technical Story:** US-007
+**Statut :** Accepté
+**Date :** 2025-01-15
+**Décideurs :** Laien Wu (Ingénieur de données), Pierre Durand (DevOps)
+**Histoire technique :** US-007
 
 ---
 
-## Context
+## Contexte
 
-We need to expose processed data and portfolio optimization results via REST API. Requirements:
+Nous devons exposer les données traitées et les résultats d'optimisation de portefeuille via l'API REST. Exigences :
 
-- RESTful endpoints for price data, metrics, portfolio weights
-- OpenAPI documentation (for certification)
-- Low latency (< 500ms response time)
-- Easy deployment (Docker)
-- Python ecosystem compatibility
+- Points de terminaison RESTful pour les données de prix, les mesures et les pondérations du portefeuille
+- Documentation OpenAPI (pour certification)
+- Faible latence (temps de réponse < 500 ms)
+- Déploiement facile (Docker)
+- Écosystème Python compatibilité
 
-Options considered:
+Options considérées :
 1. FastAPI
-2. Flask
-3. Django REST Framework
+2. Flacon
+3. Framework REST Django
 4. Connexion (OpenAPI-first)
 5. Litestar
 
 ---
 
-## Decision
+## Décision
 
-**We will use FastAPI as the REST API framework.**
+**Nous utiliserons FastAPI comme API REST framework.**
 
 ---
 
-## Rationale
+## Justification
 
-### Comparison:
+### Comparaison :
 
-| Criterion | FastAPI | Flask | Django REST | Connexion |
+| Critère | API rapide | Flacon | Django REST | Connexion |
 |-----------|---------|-------|-------------|-----------|
-| Performance | Excellent | Good | Good | Good |
-| Auto documentation | Yes | No | Yes | Yes |
-| Type hints | Native | Optional | Optional | Via spec |
-| Learning curve | Low | Low | Medium | Medium |
-| Async support | Native | Limited | Limited | Limited |
-| Validation | Pydantic | Manual | Serializers | Via spec |
+| Performances | Excellent | Bon | Bon | Bon |
+| Documentation automobile | Oui | Non | Oui | Oui |
+| Astuces de saisie | Natif | Facultatif | Facultatif | Via la spécification |
+| Courbe d'apprentissage | Faible | Faible | Moyen | Moyen |
+| Prise en charge asynchrone | Natif | Limité | Limité | Limité |
+| Validation | Pydantique | Manuel | Sérialiseurs | Via spec |
 
-### Key factors:
+### Facteurs clés :
 
-1. **Auto-generated OpenAPI**: FastAPI generates `/docs` (Swagger UI) and `/redoc` automatically from type hints. Critical for C12 certification requirement.
+1. **OpenAPI généré automatiquement** : FastAPI génère automatiquement `/docs` (interface utilisateur Swagger) et `/redoc` à partir d'indices de type. Critique pour les exigences de certification C12.
 
-2. **Performance**: ASGI-based, one of the fastest Python frameworks. Benchmarks show 2-3x faster than Flask for JSON responses.
+2. **Performances** : basé sur ASGI, l'un des frameworks Python les plus rapides. Les benchmarks s'avèrent 2 à 3 fois plus rapides que Flask pour les réponses JSON.
 
-3. **Type safety**: Native Pydantic integration validates request/response data:
+3. **Sécurité des types** : l'intégration native de Pydantic valide les données de requête/réponse :
    ```python
    @app.get("/portfolio", response_model=PortfolioResponse)
    def get_portfolio() -> PortfolioResponse:
        ...  # Response automatically validated
    ```
 
-4. **Minimal code**: Less boilerplate than Flask or Django:
+4. **Code minimal** : Moins passe-partout que Flask ou Django :
    ```python
    # FastAPI
    @app.get("/symbols")
@@ -71,52 +71,52 @@ Options considered:
        return jsonify(["BTCUSDT", "ETHUSDT"])
    ```
 
-5. **Modern Python**: Uses Python 3.10+ features (type hints, async/await).
+5. **Python moderne** : utilise les fonctionnalités de Python 3.10+ (tapez des astuces, async/await).
 
-### Why not Flask:
-- No auto-generated OpenAPI docs
-- Manual validation required
-- Sync-only by default
+### Pourquoi pas Flask :
+- Aucun document OpenAPI généré automatiquement
+- Validation manuelle requise
+- Synchronisation uniquement par default
 
-### Why not Django:
-- Overkill for API-only project
-- ORM not needed (we use DuckDB)
-- Heavier deployment footprint
-
----
-
-## Consequences
-
-### Positive
-- Auto-generated OpenAPI documentation
-- Request/response validation via Pydantic
-- Excellent performance
-- Easy async support for future needs
-- Modern, clean API design
-
-### Negative
-- Relatively new framework (less battle-tested than Flask)
-- Pydantic v2 migration may require updates
-- Team needs to learn Pydantic models
-
-### Neutral
-- Uvicorn required as ASGI server
-- Async not used in MVP (sync endpoints sufficient)
+### Pourquoi pas Django :
+- Overkill pour un projet API uniquement
+- ORM non nécessaire (nous utilisons DuckDB)
+- Déploiement plus lourd empreinte
 
 ---
 
-## Compliance
+## Conséquences
 
-| Requirement | Status |
+### Positif[
+- Documentation OpenAPI générée automatiquement
+- Validation de demande/réponse via Pydantic
+- Excellentes performances
+- Prise en charge asynchrone facile pour les besoins futurs
+- Conception d'API moderne et propre
+
+### Négatif
+- Framework relativement nouveau (moins testé au combat que Flask)
+- Pydantic La migration v2 peut nécessiter des mises à jour
+- L'équipe doit apprendre les modèles Pydantic
+
+### Neutre
+- Uvicorn requis comme serveur ASGI
+- Async non utilisé dans MVP (points de terminaison de synchronisation suffisant)
+
+---
+
+## Conformité
+
+| Exigence | Statut |
 |-------------|--------|
-| C12 - REST API exposure | Full REST implementation |
-| C12 - API documentation | Auto-generated OpenAPI at /docs |
+| C12 - Exposition à l'API REST | Implémentation REST complète |
+| C12 -Documentation API | OpenAPI générée automatiquement dans /docs |
 
 ---
 
-## Implementation
+## Implémentation
 
-### API Structure
+### Structure de l'API
 
 ```
 src/api/
@@ -125,17 +125,17 @@ src/api/
 └── dependencies.py  # Shared dependencies (storage, config)
 ```
 
-### Endpoints
+### Points de terminaison
 
-| Method | Endpoint | Description | Response Model |
+| Méthode | Point de terminaison | Descriptif | Modèle de réponse |
 |--------|----------|-------------|----------------|
-| GET | `/` | Health check | `{"status": "ok"}` |
-| GET | `/symbols` | List symbols | `list[str]` |
-| GET | `/klines/{symbol}` | Price history | `list[KlineResponse]` |
-| GET | `/metrics` | Available metrics | `list[str]` |
-| GET | `/portfolio` | Optimal weights | `PortfolioResponse` |
+| OBTENIR | `/` | Bilan de santé | `{"status": "ok"}` |
+| OBTENIR | `/symbols` | Liste des symboles | `list[str]` |
+| OBTENIR | `/klines/{symbol}` | Historique des prix | `list[KlineResponse]` |
+| OBTENIR | `/metrics` | Métriques disponibles | `list[str]` |
+| OBTENIR | `/portfolio` | Poids optimaux | `PortfolioResponse` |
 
-### Code Example
+### Exemple de code
 
 ```python
 from fastapi import FastAPI, HTTPException
@@ -162,7 +162,7 @@ def get_portfolio():
     return PortfolioResponse(**weights)
 ```
 
-### Docker Deployment
+### Déploiement de Docker
 
 ```dockerfile
 FROM python:3.11-slim
@@ -175,26 +175,27 @@ CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ---
 
-## Security Considerations
+## Considérations de sécurité
 
-Current MVP: No authentication (internal use only)
+MVP actuel : aucune authentification (usage interne uniquement)
 
-Post-MVP requirements:
-- API key authentication
-- Rate limiting
-- HTTPS in production
+Exigences post-MVP :
+- Clé API authentification
+- Limitation de débit
+- HTTPS en production
 
-See ADR-005 (future) for authentication approach.
+Voir ADR-005 (à venir) pour l'approche d'authentification.
 
 ---
 
-## References
+## Références
 
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [Pydantic Documentation](https://docs.pydantic.dev/)
+- [Documentation FastAPI](https://fastapi.tiangolo.com/)
+- [Documentation Pydantic](https://docs.pydantic.dev/)
 - [FastAPI vs Flask Benchmarks](https://www.techempower.com/benchmarks/)
 
 ---
 
-*Reviewed by: Pierre Durand (DevOps)*
-*Approved by: Marie Dupont (Product Owner)*
+*Révisé par : Pierre Durand (DevOps)*
+*Approuvé par : Marie Dupont (Product Owner)*
+

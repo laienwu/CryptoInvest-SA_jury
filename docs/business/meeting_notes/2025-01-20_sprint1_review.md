@@ -1,158 +1,159 @@
-# Sprint 1 Review - Data Ingestion
+# Révision du Sprint 1 – Ingestion de données
 
-**Date:** 2025-01-20
-**Time:** 14:00 - 15:30
-**Sprint:** 1 (Data Ingestion)
+**Date :** 20/01/2025
+**Heure :** 14h00 - 15h30
+**Sprint :** 1 (Ingestion de données)
 
-## Attendees
+## Participants
 
-| Name | Role | Present |
+| Nom | Rôle | Présent |
 |------|------|---------|
-| Marie Dupont | Product Owner | ✓ |
-| Jean Martin | Business Analyst | ✓ |
-| [Your Name] | Data Engineer | ✓ |
-| Sophie Bernard | Data Analyst | ✓ |
-| Pierre Durand | DevOps Engineer | ✓ |
-| Lucas Petit | Scrum Master | ✓ |
+| Marie Dupont | Propriétaire de produit | ✓ |
+| Jean-Martin | Analyste d'affaires | ✓ |
+| Laien Wu | Ingénieur de données | ✓ |
+| Sophie Bernard | Analyste de données | ✓ |
+| Pierre Durand | Ingénieur DevOps | ✓ |
+| Lucas Petit | Maître Scrum | ✓ |
 
 ---
 
-## Sprint Goal
+## Objectif de sprint
 
-> Implement automated data collection from multiple sources with storage in Data Lake architecture.
+> Mettre en œuvre la collecte automatisée de données à partir de plusieurs sources avec stockage dans l'architecture Data Lake.
 
-**Goal Status:** ✅ ACHIEVED
+**État de l'objectif :** ✅ ATTEINT
 
 ---
 
-## Demo Summary
+## Résumé de la démonstration
 
-### 1. Binance API Integration ([Your Name])
+### 1. Intégration de l'API Binance (Laien)
 
-**Demonstrated:**
-- Live data fetch from Binance `/api/v3/klines` endpoint
-- Configurable symbols (BTC, ETH, BNB, SOL, ADA)
-- Configurable time period (90 days default)
-- Retry logic with exponential backoff
-- Rate limiting compliance
+**Démontré :**
+- Récupération de données en direct depuis le point de terminaison Binance `/api/v3/klines`
+- Symboles configurables (BTC, ETH, BNB, SOL, ADA)
+- Période configurable (90 jours par défaut)
+- Logique de nouvelle tentative avec interruption exponentielle
+- Limitation de débit conformité
 
-**Stakeholder Feedback:**
-- Marie: "Can we add more symbols easily?" → Yes, via config.toml
-- Jean: "What happens if API is down?" → Retry 3x, then fail with alert
+**Commentaires des parties prenantes :**
+- Marie : "Pouvons-nous ajouter plus de symboles facilement ?" → Oui, via config.toml
+- Jean : "Que se passe-t-il si l'API est en panne ?" → Réessayez 3x, puis échouez avec alert
 
-### 2. Multi-Source Ingestion ([Your Name])
+### 2. Ingestion multi-source (Laien)
 
-**Demonstrated:**
-- CSV file reading (symbols_metadata.csv)
-- JSON configuration loading (portfolio_config.json)
-- Web scraping (CoinGecko market rankings)
-- PostgreSQL connection (historical benchmarks)
+**Démontré :**
+- Lecture de fichiers CSV (symbols_metadata.csv)
+- Chargement de la configuration JSON (portfolio_config.json)
+- Web scraping (classements du marché CoinGecko)
+- Connexion PostgreSQL (repères historiques)
 
-**5 Source Types Implemented:**
-| Source | Status | Demo |
+**5 types de sources implémentés :**
+| Source | Statut | Démo |
 |--------|--------|------|
-| REST API (Binance) | ✅ | Live fetch |
-| CSV File | ✅ | Metadata loaded |
-| JSON File | ✅ | Config loaded |
-| Web Scraping | ✅ | Rankings scraped |
-| PostgreSQL | ✅ | Benchmarks queried |
+| API REST (Binance) | ✅ | Récupération en direct |
+| Fichier CSV | ✅ | Métadonnées chargées |
+| Fichier JSON | ✅ | Configuration chargée |
+| Grattage Web | ✅ | Classements grattés |
+| PostgreSQL | ✅ | Benchmarks interrogés |
 
-**Stakeholder Feedback:**
-- Pierre: "Good diversity of sources for certification" ✓
-- Sophie: "Can I see the scraped data?" → Showed market rankings output
+**Commentaires des parties prenantes :**
+- Pierre : "Bonne diversité de sources pour la certification" ✓
+- Sophie : "Puis-je voir les données récupérées ?" → Affichage des résultats des classements du marché
 
-### 3. Data Lake Storage ([Your Name])
+### 3. Data Lake Storage (Laien)
 
-**Demonstrated:**
-- Bronze zone: `data/raw/klines/*.parquet`
-- Parquet format with schema enforcement
-- Incremental ingestion (only new data)
+**Démontré :**
+- Zone Bronze : `data/raw/klines/*.parquet`
+- Format Parquet avec application du schéma
+- Ingestion incrémentielle (uniquement les nouvelles données)
 
-**Metrics:**
-- 5 symbols × 90 days = 450 records
-- Storage size: ~50 KB (compressed)
-- Ingestion time: ~5 seconds
+**Métriques :**
+- 5 symboles × 90 jours = 450 enregistrements
+- Taille de stockage : ~50 Ko (compressé)
+- Temps d'ingestion : ~5 secondes
 
-### 4. Docker Environment (Pierre)
+### 4. Environnement Docker (Pierre)
 
-**Demonstrated:**
-- `docker compose up api` - API running
-- `docker compose --profile pipeline up` - Pipeline execution
-- Volume mounts for data persistence
+**Démontré :**
+- `docker compose up api` - API en cours d'exécution
+- `docker compose --profile pipeline up` – Exécution du pipeline
+ – Montages de volumes pour la persistance des données
 
 ---
 
-## User Stories Completed
+## User Stories terminées
 
-| Story ID | Title | Points | Status |
+| Identifiant de l'histoire | Titre | Points | Statut |
 |----------|-------|--------|--------|
-| US-001 | Automated Price Collection | 5 | ✅ Done |
-| US-002 | Multi-Source Data Integration | 8 | ✅ Done |
+| US-001 | Collecte automatisée des prix | 5 | ✅ Terminé |
+| US-002 | Intégration de données multi-sources | 8 | ✅ Terminé |
 
-**Velocity:** 13 story points
-
----
-
-## User Stories Not Completed
-
-None - Sprint goal fully achieved.
+**Vitesse :** 13 points d'histoire
 
 ---
 
-## Impediments Encountered
+## User Stories non terminées
 
-| Impediment | Resolution |
+Aucun - Objectif de sprint entièrement terminé atteint.
+
+---
+
+## Obstacles rencontrés
+
+| Empêchement | Résolution |
 |------------|------------|
-| CoinGecko page structure changed | Implemented fallback scraping method |
-| PostgreSQL connection timeout | Added connection retry logic |
+| La structure de la page CoinGecko a été modifiée | Implémentation de la méthode de scraping de secours |
+| Délai d'expiration de la connexion PostgreSQL | Ajout d'une logique de nouvelle tentative de connexion |
 
 ---
 
-## Stakeholder Questions & Answers
+## Questions et réponses des parties prenantes
 
-**Q (Marie):** Is the data quality validated?
-**A:** Basic validation (null checks) implemented. Full validation in Sprint 2.
+**Q (Marie):** La qualité des données est-elle validée ?
+**A:** La validation de base (vérifications nulles) est mise en œuvre. Validation complète dans Sprint 2.
 
-**Q (Jean):** How do we know if ingestion failed?
-**A:** Currently logs to stdout. Alerting will be added in Sprint 4.
+**Q (Jean) :** Comment savoir si l'ingestion a échoué ?
+**A :** Se connecte actuellement sur la sortie standard. Des alertes seront ajoutées dans Sprint 4.
 
-**Q (Sophie):** Can I query the data with SQL?
-**A:** Yes, DuckDB integration coming in Sprint 2.
+**Q (Sophie) :** Puis-je interroger les données avec SQL ?
+**A :** Oui, l'intégration de DuckDB sera disponible dans Sprint 2.
 
 ---
 
-## Action Items from Review
+## Actions de l'avis
 
-| Action | Owner | Due |
+| Actions | Propriétaire | À payer |
 |--------|-------|-----|
-| Add configurable symbol list to docs | Jean | Sprint 2 |
-| Document API error codes | [Your Name] | Sprint 2 |
-| Plan monitoring approach | Pierre | Sprint 2 |
+| Ajouter une liste de symboles configurables aux documents | Jean | Sprint2 |
+| Documenter les codes d'erreur de l'API | Laïen | Sprint2 |
+| Approche de suivi du plan | Pierre | Sprint 2 |
 
 ---
 
-## Sprint 2 Preview
+## Aperçu du Sprint 2
 
-**Goal:** Implement data transformation and DuckDB Data Warehouse
+**Objectif :** Mettre en œuvre la transformation des données et l'entrepôt de données DuckDB
 
-**Stories planned:**
-- US-003: Calculate Financial Metrics (5 pts)
-- US-007: REST API for Data Access (5 pts)
-- US-008: SQL Query Interface (5 pts)
+**Stories prévues :**
+- US-003 : Calculer des mesures financières (5 pts)
+- US-007 : API REST pour l'accès aux données (5 pts)
+- US-008 : Interface de requête SQL (5 pts)
 
-**Capacity:** 15 points
+**Capacité :** 15 points
 
 ---
 
-## Retrospective Actions (from separate retro)
+## Actions rétrospectives (à partir de rétros séparées)
 
-| What went well | What to improve |
+| Ce qui s'est bien passé | Ce qu'il faut améliorer |
 |----------------|-----------------|
-| Multi-source implementation ahead of schedule | Need more unit tests |
-| Good collaboration between DE and DevOps | Documentation could be more detailed |
-| Clear requirements from Business | Earlier stakeholder demos |
+| Implémentation multi-sources en avance sur le calendrier | Besoin de plus de tests unitaires |
+| Bonne collaboration entre DE et DevOps | La documentation pourrait être plus détaillée |
+| Des exigences claires de la part des entreprises | Démos précédentes des parties prenantes |
 
 ---
 
-*Minutes recorded by: Lucas Petit*
-*Sprint accepted by: Marie Dupont (Product Owner)*
+*Compte-rendu enregistré par : Lucas Petit*
+*Sprint accepté par : Marie Dupont (Product Owner)*
+

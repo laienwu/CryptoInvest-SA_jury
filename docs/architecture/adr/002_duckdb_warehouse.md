@@ -1,112 +1,112 @@
-# ADR-002: DuckDB as Data Warehouse Engine
+# ADR-002 : DuckDB comme moteur d'entrepôt de données
 
-**Status:** Accepted
-**Date:** 2025-01-08
-**Deciders:** [Your Name] (Data Engineer), Sophie Bernard (Data Analyst)
-**Technical Story:** US-008
+**Statut :** Accepté
+**Date :** 2025-01-08
+**Décideurs :** Laien Wu (ingénieur de données), Sophie Bernard (analyste de données)
+**Histoire technique :** US-008
 
 ---
 
-## Context
+## Contexte
 
-We need a SQL interface for analytical queries on our Data Lake. Requirements:
+Nous avons besoin d'une interface SQL pour les requêtes analytiques sur notre Data Lake. Exigences :
 
-- SQL support for business users (Sophie, analysts)
-- Star schema support (facts and dimensions)
-- Integration with existing Parquet files
-- Low operational overhead (certification project)
-- Fast enough for interactive queries
+- Prise en charge SQL pour les utilisateurs professionnels (Sophie, analystes)
+- Prise en charge du schéma en étoile (faits et dimensions)
+- Intégration avec les fichiers Parquet existants
+- Faible surcharge opérationnelle (projet de certification)
+- Assez rapide pour une utilisation interactive requêtes
 
-Options considered:
+Options considérées :
 1. PostgreSQL
-2. DuckDB
+2. CanardDB
 3. SQLite
 4. Apache Spark SQL
 5. ClickHouse
 
 ---
 
-## Decision
+## Décision
 
-**We will use DuckDB as the embedded Data Warehouse engine.**
+**Nous utiliserons DuckDB comme entrepôt de données intégré moteur.**
 
 ---
 
-## Rationale
+## Justification
 
-### Comparison matrix:
+### Matrice de comparaison :
 
-| Criterion | PostgreSQL | DuckDB | SQLite | Spark SQL | ClickHouse |
+| Critère | PostgreSQL | CanardDB | SQLite | SparkSQL | ClickHouse |
 |-----------|------------|--------|--------|-----------|------------|
-| Setup complexity | Medium | Zero | Zero | High | Medium |
-| Parquet native | No | Yes | No | Yes | Limited |
-| OLAP optimized | No | Yes | No | Yes | Yes |
-| Embedded mode | No | Yes | Yes | No | No |
-| Memory efficiency | Good | Excellent | Good | Poor | Good |
-| Learning curve | Low | Low | Low | High | Medium |
+| Complexité de configuration | Moyen | Zéro | Zéro | Élevé | Moyen |
+| Parquet natif | Non | Oui | Non | Oui | Limité |
+| OLAP optimisé | Non | Oui | Non | Oui | Oui |
+| Mode intégré | Non | Oui | Oui | Non | Non |
+| Efficacité de la mémoire | Bon | Excellent | Bon | Pauvre | Bon |
+| Courbe d'apprentissage | Faible | Faible | Faible | Élevé | Moyen |
 
-### Key factors:
+### Facteurs clés :
 
-1. **Zero infrastructure**: DuckDB runs in-process, no server to manage. Perfect for certification project scope.
+1. **Zéro infrastructure** : DuckDB s'exécute en cours de processus, aucun serveur à gérer. Parfait pour la portée du projet de certification.
 
-2. **Parquet-native**: Queries Parquet files directly without ETL:
+2. **Parquet-native** : interroge les fichiers Parquet directement sans ETL :
    ```sql
    SELECT * FROM 'data/raw/klines/*.parquet'
    ```
 
-3. **OLAP-optimized**: Columnar engine designed for analytical queries (aggregations, joins on large tables).
+3. **Optimisé pour OLAP** : moteur de colonnes conçu pour les requêtes analytiques (agrégations, jointures sur de grandes tables).
 
-4. **Familiar SQL**: Standard SQL syntax, easy for Sophie and business users.
+4. **SQL familier** : syntaxe SQL standard, simple pour Sophie et les utilisateurs professionnels.
 
-5. **Python integration**: Works seamlessly with PyArrow tables.
+5. **Intégration Python** : fonctionne de manière transparente avec les tables PyArrow.
 
-### Why not PostgreSQL:
-- Requires server management (Docker container, backups, monitoring)
-- Data must be loaded into tables (ETL step)
-- Row-based storage less efficient for analytics
-- Overkill for single-user analytical workload
+### Pourquoi pas PostgreSQL :
+- Nécessite une gestion du serveur (conteneur Docker, sauvegardes, surveillance)
+- Les données doivent être chargées dans des tables (étape ETL)
+- Stockage basé sur les lignes moins efficace pour Analytics
+- Surpuissance pour la charge de travail analytique d'un seul utilisateur
 
-### Why not Spark:
-- Massive overhead for small data (~MB scale)
-- Cluster management complexity
-- Slow startup time
-- Would be appropriate at TB scale
-
----
-
-## Consequences
-
-### Positive
-- Zero operational overhead
-- Query Parquet directly (no ETL)
-- Fast analytical queries (vectorized execution)
-- Single file database (portable)
-- Excellent Python/PyArrow integration
-
-### Negative
-- Not suitable for concurrent write workloads
-- No built-in replication/HA
-- Less tooling ecosystem than PostgreSQL
-- Relatively new (less battle-tested)
-
-### Neutral
-- Star schema implemented in code, not database constraints
-- No foreign key enforcement (handled in ETL)
+### Pourquoi pas Spark :
+- Surcharge massive pour les petites données (à l'échelle de ~ Mo)
+- Complexité de la gestion des clusters
+- Temps de démarrage lent
+- Serait approprié à la To échelle
 
 ---
 
-## Compliance
+## Conséquences
 
-| Requirement | Status |
+### Positif[
+- Aucune surcharge opérationnelle
+- Interroger Parquet directement (pas d'ETL)
+- Analyse rapide requêtes (exécution vectorisée)
+- Base de données à fichier unique (portable)
+- Excellente intégration Python/PyArrow
+
+### Négatif
+- Ne convient pas aux charges de travail d'écriture simultanées
+- Aucune réplication/HA intégrée
+- Moins d'écosystème d'outils que PostgreSQL
+- Relativement nouveau (moins testé au combat)
+
+### Neutre
+- Schéma en étoile implémenté dans le code, pas dans les contraintes de base de données
+- Aucune application de clé étrangère (gérée dans ETL)
+
+---
+
+## Conformité
+
+| Exigence | Statut |
 |-------------|--------|
-| C9 - SQL extraction queries | Full SQL support |
-| C13 - Facts/dimensions modeling | Star schema implemented |
-| C14 - Create warehouse | DuckDB = analytical warehouse |
-| C15 - ETL integration | Read from Parquet, write to DuckDB |
+| C9 - Requêtes d'extraction SQL | Prise en charge complète de SQL |
+| C13 - Modélisation faits/dimensions | Schéma en étoile implémenté |
+| C14 - Créer un entrepôt | DuckDB = entrepôt analytique |
+| C15 - Intégration ETL | Lire depuis Parquet, écrire dans DuckDB |
 
 ---
 
-## Implementation
+## Implémentation
 
 ### Star Schema
 
@@ -147,7 +147,7 @@ Options considered:
                               └──────────────┘
 ```
 
-### Code Example
+### Exemple de code
 
 ```python
 import duckdb
@@ -178,13 +178,14 @@ result = conn.execute("""
 
 ---
 
-## References
+## Références
 
-- [DuckDB Documentation](https://duckdb.org/docs/)
-- [DuckDB Star Schema Example](https://duckdb.org/docs/guides/star_schema)
-- [Why DuckDB (Hacker News)](https://news.ycombinator.com/item?id=29658553)
+- [Documentation DuckDB](https://duckdb.org/docs/)
+- [Exemple de schéma en étoile DuckDB](https://duckdb.org/docs/guides/star_schema)
+- [Pourquoi DuckDB (Hacker News)](https://news.ycombinator.com/item?id=29658553)
 
 ---
 
-*Reviewed by: Sophie Bernard (Data Analyst)*
-*Approved by: Marie Dupont (Product Owner)*
+*Révisé par : Sophie Bernard (Analyste de données)*
+*Approuvé par : Marie Dupont (Propriétaire du produit)*
+

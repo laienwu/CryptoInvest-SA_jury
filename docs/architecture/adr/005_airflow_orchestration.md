@@ -1,114 +1,114 @@
-# ADR-005: Apache Airflow for Pipeline Orchestration
+# ADR-005 : Apache Airflow pour l'orchestration de pipelines
 
-**Status:** Accepted
-**Date:** 2025-02-01
-**Deciders:** [Your Name] (Data Engineer), Pierre Durand (DevOps)
-**Technical Story:** US-009
+**Statut :** Accepté
+**Date :** 2025-02-01
+**Décisionnaires :** Laien Wu (Ingénieur de données), Pierre Durand (DevOps)
+**Technique Histoire :** US-009
 
 ---
 
-## Context
+## Contexte
 
-We need to orchestrate the daily ETL pipeline with:
+Nous devons orchestrer le pipeline ETL quotidien avec :
 
-- Scheduled execution (daily at midnight UTC)
-- Task dependency management (ingest → transform → optimize)
-- Monitoring and alerting
-- Retry logic for failed tasks
-- Execution history and logs
+- Exécution planifiée (tous les jours à minuit UTC)
+- Gestion des dépendances des tâches (ingérer → transformer → optimiser)
+- Surveillance et alerte
+- Logique de nouvelle tentative pour les tâches ayant échoué
+- Historique et journaux d'exécution
 
-Options considered:
+Options considérées :
 1. Apache Airflow
-2. Prefect
-3. Dagster
-4. Cron + custom scripts
-5. GitHub Actions
+2. Préfet
+3. Dague
+4. Cron + scripts personnalisés
+5. Actions GitHub
 
 ---
 
-## Decision
+## Décision
 
-**We will use Apache Airflow for pipeline orchestration.**
+**Nous utiliserons Apache Airflow pour le pipeline orchestration.**
 
 ---
 
-## Rationale
+## Justification
 
-### Comparison:
+### Comparaison :
 
-| Criterion | Airflow | Prefect | Dagster | Cron | GitHub Actions |
+| Critère | Flux d'air | Préfet | Dague | Cron | Actions GitHub |
 |-----------|---------|---------|---------|------|----------------|
-| Industry standard | Yes | Growing | Growing | Legacy | CI-focused |
-| UI for monitoring | Excellent | Good | Good | None | Basic |
-| Python-native DAGs | Yes | Yes | Yes | No | YAML |
-| Self-hosted | Yes | Yes | Yes | Yes | No |
-| Learning curve | Medium | Low | Medium | Low | Low |
-| Certification relevance | High | Medium | Medium | Low | Low |
+| Norme industrielle | Oui | Croissance | Croissance | Héritage | Axé sur l'IC |
+| Interface utilisateur pour la surveillance | Excellent | Bon | Bon | Aucun | De base |
+| DAG natifs Python | Oui | Oui | Oui | Non | YAML |
+| Auto-hébergé | Oui | Oui | Oui | Oui | Non |
+| Courbe d'apprentissage | Moyen | Faible | Moyen | Faible | Faible |
+| Pertinence de la certification | Élevé | Moyen | Moyen | Faible | Faible |
 
-### Key factors:
+### Facteurs clés :
 
-1. **Industry standard**: Airflow is the most widely used orchestration tool in data engineering. Critical for certification credibility.
+1. **Norme industrielle** : Airflow est l'outil d'orchestration le plus largement utilisé en ingénierie des données. Critique pour la crédibilité de la certification.
 
-2. **Excellent monitoring UI**: Web interface shows DAG structure, task status, execution history, and logs.
+2. **Excellente interface utilisateur de surveillance** : l'interface Web affiche la structure du DAG, l'état des tâches, l'historique d'exécution et les journaux.
 
-3. **Dependency management**: Task dependencies defined declaratively:
+3. **Gestion des dépendances** : Dépendances de tâches définies de manière déclarative :
    ```python
    ingest >> transform >> optimize
    ```
 
-4. **Rich scheduling**: Cron-like expressions with catchup, backfill support.
+4. **Planification riche** : expressions de type Cron avec rattrapage et prise en charge du remplissage.
 
-5. **Retry logic**: Built-in retry with configurable delays and exponential backoff.
+5. **Logique de nouvelle tentative** : nouvelle tentative intégrée avec des délais configurables et une interruption exponentielle.
 
-6. **Docker-native**: Official Docker images, easy deployment with docker-compose.
+6. **Docker-native** : images Docker officielles, déploiement facile avec docker-compose.
 
-### Why not Prefect/Dagster:
-- Less market presence (harder to demonstrate for certification)
-- Airflow is explicitly mentioned in industry job descriptions
-- Team already familiar with Airflow concepts
+### Pourquoi pas Prefect/Dagster :
+- Moins de présence sur le marché (plus difficile à démontrer pour la certification)
+- Airflow est explicitement mentionné dans les descriptions de poste de l'industrie
+- Équipe déjà familiarisée avec Airflow concepts
 
-### Why not Cron:
-- No dependency management
-- No monitoring UI
-- No retry logic
-- No execution history
-- Would need custom implementation for basic features
-
----
-
-## Consequences
-
-### Positive
-- Professional-grade orchestration
-- Excellent monitoring and debugging
-- Industry-recognized skill
-- Built-in retry and alerting
-- Certification requirement satisfied
-
-### Negative
-- Heavier resource footprint than alternatives
-- Webserver + Scheduler + DB overhead
-- Overkill for single DAG
-- Complex initial setup
-
-### Neutral
-- PostgreSQL backend (separate from application DB)
-- Sequential executor sufficient for MVP
+### Pourquoi pas Cron :
+- Aucune gestion des dépendances
+- Aucune interface utilisateur de surveillance
+- Aucune logique de nouvelle tentative
+- Aucun historique d'exécution
+- Nécessiterait une implémentation personnalisée pour les bases fonctionnalités
 
 ---
 
-## Compliance
+## Conséquences
 
-| Requirement | Status |
+### Positif
+- Orchestration de qualité professionnelle
+- Excellente surveillance et débogage
+- Compétence reconnue par l'industrie
+- Nouvelles tentatives et alertes intégrées
+- Exigence de certification satisfaite
+
+### Négatif
+- Empreinte de ressources plus importante que les alternatives
+- Serveur Web + Planificateur + surcharge de base de données
+- Surpuissance pour un seul DAG
+- Configuration initiale complexe
+
+### Neutre
+- Backend PostgreSQL (séparé de la base de données de l'application)
+- Exécuteur séquentiel suffisant pour MVP
+
+---
+
+## Conformité
+
+| Exigence | Statut |
 |-------------|--------|
-| C15 - ETL integration | DAG orchestrates ingest → transform → optimize |
-| C16 - Warehouse management | Scheduling, monitoring, alerting |
+| C15 - Intégration ETL | DAG orchestre l'ingestion → la transformation → l'optimisation |
+| C16 - Gestion d'entrepôt | Planification, surveillance, alertes |
 
 ---
 
-## Implementation
+## Mise en œuvre
 
-### DAG Structure
+### Structure du DAG
 
 ```
 portfolio_dag
@@ -119,7 +119,7 @@ portfolio_dag
     └── update_warehouse  # Refresh DuckDB tables
 ```
 
-### DAG Code
+### Code DAG
 
 ```python
 from airflow import DAG
@@ -163,7 +163,7 @@ with DAG(
     ingest >> transform >> optimize
 ```
 
-### Docker Compose Setup
+### Configuration de Docker Compose
 
 ```yaml
 services:
@@ -183,32 +183,33 @@ services:
     # ... scheduler config
 ```
 
-### Monitoring Approach
+### Approche de surveillance
 
-| What to Monitor | How | Alert Threshold |
+| Que surveiller | Comment | Seuil d'alerte |
 |-----------------|-----|-----------------|
-| DAG run success | Airflow UI | Any failure |
-| Task duration | Airflow metrics | > 10 minutes |
-| Data freshness | Custom sensor | > 24 hours |
+| Succès de l'exécution du DAG | Interface utilisateur du flux d'air | Tout échec |
+| Durée de la tâche | Mesures du débit d'air | > 10 minutes |
+| Fraîcheur des données | Capteur personnalisé | > 24 heures |
 
 ---
 
-## Alternatives Considered for Future
+## Alternatives envisagées pour l'avenir
 
-If scale increases significantly:
-- Consider Kubernetes executor for parallel tasks
-- Consider Celery executor for distributed workers
-- Consider Airflow 2.x TaskFlow API for cleaner code
+Si l'échelle augmente de manière significative :
+- Envisagez l'exécuteur Kubernetes pour les tâches parallèles
+- Envisagez le céleri exécuteur pour les travailleurs distribués
+- Envisagez l'API TaskFlow d'Airflow 2.x pour un code plus propre
 
 ---
 
-## References
+## Références
 
 - [Apache Airflow Documentation](https://airflow.apache.org/docs/)
-- [Airflow Best Practices](https://airflow.apache.org/docs/apache-airflow/stable/best-practices.html)
-- [Running Airflow in Docker](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html)
+- [Meilleures pratiques en matière de flux d'air](https://airflow.apache.org/docs/apache-airflow/stable/best-practices.html)
+- [Exécuter le flux d'air dans Docker](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html)
 
 ---
 
-*Reviewed by: Pierre Durand (DevOps)*
-*Approved by: Marie Dupont (Product Owner)*
+*Révisé par : Pierre Durand (DevOps)*
+*Approuvé par : Marie Dupont (Product Owner)*
+

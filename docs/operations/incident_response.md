@@ -1,92 +1,92 @@
-# Incident Response Plan
+# Plan de réponse aux incidents
 
-## Document Control
+## Contrôle des documents
 
-| Item | Details |
+| Article | Détails |
 |------|---------|
-| Document ID | IRP-PORTFOLIO-001 |
+| Numéro d'identification du document | IRP-PORTFOLIO-001 |
 | Version | 1.0 |
-| Classification | Internal |
-| Owner | Pierre Durand (DevOps) |
-| Last Updated | 2025-02-17 |
+| Classement | Interne |
+| Propriétaire | Pierre Durand (DevOps) |
+| Dernière mise à jour | 2025-02-17 |
 
 ---
 
-## 1. Purpose & Scope
+## 1. Objectif et portée
 
-### 1.1 Purpose
+### 1.1 Objectif
 
-This Incident Response Plan (IRP) establishes procedures for detecting, responding to, and recovering from incidents affecting the Portfolio Optimization Platform.
+Ce plan de réponse aux incidents (IRP) établit des procédures pour détecter, répondre et récupérer les incidents affectant la plateforme d'optimisation de portefeuille.
 
-### 1.2 Scope
+### 1.2 Portée
 
-Applies to all incidents affecting:
-- API service availability
-- Data pipeline operations
-- Data integrity and quality
-- Security breaches
-- Infrastructure failures
+S'applique à tous les incidents affectant :
+- Disponibilité du service API
+- Opérations de pipeline de données
+- Intégrité des données et qualité
+- Failles de sécurité
+- Défaillances d'infrastructure
 
-### 1.3 Objectives
+### 1.3 Objectifs
 
-1. Minimize service disruption
-2. Protect data integrity
-3. Maintain stakeholder communication
-4. Learn from incidents to prevent recurrence
+1. Minimiser les interruptions de service
+2. Protéger l'intégrité des données
+3. Maintenir la communication avec les parties prenantes
+4. Tirer des leçons des incidents pour éviter qu'ils ne se reproduisent
 
 ---
 
-## 2. Incident Classification
+## 2. Classification des incidents
 
-### 2.1 Severity Levels
+### 2.1 Niveaux de gravité
 
-| Level | Name | Definition | Examples |
+| Niveau | Nom | Définition | Exemples |
 |-------|------|------------|----------|
-| SEV-1 | Critical | Complete outage, data breach, security incident | API down, data corruption |
-| SEV-2 | Major | Significant degradation, partial outage | Pipeline failed, high latency |
-| SEV-3 | Minor | Limited impact, workaround available | Single endpoint error |
-| SEV-4 | Low | Minimal impact, cosmetic issues | UI glitch, log warning |
+| SEV-1 | Critique | Panne complète, violation de données, incident de sécurité | API en panne, corruption des données |
+| SEV-2 | Majeur | Dégradation importante, panne partielle | Échec du pipeline, latence élevée |
+| SEV-3 | Mineur | Impact limité, solution de contournement disponible | Erreur de point de terminaison unique |
+| SEV-4 | Faible | Impact minimal, problèmes esthétiques | Problème d'interface utilisateur, avertissement de journal |
 
-### 2.2 Classification Matrix
+### 2.2 Matrice de classification
 
-| Impact | All Users | Some Users | Single User |
+| Impact | Tous les utilisateurs | Certains utilisateurs | Utilisateur unique |
 |--------|-----------|------------|-------------|
-| **Service Down** | SEV-1 | SEV-2 | SEV-3 |
-| **Degraded** | SEV-2 | SEV-3 | SEV-4 |
-| **Inconvenience** | SEV-3 | SEV-4 | SEV-4 |
+| **Service en panne** | SEV-1 | SEV-2 | SEV-3 |
+| **Dégradé** | SEV-2 | SEV-3 | SEV-4 |
+| **Inconvénient** | SEV-3 | SEV-4 | SEV-4 |
 
-### 2.3 Response Times
+### 2.3 Délais de réponse
 
-| Severity | Detection | Response | Resolution | Communication |
+| Gravité | Détection | Réponse | Résolution | Communication |
 |----------|-----------|----------|------------|---------------|
-| SEV-1 | 5 min | 15 min | 4 hours | Every 30 min |
-| SEV-2 | 15 min | 1 hour | 8 hours | Every 2 hours |
-| SEV-3 | 1 hour | 4 hours | 24 hours | Daily |
-| SEV-4 | 24 hours | Best effort | Best effort | On resolution |
+| SEV-1 | 5 minutes | 15 minutes | 4 heures | Toutes les 30 minutes |
+| SEV-2 | 15 minutes | 1 heure | 8 heures | Toutes les 2 heures |
+| SEV-3 | 1 heure | 4 heures | 24 heures | Quotidien |
+| SEV-4 | 24 heures | Meilleur effort | Meilleur effort | Sur la résolution |
 
 ---
 
-## 3. Incident Response Team
+## 3. Équipe de réponse aux incidents
 
-### 3.1 Roles & Responsibilities
+### 3.1 Rôles et responsabilités
 
-| Role | Responsibility | Primary | Backup |
+| Rôle | Responsabilité | Primaire | Sauvegarde |
 |------|----------------|---------|--------|
-| Incident Commander | Overall coordination | Pierre Durand | [Your Name] |
-| Technical Lead | Investigation & fix | [Your Name] | Sophie Bernard |
-| Communications | Stakeholder updates | Lucas Petit | Marie Dupont |
-| Scribe | Documentation | Assigned at runtime | - |
+| Commandant des incidents | Coordination globale | Pierre Durand | Laien Wu |
+| Responsable technique | Enquête et réparation | Laien Wu | Sophie Bernard |
+| Communication | Mises à jour des parties prenantes | Lucas Petit | Marie Dupont |
+| Scribe | Documents | Attribué au moment de l'exécution | - |
 
-### 3.2 Contact Information
+### 3.2 Coordonnées
 
-| Role | Name | Phone | Email |
+| Rôle | Nom | Téléphone | E-mail |
 |------|------|-------|-------|
-| On-Call Primary | Rotating | +33 X XX XX XX XX | oncall@company.com |
-| DevOps Lead | Pierre Durand | +33 X XX XX XX XX | pierre@company.com |
-| Data Engineer | [Your Name] | +33 X XX XX XX XX | data@company.com |
-| CTO (Escalation) | François Martin | +33 X XX XX XX XX | francois@company.com |
+| Primaire de garde | Rotation | +33 X XX XX XX XX | oncall@company.com |
+| Responsable DevOps | Pierre Durand | +33 X XX XX XX XX | pierre@company.com |
+| Ingénieur de données | Laien Wu | +33 X XX XX XX XX | data@company.com |
+| CTO (escalade) | François Martin | +33 X XX XX XX XX | francois@company.com |
 
-### 3.3 Escalation Path
+### 3.3 Chemin de remontée
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -114,25 +114,25 @@ Applies to all incidents affecting:
 
 ---
 
-## 4. Incident Response Phases
+## 4. Phases de réponse aux incidents
 
-### 4.1 Phase 1: Detection
+### 4.1 Phase 1 : Détection
 
-**Objective:** Identify that an incident is occurring
+**Objectif :** Identifier qu'un incident est se produisant
 
-**Sources:**
-- Automated monitoring alerts
-- Health check failures
-- User reports
-- Manual observation
+**Sources :**
+- Alertes de surveillance automatisées
+- Échecs du contrôle de santé
+- Rapports utilisateur
+- Observation manuelle
 
-**Actions:**
-1. Acknowledge alert
-2. Verify incident is real (not false positive)
-3. Gather initial information
-4. Classify severity
+**Actions :**
+1. Accuser réception de l'alerte
+2. Vérifier que l'incident est réel (pas de faux positif)
+3. Recueillir les informations initiales
+4. Classer la gravité
 
-**Detection Checklist:**
+**Liste de contrôle de détection :**
 ```
 ☐ Alert received/incident reported
 ☐ Verified incident is genuine
@@ -141,17 +141,17 @@ Applies to all incidents affecting:
 ☐ Incident ticket created
 ```
 
-### 4.2 Phase 2: Triage
+### 4.2 Phase 2 : Triage
 
-**Objective:** Assess impact and mobilize response
+**Objectif :** Évaluer l'impact et mobiliser la réponse
 
-**Actions:**
-1. Create incident channel (Slack: #incident-YYYY-MM-DD)
-2. Assign Incident Commander
-3. Page additional responders if needed
-4. Begin impact assessment
+**Actions :**
+1. Créer un canal d'incident (Slack : #incident-YYYY-MM-DD)
+2. Désigner le commandant de l'incident
+3. Appelez des intervenants supplémentaires si nécessaire
+4. Commencer l'évaluation d'impact
 
-**Triage Checklist:**
+**Liste de contrôle de tri :**
 ```
 ☐ Incident Commander assigned
 ☐ Communication channel created
@@ -160,36 +160,36 @@ Applies to all incidents affecting:
 ☐ Response team assembled
 ```
 
-### 4.3 Phase 3: Containment
+### 4.3 Phase 3 : Confinement
 
-**Objective:** Prevent further damage
+**Objectif :** Prévenir d'autres dommages
 
-**Actions:**
-1. Isolate affected components
-2. Preserve evidence (logs, state)
-3. Implement temporary workarounds
-4. Prevent incident spread
+**Actions :**
+1. Isoler les composants concernés
+2. Préserver les preuves (journaux, état)
+3. Mettre en œuvre des solutions de contournement temporaires
+4. Empêcher la propagation de l'incident
 
-**Containment Strategies:**
+**Stratégies de confinement :**
 
-| Incident Type | Containment Action |
+| Type d'incident | Action de confinement |
 |---------------|-------------------|
-| API outage | Restart container, failover |
-| Data corruption | Stop pipeline, quarantine data |
-| Security breach | Revoke access, isolate system |
-| Performance issue | Scale resources, enable caching |
+| Panne d'API | Redémarrer le conteneur, basculement |
+| Corruption des données | Arrêter le pipeline, mettre les données en quarantaine |
+| Faille de sécurité | Révoquer l'accès, isoler le système |
+| Problème de performances | Faire évoluer les ressources, activer la mise en cache |
 
-### 4.4 Phase 4: Investigation
+### 4.4 Phase 4 : Enquête
 
-**Objective:** Identify root cause
+**Objectif :** Identifier la cause première
 
-**Actions:**
-1. Gather logs and metrics
-2. Timeline reconstruction
-3. Hypothesis testing
-4. Root cause identification
+**Actions :**
+1. Rassemblez les journaux et les métriques
+2. Reconstruction de la chronologie
+3. Test d'hypothèse
+4. Identification de la cause première
 
-**Investigation Commands:**
+**Commandes d'enquête :**
 ```bash
 # Gather logs
 docker compose logs --since="1h" > incident_logs.txt
@@ -206,18 +206,18 @@ ls -la data/raw/klines/
 ls -la data/output/
 ```
 
-### 4.5 Phase 5: Resolution
+### 4.5 Phase 5 : Résolution
 
-**Objective:** Restore normal service
+**Objectif :** Restaurer le service normal
 
-**Actions:**
-1. Implement fix
-2. Verify fix in staging (if available)
-3. Deploy to production
-4. Verify service restored
-5. Monitor for recurrence
+**Actions :**
+1. Implémenter le correctif
+2. Vérifiez le correctif dans la préparation (si disponible)
+3. Déployer en production
+4. Vérifiez le service restauré
+5. Surveiller la récidive
 
-**Resolution Checklist:**
+**Liste de contrôle de résolution :**
 ```
 ☐ Fix identified
 ☐ Fix tested
@@ -227,17 +227,17 @@ ls -la data/output/
 ☐ Stakeholders notified of resolution
 ```
 
-### 4.6 Phase 6: Recovery
+### 4.6 Phase 6 : Récupération
 
-**Objective:** Return to full normal operations
+**Objectif :** Retour à des opérations entièrement normales
 
-**Actions:**
-1. Remove temporary workarounds
-2. Verify all services operational
-3. Catch up on missed operations (pipeline backfill)
-4. Confirm data integrity
+**Actions :**
+1. Supprimez les solutions de contournement temporaires
+2. Vérifier que tous les services sont opérationnels
+3. Rattraper les opérations manquées (remblai de pipeline)
+4. Confirmer l'intégrité des données
 
-**Recovery Tasks:**
+**Tâches de récupération :**
 ```bash
 # Backfill missed pipeline runs
 docker compose exec airflow-webserver airflow dags backfill \
@@ -253,22 +253,22 @@ print(db.query('SELECT COUNT(*) FROM fact_prices'))
 "
 ```
 
-### 4.7 Phase 7: Post-Incident
+### 4.7 Phase 7 : Post-incident
 
-**Objective:** Learn and improve
+**Objectif :** Apprendre et s'améliorer
 
-**Actions:**
-1. Schedule post-mortem (within 48 hours)
-2. Document timeline and actions
-3. Identify improvements
-4. Track action items
-5. Share learnings
+**Actions :**
+1. Planifier l'autopsie (dans les 48 heures)
+2. Documenter le calendrier et les actions
+3. Identifier les améliorations
+4. Suivre les éléments d'action
+5. Partager les enseignements
 
 ---
 
-## 5. Communication Templates
+## 5. Modèles de communication
 
-### 5.1 Initial Notification (SEV-1/2)
+### 5.1 Notification initiale (SEV-1/2)
 
 ```
 Subject: [INCIDENT] Portfolio Platform - {Brief Description}
@@ -291,7 +291,7 @@ Next Update: {Time}
 Incident Commander: {Name}
 ```
 
-### 5.2 Status Update
+### 5.2 Mise à jour du statut
 
 ```
 Subject: [UPDATE] Portfolio Platform Incident - {Time}
@@ -313,7 +313,7 @@ ETA: {If known, otherwise "TBD"}
 Next Update: {Time}
 ```
 
-### 5.3 Resolution Notification
+### 5.3 Notification de résolution
 
 ```
 Subject: [RESOLVED] Portfolio Platform Incident
@@ -339,13 +339,13 @@ Thank you for your patience.
 
 ---
 
-## 6. Incident Runbooks
+## 6. Runbooks d'incidents
 
-### 6.1 API Not Responding
+### L'API 6.1 ne répond pas
 
-**Symptoms:** Health check fails, users report errors
+**Symptômes :** La vérification de l'état échoue, rapportent les utilisateurs erreurs
 
-**Immediate Actions:**
+**Actions immédiates :**
 ```bash
 # 1. Check container status
 docker compose ps api
@@ -363,13 +363,13 @@ docker compose up -d --force-recreate api
 docker stats api
 ```
 
-**Escalate if:** Restart doesn't help, logs show unknown errors
+**Agir si :** Le redémarrage n'aide pas, les journaux affichent des erreurs inconnues
 
-### 6.2 Pipeline Failure
+### 6.2 Défaillance du pipeline
 
-**Symptoms:** Airflow DAG shows failed, no data update
+**Symptômes :** Le DAG du flux d'air indique un échec, aucune donnée update
 
-**Immediate Actions:**
+**Actions immédiates :**
 ```bash
 # 1. Check Airflow task logs
 # Go to http://localhost:8081 → DAG → Failed task → Logs
@@ -388,13 +388,13 @@ curl -s "https://api.binance.com/api/v3/ping"
 docker compose exec api python -c "from src.pipeline import ingest_all_sources; ingest_all_sources()"
 ```
 
-**Escalate if:** API errors, data corruption detected
+**Agir si :** Erreurs d'API, corruption de données détectée
 
-### 6.3 Data Quality Issue
+### 6.3 Problème de qualité des données
 
-**Symptoms:** Unexpected values in API responses, alerts
+**Symptômes :** Valeurs inattendues dans les réponses d'API, alertes
 
-**Immediate Actions:**
+**Immédiat Actions :**
 ```bash
 # 1. Stop further processing
 # Pause Airflow DAG in UI
@@ -427,13 +427,13 @@ fetch_klines('BTCUSDT', days=7)
 "
 ```
 
-**Escalate if:** Data corruption source unknown, multiple symbols affected
+**Agir si :** Source de corruption des données inconnue, plusieurs symboles affectés
 
-### 6.4 Security Incident
+### 6.4 Incident de sécurité
 
-**Symptoms:** Unauthorized access, suspicious activity
+**Symptômes :** Accès non autorisé, activité suspecte
 
-**Immediate Actions:**
+**Actions immédiates :**
 ```bash
 # 1. IMMEDIATELY contain
 docker compose stop  # Stop all services
@@ -455,13 +455,13 @@ cp -r data/ incident_evidence/data_snapshot/
 # - Communicate externally without approval
 ```
 
-**Escalate immediately to:** CTO, Security Lead
+**Transmettre immédiatement à :** CTO, responsable de la sécurité
 
 ---
 
-## 7. Post-Incident Review
+## 7. Examen post-incident
 
-### 7.1 Post-Mortem Template
+### 7.1 Modèle post-mortem
 
 ```markdown
 # Post-Mortem: {Incident Title}
@@ -523,65 +523,66 @@ cp -r data/ incident_evidence/data_snapshot/
 {Key takeaways for the team}
 ```
 
-### 7.2 Post-Mortem Meeting
+### 7.2 Réunion post-mortem
 
-**Timing:** Within 48 hours of resolution
+**Délai :** Dans les 48 heures suivant la résolution
 
-**Attendees:**
-- Incident responders
-- Team leads
-- Affected stakeholders (optional)
+**Participants :**
+- Intervenants en cas d'incident
+- Équipe responsables
+- Parties prenantes concernées (facultatif)
 
-**Agenda:**
-1. Timeline review (15 min)
-2. Root cause discussion (15 min)
-3. What went well (10 min)
-4. What to improve (10 min)
-5. Action items (10 min)
+**Ordre du jour :**
+1. Examen du calendrier (15 minutes)
+2. Discussion sur les causes profondes (15 min)
+3. Ce qui s'est bien passé (10 min)
+4. Ce qu'il faut améliorer (10 min)
+5. Points d'action (10 minutes)
 
-**Rules:**
-- Blameless culture - focus on systems, not people
-- No interruptions during timeline review
-- All voices heard
-- Concrete action items with owners
+**Règles :**
+- Culture irréprochable - se concentrer sur les systèmes et non sur les personnes
+- Aucune interruption pendant l'examen du calendrier
+- Toutes les voix entendues
+- Points d'action concrets avec propriétaires
 
 ---
 
-## 8. Training & Testing
+## 8. Formation et tests
 
-### 8.1 Training Requirements
+### 8.1 Exigences de formation
 
-| Role | Training | Frequency |
+| Rôle | Formation | Fréquence |
 |------|----------|-----------|
-| All engineers | IRP overview | On join, annually |
-| On-call | Incident command | Quarterly |
-| Leads | Communication | Annually |
+| Tous les ingénieurs | Aperçu de l'IRP | Lors de l'adhésion, chaque année |
+| Sur appel | Commandement des incidents | Trimestriel |
+| Pistes | Communication | Annuellement |
 
-### 8.2 Incident Drills
+### 8.2 Exercices d'intervention en cas d'incident
 
-| Drill Type | Frequency | Scope |
+| Type de foret | Fréquence | Portée |
 |------------|-----------|-------|
-| Tabletop exercise | Quarterly | Team discussion |
-| Runbook test | Monthly | Execute runbooks |
-| Full drill | Annually | Simulated incident |
+| Exercice sur table | Trimestriel | Discussion d'équipe |
+| Test du Runbook | Mensuel | Exécuter des runbooks |
+| Forage complet | Annuellement | Incident simulé |
 
-### 8.3 Drill Scenarios
+### 8.3 Scénarios d'exercice
 
-1. **API Outage:** Container crashes, needs restart
-2. **Pipeline Failure:** Binance API returns errors
-3. **Data Corruption:** Bad data in Gold zone
-4. **Security:** Unauthorized API access detected
+1. ** Panne de l'API : ** Le conteneur plante et doit être redémarré 
+2. **Échec du pipeline :** L'API Binance renvoie des erreurs
+3. **Corruption des données :** Données incorrectes dans la zone Or
+4. **Sécurité :** Accès API non autorisé détecté
 
 ---
 
-## 9. Revision History
+## 9. Historique des révisions
 
-| Version | Date | Author | Changes |
+| Version | Dates | Auteur | Modifications |
 |---------|------|--------|---------|
-| 1.0 | 2025-02-17 | Pierre Durand | Initial release |
+| 1.0 | 2025-02-17 | Pierre Durand | Version initiale |
 
 ---
 
-*This plan is reviewed and updated quarterly.*
-*Last drill conducted: N/A (new plan)*
-*Next scheduled drill: 2025-03-15*
+*Ce plan est révisé et mis à jour tous les trimestres.*
+*Dernier exercice effectué : N/A (nouveau plan)*
+*Prochain exercice prévu : 2025-03-15*
+

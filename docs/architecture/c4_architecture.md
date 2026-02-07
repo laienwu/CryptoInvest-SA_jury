@@ -1,12 +1,12 @@
-# C4 Architecture Model
+# Modèle d'architecture C4
 
-## Overview
+## Présentation
 
-This document presents the system architecture using the C4 model (Context, Containers, Components, Code).
+Ce document présente l'architecture du système à l'aide du modèle C4 (Contexte, Conteneurs, Composants, Code).
 
 ---
 
-## Level 1: System Context
+## Niveau 1 : Système Contexte
 
 ```
                                     ┌─────────────────────────────────────┐
@@ -56,21 +56,21 @@ This document presents the system architecture using the C4 model (Context, Cont
                                     └─────────────────────────────────────┘
 ```
 
-### Context Description
+### Description du contexte
 
-| Actor/System | Type | Description |
+| Acteur/Système | Tapez | Description |
 |--------------|------|-------------|
-| Binance API | External | Provides real-time and historical OHLCV price data |
-| CoinGecko | External | Market rankings and metadata via web scraping |
-| Benchmark DB | External | Historical benchmark indices (S&P500, BTC index) |
-| Portfolio Platform | System | Our system - processes data and optimizes portfolios |
-| Analyst | User | Runs ad-hoc queries, analyzes data |
-| Portfolio Manager | User | Consumes portfolio recommendations |
-| Trading System | Future | Will consume API for automated trading |
+| API Binance | Externe | Fournit des données historiques et en temps réel sur les prix des OHLCV |
+| CoinGecko | Externe | Classements de marché et métadonnées via le web scraping |
+| Base de données de référence | Externe | Indices de référence historiques (S&P500, indice BTC) |
+| Plateforme de portefeuille | Système | Notre système - traite les données et optimise les portefeuilles |
+| Analyste | Utilisateur | Exécute des requêtes ad hoc, analyse les données |
+| Gestionnaire de portefeuille | Utilisateur | Consomme les recommandations de portefeuille |
+| Système commercial | Avenir | Consommera l'API pour le trading automatisé |
 
 ---
 
-## Level 2: Container Diagram
+## Niveau 2 : Diagramme de conteneur
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
@@ -140,7 +140,8 @@ This document presents the system architecture using the C4 model (Context, Cont
 │  │  │                        FastAPI Application                                   │  │  │
 │  │  │                          localhost:8000                                      │  │  │
 │  │  │                                                                              │  │  │
-│  │  │   GET /symbols    GET /klines/{s}    GET /metrics    GET /portfolio         │  │  │
+│  │  │   GET /symbols  GET /klines/{s}  GET /metrics  GET /portfolio              │  │  │
+│  │  │   GET /portfolio/frontier       GET /portfolio/backtest                   │  │  │
 │  │  │                                                                              │  │  │
 │  │  │   ┌────────────────────────────────────────────────────────────────────┐    │  │  │
 │  │  │   │  OpenAPI Documentation: /docs (Swagger) | /redoc (ReDoc)           │    │  │  │
@@ -152,20 +153,20 @@ This document presents the system architecture using the C4 model (Context, Cont
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Container Descriptions
+### Descriptions des conteneurs
 
-| Container | Technology | Purpose |
+| Conteneur | Technologie | Objectif |
 |-----------|------------|---------|
-| Airflow Scheduler | Python/Airflow | Triggers DAG runs on schedule |
-| Airflow Webserver | Python/Airflow | Monitoring UI at :8081 |
-| Pipeline Workers | Python | Execute ingest/transform/optimize tasks |
-| Data Lake | Parquet files | Raw and processed data storage |
-| Data Warehouse | DuckDB | Analytical queries on star schema |
-| REST API | FastAPI/Uvicorn | Data exposure for consumers |
+| Planificateur de flux d'air | Python/Flux d'air | Déclencheurs DAG s'exécute selon le calendrier |
+| Serveur Web Airflow | Python/Flux d'air | Surveillance de l'interface utilisateur à : 8081 |
+| Travailleurs des pipelines | Python | Exécuter des tâches d'ingestion/de transformation/d'optimisation |
+| Lac de données | Limes pour parquet | Stockage des données brutes et traitées |
+| Entrepôt de données | CanardDB | Requêtes analytiques sur schéma en étoile |
+| API REST | FastAPI/Uvicorn | Exposition des données pour les consommateurs |
 
 ---
 
-## Level 3: Component Diagram (Pipeline)
+## Niveau 3 : diagramme de composants (pipeline)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
@@ -225,12 +226,32 @@ This document presents the system architecture using the C4 model (Context, Cont
 │  │  │                                                                              │  │ │
 │  │  │  • portfolio_variance()       • portfolio_return()                          │  │ │
 │  │  │  • negative_sharpe()          • optimize_weights()                          │  │ │
+│  │  │  • compute_efficient_frontier()  • _optimize_for_target_return()           │  │ │
 │  │  │                                                                              │  │ │
 │  │  │  ┌────────────────────────────────────────────────────────────────────────┐ │  │ │
-│  │  │  │  optimize_portfolio() - Main entry point                               │ │  │ │
-│  │  │  │    1. Read metrics from Silver                                         │ │  │ │
-│  │  │  │    2. Run scipy.optimize.minimize (SLSQP)                              │ │  │ │
-│  │  │  │    3. Write weights.json to Gold                                       │ │  │ │
+│  │  │  │  optimize_portfolio() - Max Sharpe weights → weights.json             │ │  │ │
+│  │  │  │  compute_and_save_frontier() - Efficient frontier → frontier.json     │ │  │ │
+│  │  │  └────────────────────────────────────────────────────────────────────────┘ │  │ │
+│  │  └─────────────────────────────────────────────────────────────────────────────┘  │ │
+│  │                                                                                     │ │
+│  └─────────────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                         │
+│                                    │                                                     │
+│                                    ▼                                                     │
+│  ┌────────────────────────────────────────────────────────────────────────────────────┐ │
+│  │                              BACKTEST COMPONENT                                     │ │
+│  │                                                                                     │ │
+│  │  ┌─────────────────────────────────────────────────────────────────────────────┐  │ │
+│  │  │                           backtest.py                                        │  │ │
+│  │  │                                                                              │  │ │
+│  │  │  • _create_rolling_windows()     • _optimize_on_window()                   │  │ │
+│  │  │  • _compute_portfolio_daily_returns()  • _compute_metrics()                │  │ │
+│  │  │  • _cumulative_values()          • _max_drawdown()                          │  │ │
+│  │  │                                                                              │  │ │
+│  │  │  ┌────────────────────────────────────────────────────────────────────────┐ │  │ │
+│  │  │  │  run_backtest() - Walk-forward validation → backtest.json             │ │  │ │
+│  │  │  │    Train on window → optimize → test on next window → repeat          │ │  │ │
+│  │  │  │    Compare: strategy vs equal-weight vs BTC-only                      │ │  │ │
 │  │  │  └────────────────────────────────────────────────────────────────────────┘ │  │ │
 │  │  └─────────────────────────────────────────────────────────────────────────────┘  │ │
 │  │                                                                                     │ │
@@ -241,7 +262,7 @@ This document presents the system architecture using the C4 model (Context, Cont
 
 ---
 
-## Level 3: Component Diagram (Storage)
+## Niveau 3 : Diagramme de composants (stockage)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
@@ -303,7 +324,7 @@ This document presents the system architecture using the C4 model (Context, Cont
 
 ---
 
-## Data Flow Diagram
+## Diagramme de flux de données
 
 ```
     ┌─────────────────┐
@@ -329,22 +350,34 @@ This document presents the system architecture using the C4 model (Context, Cont
                                          ▼
     ┌─────────────────┐         ┌─────────────────┐
     │   optimize.py   │────────▶│  data/output/   │
-    │    (Analyze)    │  JSON   │   GOLD ZONE     │
+    │  (Optimize)     │  JSON   │   GOLD ZONE     │
+    │  • weights.json │         │                 │
+    │  • frontier.json│         │                 │
     └─────────────────┘         └────────┬────────┘
                                          │
-                                         │ Load
-                                         ▼
-                                ┌─────────────────┐
-                                │  DuckDB DWH     │
-                                │  Star Schema    │
-                                └────────┬────────┘
-                                         │
-                                         │ Query
-                                         ▼
-                                ┌─────────────────┐
-                                │   FastAPI       │
-                                │   /portfolio    │
-                                └────────┬────────┘
+    ┌─────────────────┐                  │
+    │  backtest.py    │──── JSON ────────┤
+    │  (Backtest)     │                  │
+    │  • backtest.json│                  │
+    └─────────────────┘                  │
+          ▲                              │
+          │ Read raw                     │ Load
+          │ (Bronze)                     ▼
+          │                     ┌─────────────────┐
+          │                     │  DuckDB DWH     │
+          │                     │  Star Schema    │
+          │                     └────────┬────────┘
+          │                              │
+          │                              │ Query
+          │                              ▼
+          │                     ┌─────────────────┐
+          │                     │   FastAPI       │
+          │                     │  /portfolio     │
+          │                     │  /portfolio/    │
+          │                     │    frontier     │
+          │                     │  /portfolio/    │
+          │                     │    backtest     │
+          │                     └────────┬────────┘
                                          │
                                          │ JSON Response
                                          ▼
@@ -356,21 +389,22 @@ This document presents the system architecture using the C4 model (Context, Cont
 
 ---
 
-## Technology Stack Summary
+## Résumé de la pile technologique
 
-| Layer | Technology | Purpose |
+| Couche | Technologie | Objectif |
 |-------|------------|---------|
-| Orchestration | Apache Airflow 2.7 | DAG scheduling, monitoring |
-| Processing | Python 3.11 | ETL logic, optimization |
-| Compute | NumPy, SciPy | Matrix operations, SLSQP |
-| Storage (Lake) | Apache Parquet | Columnar file storage |
-| Storage (DWH) | DuckDB | Embedded OLAP database |
-| Serialization | PyArrow | Zero-copy data handling |
-| API | FastAPI + Uvicorn | REST endpoints |
-| Container | Docker, Compose | Deployment |
+| Orchestration | Apache Airflow 2.7 | Planification et surveillance DAG |
+| Traitement | Python3.11 | Logique ETL, optimisation |
+| Calculer | PyArrow, SciPy (facultatif) | Opérations matricielles, SLSQP (repli de recherche dans la grille) |
+| Stockage (Lac) | Parquet Apache | Stockage de fichiers en colonnes |
+| Stockage (ECS) | CanardDB | Base de données OLAP intégrée |
+| Sérialisation | PyArrow | Gestion des données sans copie |
+| API | FastAPI + Uvicorne | Points de terminaison REST |
+| Conteneur | Docker, Composer | Déploiement |
 
 ---
 
-*Document version: 1.0*
-*Last updated: 2025-02-17*
-*Author: [Your Name] (Data Engineer)*
+*Version du document : 1.1*
+*Dernière mise à jour : 2025-02-17*
+*Auteur : Laien Wu (ingénieur de données)*
+

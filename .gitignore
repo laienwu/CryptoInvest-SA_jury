@@ -43,3 +43,7 @@ logs/
 
 # Jupyter
 .ipynb_checkpoints/
+
+#Pdf
+pdf/
+*.pdf

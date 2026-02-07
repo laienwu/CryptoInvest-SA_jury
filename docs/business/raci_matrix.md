@@ -1,110 +1,110 @@
-# RACI Matrix - Portfolio Optimization Project
+# Matrice RACI - Projet d'optimisation de portefeuille
 
-## Team Members
+## Membres de l'équipe
 
-| Role | Name | Department |
+| Rôle | Nom | Département |
 |------|------|------------|
-| **PO** | Product Owner | Business |
-| **BA** | Business Analyst | Business |
-| **DE** | Data Engineer | Development |
-| **DA** | Data Analyst | Development |
-| **DO** | DevOps Engineer | IT Operations |
-| **SM** | Scrum Master | Project Management |
+| **PO** | Propriétaire de produit | Affaires |
+| **BA** | Analyste d'affaires | Affaires |
+| **DE** | Ingénieur de données | Développement |
+| **DA** | Analyste de données | Développement |
+| **FAIRE** | Ingénieur DevOps | Opérations informatiques |
+| **SM** | Maître Scrum | Gestion de projet |
 
 ---
 
-## RACI Legend
+## Légende RACI
 
-| Letter | Meaning | Description |
+| Lettre | Signification | Description |
 |--------|---------|-------------|
-| **R** | Responsible | Does the work |
-| **A** | Accountable | Final decision maker, only one per task |
-| **C** | Consulted | Provides input before decision |
-| **I** | Informed | Notified after decision |
+| **R** | Responsable | Fait le travail |
+| **A** | Responsable | Décideur final, un seul par tâche |
+| **C** | Consulté | Fournit des commentaires avant la décision |
+| **Je** | Informé | Notifié après décision |
 
 ---
 
-## Project Phases
+## Phases du projet
 
-### Phase 1: Initiation & Planning
+### Phase 1 : Initiation et planification
 
-| Activity | PO | BA | DE | DA | DO | SM |
+| Activité | PO | BA | DE | DA | FAIRE | SM |
 |----------|----|----|----|----|----|----|
-| Define business requirements | A | R | C | C | I | I |
-| Stakeholder interviews | C | R | I | I | I | I |
-| Project charter approval | A | R | I | I | I | C |
-| Technical feasibility study | C | I | R | C | C | I |
-| Resource allocation | A | I | C | C | C | R |
-| Sprint planning | C | C | R | R | R | A |
+| Définir les besoins métiers | Un | R | C | C | Je | Je |
+| Entretiens avec les parties prenantes | C | R | Je | Je | Je | Je |
+| Approbation de la charte du projet | Un | R | Je | Je | Je | C |
+| Etude de faisabilité technique | C | Je | R | C | C | Je |
+| Allocation des ressources | Un | Je | C | C | C | R |
+| Planification des sprints | C | C | R | R | R | A |
 
-### Phase 2: Data Collection (Bloc 2)
+### Phase 2 : Collecte de données (Bloc 2)
 
-| Activity | PO | BA | DE | DA | DO | SM |
+| Activité | PO | BA | DE | DA | FAIRE | SM |
 |----------|----|----|----|----|----|----|
-| API integration (Binance) | I | I | R | C | I | I |
-| Multi-source ingestion | I | C | R | C | I | I |
-| Data quality rules | C | R | A | C | I | I |
-| Storage architecture | I | I | A | C | C | I |
-| Database creation (MERISE) | I | C | R | C | I | I |
-| REST API development | I | C | R | I | C | I |
+| Intégration API (Binance) | Je | Je | R | C | Je | Je |
+| Ingestion multi-sources | Je | C | R | C | Je | Je |
+| Règles de qualité des données | C | R | Un | C | Je | Je |
+| Architecture de stockage | Je | Je | Un | C | C | Je |
+| Création de base de données (MERISE) | Je | C | R | C | Je | Je |
+| Développement d'API REST | Je | C | R | Je | C | I |
 
-### Phase 3: Data Warehouse (Bloc 3)
+### Phase 3 : Entrepôt de données (Bloc 3)
 
-| Activity | PO | BA | DE | DA | DO | SM |
+| Activité | PO | BA | DE | DA | FAIRE | SM |
 |----------|----|----|----|----|----|----|
-| Star schema modeling | I | C | R | A | I | I |
-| DuckDB implementation | I | I | R | C | I | I |
-| ETL pipeline development | I | I | R | C | C | I |
-| Airflow DAG creation | I | I | R | I | C | I |
-| SCD implementation | I | I | R | C | I | I |
-| DWH testing | I | C | R | R | I | I |
+| Modélisation du schéma en étoile | Je | C | R | Un | Je | Je |
+| Implémentation de DuckDB | Je | Je | R | C | Je | Je |
+| Développement de pipelines ETL | Je | Je | R | C | C | Je |
+| Création d'un DAG de flux d'air | Je | Je | R | Je | C | Je |
+| Implémentation SCD | Je | Je | R | C | Je | Je |
+| Test DWH | Je | C | R | R | Je | I |
 
-### Phase 4: Data Lake (Bloc 4)
+### Phase 4 : Data Lake (Bloc 4)
 
-| Activity | PO | BA | DE | DA | DO | SM |
+| Activité | PO | BA | DE | DA | FAIRE | SM |
 |----------|----|----|----|----|----|----|
-| Lake architecture design | I | C | A | C | C | I |
-| Docker infrastructure | I | I | C | I | R | I |
-| Data catalog creation | I | C | R | A | I | I |
-| RGPD compliance | A | R | C | C | C | I |
-| Governance rules | A | R | C | C | C | I |
+| Conception d'architecture lacustre | Je | C | Un | C | C | Je |
+| Infrastructure Docker | Je | Je | C | Je | R | Je |
+| Création de catalogue de données | Je | C | R | Un | Je | Je |
+| Conformité RGPD | Un | R | C | C | C | Je |
+| Règles de gouvernance | Un | R | C | C | C | I |
 
-### Phase 5: Deployment & Operations
+### Phase 5 : Déploiement et opérations
 
-| Activity | PO | BA | DE | DA | DO | SM |
+| Activité | PO | BA | DE | DA | FAIRE | SM |
 |----------|----|----|----|----|----|----|
-| Environment setup | I | I | C | I | R | I |
-| Deployment procedures | I | I | C | I | A | I |
-| Monitoring setup | I | I | C | I | R | I |
-| SLA definition | A | C | C | I | R | I |
-| Documentation review | C | C | R | R | R | A |
-| User training | C | R | C | C | I | I |
+| Configuration de l'environnement | Je | Je | C | Je | R | Je |
+| Procédures de déploiement | Je | Je | C | Je | Un | Je |
+| Configuration de la surveillance | Je | Je | C | Je | R | Je |
+| Définition SLA | Un | C | C | Je | R | Je |
+| Revue documentaire | C | C | R | R | R | UNE |
+| Formation des utilisateurs | C | R | C | C | Je | I |
 
-### Phase 6: Project Closure
+### Phase 6 : Clôture du projet
 
-| Activity | PO | BA | DE | DA | DO | SM |
+| Activité | PO | BA | DE | DA | FAIRE | SM |
 |----------|----|----|----|----|----|----|
-| Final demo | A | R | R | R | R | C |
-| Retrospective | C | C | R | R | R | A |
-| Knowledge transfer | I | C | R | R | R | I |
-| Project sign-off | A | C | I | I | I | R |
+| Démo finale | Un | R | R | R | R | C |
+| Rétrospective | C | C | R | R | R | UNE |
+| Transfert de connaissances | Je | C | R | R | R | Je |
+| Approbation du projet | Un | C | Je | Je | Je | R |
 
 ---
 
-## Communication Matrix
+## Matrice de communication
 
-| Stakeholder | Communication Type | Frequency | Owner |
+| Partie prenante | Type de communication | Fréquence | Propriétaire |
 |-------------|-------------------|-----------|-------|
-| Product Owner | Sprint Review | Bi-weekly | SM |
-| Business Analysts | Requirements Review | Weekly | BA |
-| Development Team | Daily Standup | Daily | SM |
-| IT Operations | Deployment Planning | Per release | DO |
-| All Stakeholders | Status Report | Weekly | SM |
-| Management | Steering Committee | Monthly | PO |
+| Propriétaire de produit | Revue de sprint | Bihebdomadaire | SM |
+| Analystes d'affaires | Examen des exigences | Hebdomadaire | BA |
+| Équipe de développement | Stand-up quotidien | Quotidien | SM |
+| Opérations informatiques | Planification du déploiement | Par version | FAIRE |
+| Toutes les parties prenantes | Rapport de situation | Hebdomadaire | SM |
+| Gestion | Comité directeur | Mensuel | PO |
 
 ---
 
-## Escalation Path
+## Chemin de remontée
 
 ```
 Level 1: Team Member → Scrum Master
@@ -118,12 +118,12 @@ Level 4: Steering Committee → Executive Sponsor
 
 ---
 
-## Approval Matrix
+## Matrice d'approbation
 
-| Decision Type | Approver | Backup |
+| Type de décision | Approbateur | Sauvegarde |
 |---------------|----------|--------|
-| Scope change | Product Owner | Steering Committee |
-| Technical architecture | Data Engineer | Tech Lead |
-| Budget allocation | Product Owner | Finance |
-| Go-live | Product Owner + DevOps | Steering Committee |
-| Security exception | IT Security | CTO |
+| Changement de périmètre | Propriétaire de produit | Comité directeur |
+| Architecture technique | Ingénieur de données | Responsable technique |
+| Allocation budgétaire | Propriétaire de produit | Finances |
+| Mise en ligne | Product Owner + DevOps | Comité directeur |
+| Exception de sécurité | Sécurité informatique | Directeur technique |

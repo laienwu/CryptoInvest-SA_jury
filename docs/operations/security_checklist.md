@@ -1,65 +1,65 @@
-# Security Checklist
+# Liste de contrôle de sécurité
 
-## Overview
+## Présentation
 
-This document provides security guidelines and checklists for the Portfolio Optimization Platform. All items should be reviewed before production deployment.
-
----
-
-## 1. Pre-Deployment Checklist
-
-### 1.1 Application Security
-
-| Item | Status | Notes |
-|------|--------|-------|
-| No hardcoded credentials | ☐ | Check all source files |
-| Environment variables for secrets | ☐ | Use .env file (not in git) |
-| Input validation on all endpoints | ☐ | Pydantic models enforce types |
-| SQL injection prevention | ☐ | Parameterized queries only |
-| XSS prevention | ☐ | API returns JSON only |
-| CORS configuration | ☐ | Restrict to known origins |
-| Rate limiting enabled | ☐ | Prevent DoS attacks |
-| Error messages sanitized | ☐ | No stack traces in production |
-
-### 1.2 Infrastructure Security
-
-| Item | Status | Notes |
-|------|--------|-------|
-| Docker images from trusted sources | ☐ | Official images only |
-| Containers run as non-root | ☐ | USER directive in Dockerfile |
-| Network isolation configured | ☐ | Docker network segmentation |
-| Volumes have restricted permissions | ☐ | 755 for dirs, 644 for files |
-| Ports exposed only as needed | ☐ | Minimize attack surface |
-| TLS/HTTPS enabled | ☐ | For production only |
-| Firewall rules configured | ☐ | Block unnecessary traffic |
-
-### 1.3 Data Security
-
-| Item | Status | Notes |
-|------|--------|-------|
-| No PII in logs | ☐ | Scrub sensitive data |
-| Data at rest encryption | ☐ | Volume encryption |
-| Data in transit encryption | ☐ | HTTPS for API |
-| Backup encryption | ☐ | Encrypted backup storage |
-| Data retention policy defined | ☐ | See data governance docs |
-| RGPD compliance verified | ☐ | No personal data processed |
+Ce document fournit des directives de sécurité et des listes de contrôle pour la plateforme d'optimisation de portefeuille. Tous les éléments doivent être examinés avant le déploiement en production.
 
 ---
 
-## 2. Credential Management
+## 1. Liste de contrôle préalable au déploiement
 
-### 2.1 Required Secrets
+### 1.1 Sécurité des applications
 
-| Secret | Storage | Rotation |
+| Article | Statut | Remarques |
+|------|--------|-------|
+| Aucune information d'identification codée en dur | ☐ | Vérifiez tous les fichiers sources |
+| Variables d'environnement pour les secrets | ☐ | Utilisez le fichier .env (pas dans git) |
+| Validation des entrées sur tous les points de terminaison | ☐ | Les modèles pydantiques appliquent les types |
+| Prévention des injections SQL | ☐ | Requêtes paramétrées uniquement |
+| Prévention XSS | ☐ | L'API renvoie JSON uniquement |
+| Configuration CORS | ☐ | Restreindre aux origines connues |
+| Limitation de débit activée | ☐ | Prévenir les attaques DoS |
+| Messages d'erreur nettoyés | ☐ | Aucune trace de pile en production |
+
+### 1.2 Sécurité de l'infrastructure
+
+| Article | Statut | Remarques |
+|------|--------|-------|
+| Images Docker provenant de sources fiables | ☐ | Images officielles uniquement |
+| Les conteneurs s'exécutent en tant que non-root | ☐ | Directive USER dans Dockerfile |
+| Isolation du réseau configurée | ☐ | Segmentation du réseau Docker |
+| Les volumes ont des autorisations restreintes | ☐ | 755 pour les répertoires, 644 pour les fichiers |
+| Ports exposés uniquement en cas de besoin | ☐ | Minimiser la surface d'attaque |
+| TLS/HTTPS activé | ☐ | Pour la production uniquement |
+| Règles de pare-feu configurées | ☐ | Bloquer le trafic inutile |
+
+### 1.3 Sécurité des données
+
+| Article | Statut | Remarques |
+|------|--------|-------|
+| Aucune information personnelle dans les journaux | ☐ | Effacer les données sensibles |
+| Cryptage des données au repos | ☐ | Chiffrement de volume |
+| Chiffrement des données en transit | ☐ | HTTPS pour API |
+| Cryptage de sauvegarde | ☐ | Stockage de sauvegarde crypté |
+| Politique de conservation des données définie | ☐ | Voir les documents sur la gouvernance des données |
+| Conformité RGPD vérifiée | ☐ | Aucune donnée personnelle traitée |
+
+---
+
+## 2. Gestion des informations d'identification
+
+### 2.1 Secrets requis
+
+| Secrets | Stockage | Rotation |
 |--------|---------|----------|
-| Binance API key | Environment variable | Annually |
-| PostgreSQL password | Docker secret / .env | Quarterly |
-| Airflow admin password | Docker secret / .env | Quarterly |
-| SMTP credentials (alerts) | Docker secret / .env | Annually |
+| Clé API Binance | Variable d'environnement | Annuellement |
+| Mot de passe PostgreSQL | Secret Docker / .env | Trimestriel |
+| Mot de passe administrateur Airflow | Secret Docker / .env | Trimestriel |
+| Identifiants SMTP (alertes) | Secret Docker / .env | Annuellement |
 
-### 2.2 Secret Storage Guidelines
+### 2.2 Directives de stockage secret
 
-**DO:**
+**FAIRE :**
 ```bash
 # Use environment variables
 export BINANCE_API_KEY="your-key-here"
@@ -74,7 +74,7 @@ secrets:
 BINANCE_API_KEY=your-key-here
 ```
 
-**DON'T:**
+**À NE PAS FAIRE :**
 ```python
 # NEVER hardcode secrets
 API_KEY = "abc123"  # BAD!
@@ -83,7 +83,7 @@ API_KEY = "abc123"  # BAD!
 # .env should be in .gitignore
 ```
 
-### 2.3 .gitignore Requirements
+### Exigences 2.3 .gitignore
 
 ```gitignore
 # Secrets - NEVER commit
@@ -100,21 +100,21 @@ config.local.toml
 
 ---
 
-## 3. API Security
+## 3. Sécurité des API
 
-### 3.1 Current State (MVP)
+### 3.1 État actuel (MVP)
 
-| Control | Status | Notes |
+| Contrôle | Statut | Remarques |
 |---------|--------|-------|
-| Authentication | ❌ Not implemented | Internal use only |
-| Authorization | ❌ Not implemented | Internal use only |
-| Rate limiting | ❌ Not implemented | Post-MVP |
-| HTTPS | ❌ Not implemented | Localhost only |
-| API keys | ❌ Not implemented | Post-MVP |
+| Authentification | ❌ Non implémenté | Usage interne uniquement |
+| Autorisation | ❌ Non implémenté | Usage interne uniquement |
+| Limitation du taux | ❌ Non implémenté | Post-MVP |
+| HTTPS | ❌ Non implémenté | Localhost uniquement |
+| Clés API | ❌ Non implémenté | Post-MVP |
 
-### 3.2 Production Requirements
+### 3.2 Exigences de production
 
-Before external exposure, implement:
+Avant l'exposition externe, mettez en œuvre :
 
 ```python
 # Example: API key authentication
@@ -133,7 +133,7 @@ def get_portfolio():
     ...
 ```
 
-### 3.3 CORS Configuration
+### 3.3 Configuration CORS
 
 ```python
 from fastapi.middleware.cors import CORSMiddleware
@@ -147,7 +147,7 @@ app.add_middleware(
 )
 ```
 
-### 3.4 Rate Limiting
+### 3.4 Limitation du débit
 
 ```python
 from slowapi import Limiter
@@ -163,9 +163,9 @@ def get_portfolio():
 
 ---
 
-## 4. Container Security
+## 4. Sécurité des conteneurs
 
-### 4.1 Dockerfile Best Practices
+### 4.1 Bonnes pratiques Dockerfile
 
 ```dockerfile
 # Use specific version tags (not :latest)
@@ -187,7 +187,7 @@ COPY --chown=appuser:appuser pyproject.toml ./
 # Use multi-stage builds to reduce image size
 ```
 
-### 4.2 Docker Compose Security
+### 4.2 Sécurité de Docker Compose
 
 ```yaml
 services:
@@ -216,7 +216,7 @@ services:
       - no-new-privileges:true
 ```
 
-### 4.3 Image Scanning
+### 4.3 Numérisation d'images
 
 ```bash
 # Scan image for vulnerabilities
@@ -228,9 +228,9 @@ trivy image portfolio-api:latest
 
 ---
 
-## 5. Network Security
+## 5. Sécurité du réseau
 
-### 5.1 Network Architecture
+### 5.1 Architecture du réseau
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -262,16 +262,16 @@ trivy image portfolio-api:latest
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.2 Firewall Rules
+### 5.2 Règles de pare-feu
 
-| Source | Destination | Port | Protocol | Action |
+| Source | Destination | Port | Protocole | Action |
 |--------|-------------|------|----------|--------|
-| Internet | API | 443 | HTTPS | Allow |
-| Internal | Airflow | 8081 | HTTP | Allow |
-| API | PostgreSQL | 5432 | TCP | Allow |
-| * | * | * | * | Deny |
+| Internet | API | 443 | HTTPS | Autoriser |
+| Interne | Flux d'air | 8081 | HTTP | Autoriser |
+| API | PostgreSQL | 5432 | TCP | Autoriser |
+| * | * | * | * | Refuser |
 
-### 5.3 Docker Network Isolation
+### 5.3 Isolation du réseau Docker
 
 ```yaml
 networks:
@@ -294,19 +294,19 @@ services:
 
 ---
 
-## 6. Monitoring & Audit
+## 6. Surveillance et audit
 
-### 6.1 Security Logging
+### 6.1 Journalisation de sécurité
 
-| Event | Log Level | Retention |
+| Événement | Niveau de journalisation | Rétention |
 |-------|-----------|-----------|
-| Authentication attempts | INFO | 90 days |
-| Failed authentication | WARNING | 1 year |
-| API errors (4xx, 5xx) | WARNING | 90 days |
-| Configuration changes | INFO | 1 year |
-| Admin actions | INFO | 1 year |
+| Tentatives d'authentification | INFOS | 90 jours |
+| Échec de l'authentification | AVERTISSEMENT | 1 an |
+| Erreurs API (4xx, 5xx) | AVERTISSEMENT | 90 jours |
+| Modifications de configuration | INFOS | 1 an |
+| Actions d'administration | INFOS | 1 an |
 
-### 6.2 Audit Trail
+### 6.2 Piste d'audit
 
 ```python
 # Log all API requests
@@ -330,20 +330,20 @@ async def log_requests(request: Request, call_next):
     return response
 ```
 
-### 6.3 Security Alerts
+### 6.3 Alertes de sécurité
 
-| Alert | Condition | Action |
+| Alerte | État | Action |
 |-------|-----------|--------|
-| Brute force | > 10 failed auth/min | Block IP, notify |
-| Unusual traffic | > 1000 req/min | Rate limit, investigate |
-| Error spike | > 10% error rate | Investigate |
-| Config change | Any | Audit, notify |
+| Force brute | > 10 échecs d'authentification/min | Bloquer l'adresse IP, avertir |
+| Trafic inhabituel | > 1000 req/min | Limite de débit, enquêter |
+| Pic d'erreur | > 10 % de taux d'erreur | Enquêter |
+| Changement de configuration | N'importe quel | Auditer, notifier |
 
 ---
 
-## 7. Vulnerability Management
+## 7. Gestion des vulnérabilités
 
-### 7.1 Dependency Scanning
+### 7.1 Analyse des dépendances
 
 ```bash
 # Check Python dependencies
@@ -356,82 +356,82 @@ safety check
 pip install --upgrade -r requirements.txt
 ```
 
-### 7.2 Update Schedule
+### Calendrier de mise à jour 7.2
 
-| Component | Frequency | Notes |
+| Composant | Fréquence | Remarques |
 |-----------|-----------|-------|
-| OS packages | Monthly | Security patches |
-| Python deps | Monthly | Check for CVEs |
-| Docker images | Monthly | Rebuild with updates |
-| Framework (FastAPI) | Quarterly | Minor version updates |
+| Paquets de système d'exploitation | Mensuel | Correctifs de sécurité |
+| Dépôts Python | Mensuel | Rechercher les CVE |
+| Images Docker | Mensuel | Reconstruire avec les mises à jour |
+| Cadre (FastAPI) | Trimestriel | Mises à jour des versions mineures |
 
-### 7.3 CVE Response
+### 7.3 Réponse CVE
 
-| Severity | Response Time | Action |
+| Gravité | Temps de réponse | Action |
 |----------|---------------|--------|
-| Critical | 24 hours | Immediate patch |
-| High | 7 days | Priority patch |
-| Medium | 30 days | Next release |
-| Low | 90 days | Best effort |
+| Critique | 24 heures | Patch immédiat |
+| Élevé | 7 jours | Correctif prioritaire |
+| Moyen | 30 jours | Prochaine version |
+| Faible | 90 jours | Meilleur effort |
 
 ---
 
-## 8. Incident Response
+## 8. Réponse aux incidents
 
-### 8.1 Security Incident Types
+### 8.1 Types d'incidents de sécurité
 
-| Type | Severity | Initial Response |
+| Tapez | Gravité | Réponse initiale |
 |------|----------|------------------|
-| Data breach | Critical | Isolate, investigate, notify |
-| Unauthorized access | Critical | Revoke access, investigate |
-| DDoS attack | High | Enable mitigation, investigate |
-| Malware detection | High | Isolate, scan, clean |
-| Vulnerability discovered | Medium | Assess, patch, monitor |
+| Violation de données | Critique | Isoler, enquêter, avertir |
+| Accès non autorisé | Critique | Révoquer l'accès, enquêter |
+| Attaque DDoS | Élevé | Activer l'atténuation, enquêter |
+| Détection des logiciels malveillants | Élevé | Isoler, scanner, nettoyer |
+| Vulnérabilité découverte | Moyen | Évaluer, corriger, surveiller |
 
-### 8.2 Response Checklist
+### 8.2 Liste de contrôle de réponse
 
-1. **Detect:** Identify the incident
-2. **Contain:** Isolate affected systems
-3. **Investigate:** Determine scope and impact
-4. **Eradicate:** Remove threat
-5. **Recover:** Restore services
-6. **Learn:** Post-incident review
+1. **Détecter :** Identifiez l'incident
+2. **Contenir :** Isoler les systèmes concernés
+3. **Enquête :** Déterminer la portée et l'impact
+4. **Éradiquer :** Supprimer la menace
+5. **Récupération :** Services de restauration
+6. **En savoir :** Examen post-incident
 
-See `incident_response.md` for detailed procedures.
+Voir `incident_response.md` pour les procédures détaillées.
 
 ---
 
-## 9. Compliance
+## 9. Conformité
 
-### 9.1 RGPD Compliance
+### 9.1 RGPD Conformité
 
-| Requirement | Status | Notes |
+| Exigence | Statut | Remarques |
 |-------------|--------|-------|
-| Data inventory | ✅ | See data catalog |
-| Legal basis documented | ✅ | Market data = legitimate interest |
-| No personal data processed | ✅ | Only market prices |
-| Data retention policy | ✅ | 90 days rolling window |
-| Right to erasure | N/A | No personal data |
+| Inventaire des données | ✅ | Voir le catalogue de données |
+| Base juridique documentée | ✅ | Données de marché = intérêt légitime |
+| Aucune donnée personnelle traitée | ✅ | Uniquement les prix du marché |
+| Politique de conservation des données | ✅ | Fenêtre glissante de 90 jours |
+| Droit à l'effacement | N/A | Aucune donnée personnelle |
 
-### 9.2 Security Standards
+### 9.2 Normes de sécurité
 
-| Standard | Relevant Controls | Status |
+| Norme | Contrôles pertinents | Statut |
 |----------|-------------------|--------|
-| OWASP Top 10 | All | Reviewed |
-| CIS Docker Benchmark | Container security | Partial |
-| SOC 2 | Access control, audit | N/A (internal) |
+| Top 10 de l'OWASP | Tout | Révisé |
+| Référence Docker CIS | Sécurité des conteneurs | Partiel |
+| SOC2 | Contrôle d'accès, audit | N/A (interne) |
 
 ---
 
-## 10. Sign-Off
+## 10. Signature
 
-| Role | Name | Date | Signature |
+| Rôle | Nom | Dates | Signature |
 |------|------|------|-----------|
 | DevOps | Pierre Durand | ______ | _________ |
-| Security Review | Thomas Leroy | ______ | _________ |
-| CTO Approval | François Martin | ______ | _________ |
+| Examen de sécurité | Thomas Leroy | ______ | _________ |
+| Approbation du CTO | François Martin | ______ | _________ |
 
 ---
 
-*Last security review: 2025-02-17*
-*Next scheduled review: 2025-05-17*
+*Dernier examen de sécurité : 2025-02-17*
+*Prochain examen programmé : 2025-05-17*

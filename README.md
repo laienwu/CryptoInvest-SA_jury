@@ -1,21 +1,21 @@
-# Binance Portfolio Optimization
+# Optimisation du portefeuille Binance
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-green.svg)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/tests-124%20passed-brightgreen.svg)]()
-[![Coverage](https://img.shields.io/badge/coverage-43%25-yellow.svg)]()
+ [![Tests](https://img.shields.io/badge/tests-124%20passed-brightgreen.svg)]()
+[![Couverture](https://img.shields.io/badge/coverage-43%25-yellow.svg)]()
 
-A production-ready data engineering platform for cryptocurrency portfolio optimization using Binance market data. Built as a certification project demonstrating modern data engineering practices.
+A plate-forme d'ingénierie de données prête pour la production pour l'optimisation du portefeuille de crypto-monnaies à l'aide des données de marché Binance. Construit comme un projet de certification démontrant des pratiques modernes d'ingénierie des données.
 
-## Features
+## Caractéristiques
 
-- **Multi-Source Data Ingestion** - 5 source types: REST API, CSV, JSON, Web Scraping, PostgreSQL
-- **Medallion Architecture** - Bronze/Silver/Gold data zones with Parquet storage
-- **Star Schema Warehouse** - DuckDB-powered analytical queries
-- **Markowitz Optimization** - Mean-variance portfolio optimization maximizing Sharpe ratio
-- **REST API** - FastAPI with automatic OpenAPI documentation
-- **Interactive Dashboard** - Streamlit visualization with Plotly charts
-- **Orchestration** - Airflow DAG for scheduled pipeline execution
+- **Ingestion de données multi-sources** - 5 types de sources : API REST, CSV, JSON, Web Scraping, PostgreSQL
+- **Architecture médaillon** - Zones de données Bronze/Argent/Or avec Parquet stockage
+- **Star Schema Warehouse** - Requêtes analytiques basées sur DuckDB
+- **Optimisation de Markowitz** - Optimisation du portefeuille à variance moyenne maximisant le ratio de Sharpe
+- **API REST** - FastAPI avec documentation OpenAPI automatique
+- **Tableau de bord interactif** - Visualisation rationalisée avec Plotly charts
+- **Orchestration** – DAG Airflow pour l'exécution planifiée du pipeline
 
 ## Architecture
 
@@ -45,13 +45,13 @@ A production-ready data engineering platform for cryptocurrency portfolio optimi
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Quick Start
+## Démarrage rapide
 
-### Prerequisites
+### Prérequis
 
 - Python 3.13+
-- [uv](https://github.com/astral-sh/uv) (recommended) or pip
-- Docker & Docker Compose (optional)
+- [uv](https://github.com/astral-sh/uv) (recommandé) ou pip
+- Docker & Docker Compose (facultatif)
 
 ### Installation
 
@@ -67,7 +67,7 @@ uv sync
 pip install -e .
 ```
 
-### Run with Docker (Recommended)
+### Exécuter avec Docker (recommandé)
 
 ```bash
 # Start API + Dashboard
@@ -78,7 +78,7 @@ docker compose up api streamlit
 # - Dashboard: http://localhost:8501
 ```
 
-### Run Locally
+### Exécuter localement
 
 ```bash
 # 1. Run the pipeline
@@ -100,29 +100,29 @@ uv run uvicorn src.api.main:app --reload
 uv run streamlit run src/dashboard/app.py
 ```
 
-## API Endpoints
+## Points de terminaison de l'API
 
-| Endpoint | Description |
+| Point de terminaison | Description |
 |----------|-------------|
-| `GET /` | Health check |
-| `GET /symbols` | List available symbols |
-| `GET /klines/{symbol}` | Raw OHLCV data |
-| `GET /metrics` | Available metrics |
-| `GET /metrics/{name}` | Specific metric (returns, volatility, correlation, covariance) |
-| `GET /portfolio` | Optimal portfolio weights |
-| `GET /portfolio/summary` | Portfolio KPIs |
+| `GET /` | Bilan de santé |
+| `GET /symbols` | Liste des symboles disponibles |
+| `GET /klines/{symbol}` | Données brutes OHLCV |
+| `GET /metrics` | Métriques disponibles |
+| `GET /metrics/{name}` | Métrique spécifique (rendements, volatilité, corrélation, covariance) |
+| `GET /portfolio` | Pondérations optimales du portefeuille |
+| `GET /portfolio/summary` | KPI du portefeuille |
 
-## Dashboard
+## Tableau de bord
 
-The Streamlit dashboard provides:
+Le tableau de bord Streamlit fournit :
 
-- **KPI Cards** - Expected return, volatility, Sharpe ratio
-- **Allocation Chart** - Portfolio weights pie chart
-- **Price Charts** - OHLCV data per symbol
-- **Correlation Heatmap** - Asset correlation matrix
-- **Volatility Comparison** - Bar chart by symbol
+- **Cartes KPI** - Rendement attendu, volatilité, ratio de Sharpe
+- **Tableau d'allocation** - Graphique des pondérations du portefeuille chart
+- **Graphiques de prix** - Données OHLCV par symbole
+- **Carte thermique de corrélation** - Matrice de corrélation des actifs
+- **Comparaison de volatilité** - Graphique à barres par symbole
 
-## Testing
+## Test
 
 ```bash
 # Run all tests
@@ -134,7 +134,7 @@ uv run pytest tests/ --cov=src --cov-report=term-missing
 # Results: 124 tests, 43% coverage
 ```
 
-## Project Structure
+## Structure du projet
 
 ```
 src/
@@ -160,7 +160,7 @@ data/                        # Data zones (bronze/silver/gold)
 
 ## Configuration
 
-Edit `config.toml`:
+Modifier `config.toml` :
 
 ```toml
 [portfolio]
@@ -172,58 +172,58 @@ period_days = 90
 risk_free_rate = 0.05
 ```
 
-## Key Technologies
+## Technologies clés
 
-| Component | Technology |
+| Composant | Technologie |
 |-----------|------------|
-| Storage | Apache Parquet, DuckDB |
+| Stockage | Parquet Apache, DuckDB |
 | API | FastAPI, Uvicorn |
-| Dashboard | Streamlit, Plotly |
-| Orchestration | Apache Airflow |
-| Data Processing | PyArrow (no pandas) |
-| Containerization | Docker, Docker Compose |
+| Tableau de bord | Streamlit, Plotly |
+| Orchestration | Apache Airflow |
+| Traitement des données | PyArrow (pas de pandas) |
+| Conteneurisation | Docker, Docker Compose |
 
 ## Documentation
 
-- [Architecture (C4 Model)](docs/architecture/c4_architecture.md)
-- [API Specification (OpenAPI)](docs/architecture/api_specification.yaml)
-- [Data Catalog](docs/rapport/09_catalogue_donnees.md)
-- [RGPD Compliance](docs/rapport/07_rgpd.md)
+- [Architecture (modèle C4)](docs/architecture/c4_architecture.md)
+- [Spécification API (OpenAPI)](docs/architecture/api_specification.yaml)
+- [Données Catalogue](docs/rapport/09_catalogue_donnees.md)
+- [Conformité RGPD](docs/rapport/07_rgpd.md)
 
-### Architecture Decision Records
+### Enregistrements de décisions d'architecture
 
-- [ADR-001: Parquet Storage](docs/architecture/adr/001_storage_parquet.md)
-- [ADR-002: DuckDB Warehouse](docs/architecture/adr/002_duckdb_warehouse.md)
-- [ADR-003: PyArrow over Pandas](docs/architecture/adr/003_no_pandas.md)
-- [ADR-004: FastAPI](docs/architecture/adr/004_fastapi_exposure.md)
-- [ADR-005: Airflow Orchestration](docs/architecture/adr/005_airflow_orchestration.md)
+- [ADR-001 : Stockage Parquet](docs/architecture/adr/001_storage_parquet.md)
+- [ADR-002 : DuckDB Warehouse](docs/architecture/adr/002_duckdb_warehouse.md)
+- [ADR-003 : PyArrow sur Pandas](docs/architecture/adr/003_no_pandas.md)
+- [ADR-004 : FastAPI](docs/architecture/adr/004_fastapi_exposure.md)
+- [ADR-005 : Flux d'air Orchestration](docs/architecture/adr/005_airflow_orchestration.md)
 
-## Financial Formulas
+## Formules financières
 
-**Log Returns:**
+**Renvois de journaux :**
 ```
 r_t = ln(P_t / P_{t-1})
 ```
 
-**Annualized Volatility:**
+**Volatilité annualisée :**
 ```
 σ = std(r) × √365
 ```
 
-**Sharpe Ratio:**
+**Rapport de netteté :**
 ```
 S = (E[R] - Rf) / σ
 ```
 
-**Portfolio Variance:**
+**Écart de portefeuille :**
 ```
 σ²_p = w' × Cov × w
 ```
 
-## License
+## Licence
 
-This project is part of a Data Engineer certification (RNCP Level 7).
+Ce projet fait partie d'une certification Data Engineer (RNCP Niveau 7).
 
-## Author
+## Auteur
 
-Data Engineer Certification Project - 2025
+Projet de certification Data Engineer - 2025

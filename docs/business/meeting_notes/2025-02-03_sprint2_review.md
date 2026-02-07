@@ -1,42 +1,42 @@
-# Sprint 2 Review - Data Processing & API
+# Revue Sprint 2 - Traitement des données et API
 
-**Date:** 2025-02-03
-**Time:** 14:00 - 15:30
-**Sprint:** 2 (Data Processing)
+**Date :** 03/02/2025
+**Heure :** 14h00 - 15h30
+**Sprint :** 2 (Traitement des données)
 
-## Attendees
+## Participants
 
-| Name | Role | Present |
+| Nom | Rôle | Présent |
 |------|------|---------|
-| Marie Dupont | Product Owner | ✓ |
-| Jean Martin | Business Analyst | ✓ |
-| [Your Name] | Data Engineer | ✓ |
-| Sophie Bernard | Data Analyst | ✓ |
-| Pierre Durand | DevOps Engineer | ✓ |
-| Lucas Petit | Scrum Master | ✓ |
-| Thomas Leroy | IT Security | ✓ (Guest) |
+| Marie Dupont | Propriétaire de produit | ✓ |
+| Jean-Martin | Analyste d'affaires | ✓ |
+| Laien Wu | Ingénieur de données | ✓ |
+| Sophie Bernard | Analyste de données | ✓ |
+| Pierre Durand | Ingénieur DevOps | ✓ |
+| Lucas Petit | Maître Scrum | ✓ |
+| Thomas Leroy | Sécurité informatique | ✓ (Invité) |
 
 ---
 
-## Sprint Goal
+## Objectif de sprint
 
-> Implement financial metrics calculation, DuckDB Data Warehouse, and REST API.
+> Mettre en œuvre le calcul des mesures financières, l'entrepôt de données DuckDB et l'API REST.
 
-**Goal Status:** ✅ ACHIEVED
+**État de l'objectif :** ✅ ATTEINT
 
 ---
 
-## Demo Summary
+## Résumé de la démonstration
 
-### 1. Financial Metrics Calculation ([Your Name])
+### 1. Calcul des mesures financières (Laien)
 
-**Demonstrated:**
-- Log returns calculation: `r_t = ln(P_t / P_{t-1})`
-- Annualized volatility: `σ × √365`
-- Correlation matrix (Pearson)
-- Covariance matrix (annualized)
+**Démontré :**
+- Calcul des rendements logarithmiques : `r_t = ln(P_t / P_{t-1})`
+- Volatilité annualisée : `σ × √365`
+- Matrice de corrélation (Pearson)
+- Matrice de covariance (annualisé)
 
-**Sample Output:**
+**Exemple de résultat :**
 ```
 Volatility:
   BTCUSDT: 45.2% annualized
@@ -50,18 +50,18 @@ Correlation Matrix:
   SOL   0.72   0.78   1.00
 ```
 
-**Validation:**
-- Sophie verified calculations match Excel reference (within 0.1%)
+**Validation :**
+- Les calculs vérifiés par Sophie correspondent à la référence Excel (à 0,1 %)
 
-### 2. DuckDB Data Warehouse ([Your Name])
+### 2. DuckDB Data Warehouse (Laien)
 
-**Demonstrated:**
-- Star schema implementation
-- `fact_prices` - OHLCV data
-- `dim_symbol` - Symbol dimension
-- `dim_date` - Date dimension with calendar attributes
+**Démontré :**
+- Schéma en étoile mise en œuvre
+- `fact_prices` - Données OHLCV
+- `dim_symbol` - Dimension de symbole
+- `dim_date` - Dimension de date avec attributs de calendrier
 
-**Live SQL Query:**
+**Requête SQL en direct :**
 ```sql
 SELECT symbol, AVG(close) as avg_price, COUNT(*) as records
 FROM fact_prices
@@ -69,108 +69,109 @@ GROUP BY symbol
 ORDER BY avg_price DESC;
 ```
 
-**Performance:** Query on 450 records in < 10ms
+**Performance :** Requête sur 450 enregistrements en < 10 ms
 
-### 3. REST API (Sophie)
+### 3. API REST (Sophie)
 
-**Demonstrated:**
-- `GET /` - Health check
-- `GET /symbols` - List available symbols
-- `GET /klines/BTCUSDT` - Get price history
-- `GET /metrics` - List available metrics
-- `GET /portfolio` - Get optimal weights
+**Démontré :**
+- `GET /` - Santé check
+- `GET /symbols` - Liste des symboles disponibles
+- `GET /klines/BTCUSDT` - Obtenir l'historique des prix
+- `GET /metrics` - Liste des métriques disponibles
+- `GET /portfolio` - Obtenir les pondérations optimales
 
-**OpenAPI Documentation:**
-- Auto-generated at `/docs`
-- All endpoints documented with examples
+**OpenAPI Documentation :**
+- Généré automatiquement à `/docs`
+- Tous les points de terminaison documentés avec des exemples
 
-**Response Time:** All endpoints < 200ms
+**Temps de réponse :** Tous les points de terminaison < 200 ms
 
-### 4. Docker Deployment (Pierre)
+### 4. Déploiement de Docker (Pierre)
 
-**Demonstrated:**
-- API container running on port 8000
-- PostgreSQL benchmarks on port 5433
-- Health check endpoint working
-- Restart policy configured
+**Démontré :**
+- Conteneur API exécuté sur le port 8000
+- Benchmarks PostgreSQL sur le port 5433
+- Le point de terminaison du contrôle de santé fonctionne
+- Politique de redémarrage configuré
 
 ---
 
-## User Stories Completed
+## User Stories terminées
 
-| Story ID | Title | Points | Status |
+| Identifiant de l'histoire | Titre | Points | Statut |
 |----------|-------|--------|--------|
-| US-003 | Calculate Financial Metrics | 5 | ✅ Done |
-| US-007 | REST API for Data Access | 5 | ✅ Done |
-| US-008 | SQL Query Interface | 5 | ✅ Done |
+| US-003 | Calculer les mesures financières | 5 | ✅ Terminé |
+| US-007 | API REST pour l'accès aux données | 5 | ✅ Terminé |
+| US-008 | Interface de requête SQL | 5 | ✅ Terminé |
 
-**Velocity:** 15 story points (vs 13 in Sprint 1)
+**Vitesse :** 15 points d'histoire (contre 13 dans le Sprint 1)
 
 ---
 
-## Stakeholder Feedback
+## Commentaires des parties prenantes
 
 **Marie (PO):**
-> "The API demo was impressive. This is exactly what we need for the dashboard integration."
+> "La démo de l'API était impressionnante. C'est exactement ce dont nous avons besoin pour l'intégration du tableau de bord."
 
 **Jean (BA):**
-> "The correlation matrix will be very useful for diversification analysis. Can we export to Excel?"
+> "La matrice de corrélation sera très utile pour l'analyse de diversification. Pouvons-nous exporter vers Excel?"
 
-**Action:** Add CSV export endpoint in Sprint 4
+**Action :** Ajouter un point de terminaison d'exportation CSV dans Sprint 4
 
-**Thomas (Security):**
-> "API currently has no authentication. Is this acceptable?"
+**Thomas (Sécurité) :**
+> "L'API n'a actuellement aucune authentification. Est-ce acceptable ?"
 
-**Discussion:**
-- MVP scope = no auth (internal use only)
-- Production would need API keys or OAuth
-- Documented as known limitation
+**Discussion :**
+- Portée MVP = pas d'authentification (usage interne uniquement)
+- La production serait nécessaire Clés API ou OAuth
+ – Documentée comme limitation connue
 
 ---
 
-## Technical Debt Identified
+## Dette technique identifiée
 
-| Item | Priority | Sprint |
+| Article | Priorité | Sprint |
 |------|----------|--------|
-| Add API authentication | Medium | Post-MVP |
-| Add request rate limiting | Low | Post-MVP |
-| Improve error messages | Low | Sprint 4 |
+| Ajouter l'authentification API | Moyen | Post-MVP |
+| Ajouter une limitation du taux de requête | Faible | Post-MVP |
+| Améliorer les messages d'erreur | Faible | Sprint 4 |
 
 ---
 
-## Sprint 3 Preview
+## Aperçu de Sprint 3
 
-**Goal:** Implement Markowitz optimization and Airflow orchestration
+**Objectif :** Mettre en œuvre l'optimisation de Markowitz et l'orchestration d'Airflow
 
-**Stories planned:**
-- US-005: Markowitz Optimization (8 pts)
-- US-009: Automated Pipeline Scheduling (5 pts)
+**Stories prévues :**
+- US-005 : Optimisation de Markowitz (8 pts)
+- US-009 : Planification automatisée des pipelines (5 pts)
 
-**Capacity:** 13 points
+**Capacité :** 13 points
 
 ---
 
-## Metrics
+## Métriques
 
-| Metric | Sprint 1 | Sprint 2 | Trend |
+| Métrique | Sprint 1 | Sprint 2 | Tendance |
 |--------|----------|----------|-------|
-| Velocity | 13 | 15 | ↑ |
-| Bugs found | 2 | 1 | ↓ |
-| Tech debt items | 1 | 3 | ↑ |
-| Test coverage | 0% | 15% | ↑ |
+| Vitesse | 13 | 15 | ↑ |
+| Bogues trouvés | 2 | 1 | ↓ |
+| Éléments de dette technologique | 1 | 3 | ↑ |
+| Couverture des tests | 0% | 15% | ↑ |
 
 ---
 
-## Risk Update
+## Mise à jour des risques
 
-| Risk | Status | Notes |
+| Risque | Statut | Remarques |
 |------|--------|-------|
-| Binance API changes | Green | No issues |
-| Data quality | Green | Validation working |
-| Timeline | Green | On track |
-| Single point of failure | Yellow | Need monitoring |
+| Modifications de l'API Binance | Vert | Aucun problème |
+| Qualité des données | Vert | Validation en cours |
+| Chronologie | Vert | En bonne voie |
+| Point de défaillance unique | Jaune | Besoin de suivi |
 
 ---
 
-*Minutes recorded by: Lucas Petit*
-*Sprint accepted by: Marie Dupont (Product Owner)*
+*Compte-rendu enregistré par : Lucas Petit*
+*Sprint accepté par : Marie Dupont (Product Owner)*
+
