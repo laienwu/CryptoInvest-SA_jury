@@ -196,7 +196,7 @@ def main():
     st.sidebar.title("Navigation")
     page = st.sidebar.radio(
         "Select Page",
-        ["Dashboard", "Symbols", "Metrics"],
+        ["Dashboard", "Symbols", "Metrics", "Frontier", "Backtest"],
     )
 
     st.sidebar.markdown("---")
@@ -284,6 +284,227 @@ def main():
                         render_volatility_chart()
         else:
             st.warning("No metrics available")
+
+    elif page == "Frontier":
+        st.title("Efficient Frontier")
+
+        frontier_data = fetch_api("/portfolio/frontier")
+        if frontier_data:
+            symbols = frontier_data.get("symbols", [])
+            frontier = frontier_data.get("frontier", [])
+            max_sharpe = frontier_data.get("max_sharpe", {})
+            min_var = frontier_data.get("min_variance", {})
+            assets = frontier_data.get("assets", [])
+            cml = frontier_data.get("capital_market_line", {})
+            rf = frontier_data.get("risk_free_rate", 0.05)
+
+            fig = go.Figure()
+
+            # Frontier curve
+            if frontier:
+                fig.add_trace(go.Scatter(
+                    x=[p["volatility"] for p in frontier],
+                    y=[p["return"] for p in frontier],
+                    mode="lines",
+                    name="Efficient Frontier",
+                    line={"color": "#1f77b4", "width": 3},
+                ))
+
+            # Individual assets
+            if assets:
+                asset_labels = [
+                    symbols[a["symbol_index"]] if a["symbol_index"] < len(symbols) else f"Asset {a['symbol_index']}"
+                    for a in assets
+                ]
+                fig.add_trace(go.Scatter(
+                    x=[a["volatility"] for a in assets],
+                    y=[a["return"] for a in assets],
+                    mode="markers+text",
+                    name="Individual Assets",
+                    marker={"symbol": "diamond", "size": 12, "color": "#d62728"},
+                    text=asset_labels,
+                    textposition="top center",
+                ))
+
+            # Max Sharpe point
+            if max_sharpe:
+                fig.add_trace(go.Scatter(
+                    x=[max_sharpe["volatility"]],
+                    y=[max_sharpe["return"]],
+                    mode="markers",
+                    name="Max Sharpe",
+                    marker={"symbol": "star", "size": 18, "color": "#2ca02c"},
+                ))
+
+            # Min Variance point
+            if min_var:
+                fig.add_trace(go.Scatter(
+                    x=[min_var["volatility"]],
+                    y=[min_var["return"]],
+                    mode="markers",
+                    name="Min Variance",
+                    marker={"symbol": "square", "size": 14, "color": "#ff7f0e"},
+                ))
+
+            # Capital Market Line
+            if cml and cml.get("x") and cml.get("y"):
+                fig.add_trace(go.Scatter(
+                    x=cml["x"],
+                    y=cml["y"],
+                    mode="lines",
+                    name=f"CML (Rf={rf:.1%})",
+                    line={"color": "gray", "dash": "dash", "width": 1},
+                ))
+
+            fig.update_layout(
+                title="Efficient Frontier (Markowitz)",
+                xaxis_title="Volatility (annualized)",
+                yaxis_title="Expected Return (annualized)",
+                hovermode="closest",
+                xaxis={"tickformat": ".1%"},
+                yaxis={"tickformat": ".1%"},
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Weights detail
+            st.markdown("---")
+            portfolio_type = st.selectbox(
+                "View portfolio weights",
+                ["Max Sharpe", "Min Variance"],
+            )
+            selected = max_sharpe if portfolio_type == "Max Sharpe" else min_var
+            if selected and selected.get("weights"):
+                weights_map = {
+                    symbols[i]: round(selected["weights"][i], 4)
+                    for i in range(min(len(symbols), len(selected["weights"])))
+                }
+                df_w = pd.DataFrame(
+                    {"Symbol": list(weights_map.keys()), "Weight": list(weights_map.values())}
+                )
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Expected Return", f"{selected['return']:.2%}")
+                with col2:
+                    st.metric("Volatility", f"{selected['volatility']:.2%}")
+                st.dataframe(df_w, use_container_width=True)
+        else:
+            st.warning(
+                "No frontier data available. Run: "
+                "`python -c \"from src.pipeline.optimize import compute_and_save_frontier; compute_and_save_frontier()\"`"
+            )
+
+    elif page == "Backtest":
+        st.title("Portfolio Backtest")
+
+        bt_data = fetch_api("/portfolio/backtest")
+        if bt_data:
+            config = bt_data.get("config", {})
+            metrics = bt_data.get("metrics", {})
+            cum_vals = bt_data.get("cumulative_values", {})
+
+            # Config banner
+            st.info(
+                f"Strategy: **{config.get('strategy', 'N/A')}** | "
+                f"Train: **{config.get('train_window', 'N/A')}** days | "
+                f"Test: **{config.get('test_window', 'N/A')}** days | "
+                f"Risk-free: **{config.get('risk_free_rate', 0.05):.1%}**"
+            )
+
+            # Cumulative return chart
+            cum_dates = cum_vals.get("dates", [])
+            if cum_dates:
+                fig_cum = go.Figure()
+
+                strategy_vals = cum_vals.get("strategy", [])
+                equal_vals = cum_vals.get("equal_weight", [])
+                btc_vals = cum_vals.get("btc_only", [])
+
+                # Values lists have len(dates)+1 points; trim to match dates
+                if strategy_vals:
+                    fig_cum.add_trace(go.Scatter(
+                        x=cum_dates,
+                        y=strategy_vals[1:len(cum_dates) + 1],
+                        mode="lines",
+                        name=f"Strategy ({config.get('strategy', '')})",
+                        line={"color": "#2ca02c", "width": 2},
+                    ))
+                if equal_vals:
+                    fig_cum.add_trace(go.Scatter(
+                        x=cum_dates,
+                        y=equal_vals[1:len(cum_dates) + 1],
+                        mode="lines",
+                        name="Equal Weight",
+                        line={"color": "#1f77b4", "width": 2},
+                    ))
+                if btc_vals:
+                    fig_cum.add_trace(go.Scatter(
+                        x=cum_dates,
+                        y=btc_vals[1:len(cum_dates) + 1],
+                        mode="lines",
+                        name="BTC Only",
+                        line={"color": "#ff7f0e", "width": 2},
+                    ))
+
+                fig_cum.update_layout(
+                    title="Cumulative Portfolio Value",
+                    xaxis_title="Date",
+                    yaxis_title="Portfolio Value (starting at 1.0)",
+                    hovermode="x unified",
+                )
+                st.plotly_chart(fig_cum, use_container_width=True)
+
+            # Metrics comparison table
+            st.markdown("---")
+            st.subheader("Performance Metrics")
+            metric_names = ["cumulative_return", "annualized_return", "max_drawdown", "sharpe_ratio", "calmar_ratio"]
+            display_names = ["Cumulative Return", "Annualized Return", "Max Drawdown", "Sharpe Ratio", "Calmar Ratio"]
+            rows = []
+            for mname, dname in zip(metric_names, display_names):
+                rows.append({
+                    "Metric": dname,
+                    "Strategy": metrics.get("strategy", {}).get(mname, "N/A"),
+                    "Equal Weight": metrics.get("equal_weight", {}).get(mname, "N/A"),
+                    "BTC Only": metrics.get("btc_only", {}).get(mname, "N/A"),
+                })
+            df_metrics = pd.DataFrame(rows)
+            st.dataframe(df_metrics, use_container_width=True)
+
+            # Drawdown chart
+            st.markdown("---")
+            st.subheader("Drawdown")
+            if cum_dates and strategy_vals:
+                vals_series = strategy_vals[1:len(cum_dates) + 1]
+                peak = vals_series[0] if vals_series else 1.0
+                drawdowns = []
+                for v in vals_series:
+                    if v > peak:
+                        peak = v
+                    dd = (peak - v) / peak if peak > 0 else 0.0
+                    drawdowns.append(-dd)
+
+                fig_dd = go.Figure()
+                fig_dd.add_trace(go.Scatter(
+                    x=cum_dates,
+                    y=drawdowns,
+                    mode="lines",
+                    fill="tozeroy",
+                    name="Drawdown",
+                    line={"color": "#d62728"},
+                    fillcolor="rgba(214, 39, 40, 0.3)",
+                ))
+                fig_dd.update_layout(
+                    title="Strategy Drawdown",
+                    xaxis_title="Date",
+                    yaxis_title="Drawdown",
+                    yaxis={"tickformat": ".1%"},
+                    hovermode="x unified",
+                )
+                st.plotly_chart(fig_dd, use_container_width=True)
+        else:
+            st.warning(
+                "No backtest data available. Run: "
+                "`python -c \"from src.pipeline.backtest import run_backtest; run_backtest()\"`"
+            )
 
 
 if __name__ == "__main__":

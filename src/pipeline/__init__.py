@@ -57,7 +57,13 @@ from .optimize import (
     calculate_portfolio_return,
     calculate_portfolio_volatility,
     calculate_sharpe_ratio,
+    compute_efficient_frontier,
+    compute_and_save_frontier,
     OptimizeError,
+)
+from .backtest import (
+    run_backtest,
+    BacktestError,
 )
 
 __all__ = [
@@ -101,5 +107,10 @@ __all__ = [
     "calculate_portfolio_return",
     "calculate_portfolio_volatility",
     "calculate_sharpe_ratio",
+    "compute_efficient_frontier",
+    "compute_and_save_frontier",
     "OptimizeError",
+    # Backtest
+    "run_backtest",
+    "BacktestError",
 ]

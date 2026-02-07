@@ -84,6 +84,26 @@ def get_portfolio_summary():
         raise HTTPException(404, f"Portfolio not found: {e}")
 
 
+@app.get("/portfolio/frontier")
+def get_frontier():
+    """Get efficient frontier data."""
+    try:
+        data = storage.load_output("frontier")
+        return data
+    except Exception as e:
+        raise HTTPException(404, f"Frontier not found: {e}")
+
+
+@app.get("/portfolio/backtest")
+def get_backtest():
+    """Get backtest results."""
+    try:
+        data = storage.load_output("backtest")
+        return data
+    except Exception as e:
+        raise HTTPException(404, f"Backtest not found: {e}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
