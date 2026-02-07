@@ -352,6 +352,276 @@ def _grid_search_max_sharpe(
     return best_weights
 
 
+def _linspace(start: float, end: float, num: int) -> list[float]:
+    """
+    Generate evenly spaced values between start and end (inclusive).
+
+    Pure Python equivalent of numpy.linspace.
+
+    Args:
+        start: Start value.
+        end: End value.
+        num: Number of points.
+
+    Returns:
+        List of evenly spaced values.
+    """
+    if num <= 0:
+        return []
+    if num == 1:
+        return [start]
+    step = (end - start) / (num - 1)
+    return [start + i * step for i in range(num)]
+
+
+def _optimize_for_target_return(
+    mean_returns: list[float],
+    cov_matrix: list[list[float]],
+    target_return: float,
+    tolerance: float = 0.01,
+) -> list[float] | None:
+    """
+    Find minimum variance portfolio for a given target return.
+
+    Minimizes w'*Cov*w subject to:
+    - sum(w) = 1
+    - w >= 0
+    - w'*mu = target_return
+
+    Falls back to grid search with tolerance matching if scipy is unavailable.
+
+    Args:
+        mean_returns: Annualized mean returns per asset.
+        cov_matrix: Annualized covariance matrix.
+        target_return: Target portfolio return.
+        tolerance: Return tolerance for grid search fallback.
+
+    Returns:
+        Optimal weights or None if infeasible.
+    """
+    try:
+        from scipy.optimize import minimize
+
+        n_assets = len(mean_returns)
+
+        def portfolio_variance(weights: list[float]) -> float:
+            return calculate_portfolio_variance(list(weights), cov_matrix)
+
+        constraints = [
+            {"type": "eq", "fun": lambda w: sum(w) - 1},
+            {"type": "eq", "fun": lambda w: dot_product(list(w), mean_returns) - target_return},
+        ]
+
+        bounds = [(0, 1) for _ in range(n_assets)]
+        initial_weights = [1.0 / n_assets] * n_assets
+
+        result = minimize(
+            portfolio_variance,
+            initial_weights,
+            method="SLSQP",
+            bounds=bounds,
+            constraints=constraints,
+            options={"ftol": 1e-12, "maxiter": 1000},
+        )
+
+        if result.success:
+            return list(result.x)
+        return None
+
+    except ImportError:
+        # Fallback: grid search with tolerance matching
+        return _grid_search_target_return(
+            mean_returns, cov_matrix, target_return, tolerance
+        )
+
+
+def _grid_search_target_return(
+    mean_returns: list[float],
+    cov_matrix: list[list[float]],
+    target_return: float,
+    tolerance: float = 0.01,
+) -> list[float] | None:
+    """
+    Find min variance portfolio near a target return using grid search.
+
+    Args:
+        mean_returns: Annualized mean returns per asset.
+        cov_matrix: Annualized covariance matrix.
+        target_return: Target portfolio return.
+        tolerance: Acceptable deviation from target.
+
+    Returns:
+        Best weights or None if no feasible combination found.
+    """
+    n = len(mean_returns)
+    best_weights: list[float] | None = None
+    best_variance = float("inf")
+
+    for weights in _generate_weight_combinations(n, GRID_STEPS):
+        port_return = calculate_portfolio_return(weights, mean_returns)
+        if abs(port_return - target_return) <= tolerance:
+            variance = calculate_portfolio_variance(weights, cov_matrix)
+            if variance < best_variance:
+                best_variance = variance
+                best_weights = weights
+
+    return best_weights
+
+
+def compute_efficient_frontier(
+    mean_returns: list[float],
+    cov_matrix: list[list[float]],
+    n_points: int = 50,
+    risk_free_rate: float = RISK_FREE_RATE,
+) -> dict:
+    """
+    Compute the efficient frontier for a set of assets.
+
+    Sweeps target returns from min to max of individual asset returns,
+    finding the minimum variance portfolio at each target level.
+
+    Args:
+        mean_returns: Annualized mean returns per asset.
+        cov_matrix: Annualized covariance matrix.
+        n_points: Number of points on the frontier.
+        risk_free_rate: Risk-free rate for CML calculation.
+
+    Returns:
+        Dictionary with frontier points, special portfolios, asset positions,
+        and capital market line data.
+    """
+    min_ret = min(mean_returns)
+    max_ret = max(mean_returns)
+    target_returns = _linspace(min_ret, max_ret, n_points)
+
+    # Build frontier points
+    frontier: list[dict] = []
+    for target in target_returns:
+        weights = _optimize_for_target_return(mean_returns, cov_matrix, target)
+        if weights is not None:
+            vol = calculate_portfolio_volatility(weights, cov_matrix)
+            ret = calculate_portfolio_return(weights, mean_returns)
+            frontier.append({
+                "volatility": round(vol, 6),
+                "return": round(ret, 6),
+                "weights": [round(w, 6) for w in weights],
+            })
+
+    # Max Sharpe portfolio
+    max_sharpe_weights = _try_scipy_optimization(mean_returns, cov_matrix, risk_free_rate)
+    if max_sharpe_weights is None:
+        max_sharpe_weights = _grid_search_max_sharpe(mean_returns, cov_matrix, risk_free_rate)
+    max_sharpe_vol = calculate_portfolio_volatility(max_sharpe_weights, cov_matrix)
+    max_sharpe_ret = calculate_portfolio_return(max_sharpe_weights, mean_returns)
+    max_sharpe = {
+        "volatility": round(max_sharpe_vol, 6),
+        "return": round(max_sharpe_ret, 6),
+        "weights": [round(w, 6) for w in max_sharpe_weights],
+    }
+
+    # Min variance portfolio
+    min_var_weights = optimize_minimum_variance(cov_matrix)
+    min_var_vol = calculate_portfolio_volatility(min_var_weights, cov_matrix)
+    min_var_ret = calculate_portfolio_return(min_var_weights, mean_returns)
+    min_variance = {
+        "volatility": round(min_var_vol, 6),
+        "return": round(min_var_ret, 6),
+        "weights": [round(w, 6) for w in min_var_weights],
+    }
+
+    # Individual asset positions
+    n_assets = len(mean_returns)
+    assets = []
+    for i in range(n_assets):
+        asset_vol = math.sqrt(cov_matrix[i][i])
+        assets.append({
+            "symbol_index": i,
+            "volatility": round(asset_vol, 6),
+            "return": round(mean_returns[i], 6),
+        })
+
+    # Capital Market Line: from (0, Rf) through tangency portfolio
+    tangency_sharpe = calculate_sharpe_ratio(
+        max_sharpe_weights, mean_returns, cov_matrix, risk_free_rate
+    )
+    max_x = max((p["volatility"] for p in frontier), default=max_sharpe_vol) * 1.2
+    cml_x = [0.0, round(max_x, 6)]
+    cml_y = [risk_free_rate, round(risk_free_rate + tangency_sharpe * max_x, 6)]
+
+    return {
+        "frontier": frontier,
+        "max_sharpe": max_sharpe,
+        "min_variance": min_variance,
+        "assets": assets,
+        "capital_market_line": {"x": cml_x, "y": cml_y},
+        "risk_free_rate": risk_free_rate,
+    }
+
+
+def compute_and_save_frontier(
+    storage_backend: str = "parquet",
+    n_points: int = 50,
+    risk_free_rate: float = RISK_FREE_RATE,
+    save: bool = True,
+) -> dict:
+    """
+    Compute efficient frontier and save results.
+
+    Loads covariance matrix and mean returns from storage,
+    computes the efficient frontier, and saves to output.
+
+    Args:
+        storage_backend: Storage backend to use.
+        n_points: Number of frontier points.
+        risk_free_rate: Risk-free rate.
+        save: Whether to save results.
+
+    Returns:
+        Frontier data with symbols attached.
+    """
+    print("Computing efficient frontier...")
+    print("=" * 50)
+
+    storage = get_storage(storage_backend)
+
+    try:
+        covariance_data = storage.load_processed("covariance")
+        mean_returns_data = storage.load_processed("mean_returns")
+    except Exception as e:
+        raise OptimizeError(
+            f"Failed to load processed data: {e}. "
+            "Ensure transform_data() has been run first.",
+            operation="load",
+        ) from e
+
+    symbols = covariance_data["symbols"]
+    cov_matrix = covariance_data["matrix"]
+    mean_returns = mean_returns_data["values"]
+
+    print(f"  Loaded data for {len(symbols)} symbols: {symbols}")
+
+    result = compute_efficient_frontier(
+        mean_returns, cov_matrix, n_points, risk_free_rate
+    )
+    result["symbols"] = symbols
+
+    print(f"  Frontier points: {len(result['frontier'])}")
+    print(f"  Max Sharpe return: {result['max_sharpe']['return']:.2%}")
+    print(f"  Min Variance vol:  {result['min_variance']['volatility']:.2%}")
+
+    if save:
+        try:
+            output_path = storage.save_output(result, "frontier")
+            print(f"  Saved to: {output_path}")
+        except Exception as e:
+            raise OptimizeError(
+                f"Failed to save frontier: {e}", operation="save"
+            ) from e
+
+    print("Frontier computation complete!")
+    return result
+
+
 def _generate_weight_combinations(
     n_assets: int, steps: int
 ) -> list[list[float]]:
