@@ -1,6 +1,6 @@
 # Portfolio Optimization - Data Engineer Project
 
-FROM python:3.12-slim
+FROM python:3.13-slim
 
 # Install uv
 RUN pip install uv

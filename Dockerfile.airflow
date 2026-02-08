@@ -1,9 +1,9 @@
 # Airflow with project dependencies
+# Airflow 2.8.1 requires Python ≤3.11; do NOT bump to 3.13
 FROM apache/airflow:2.8.1-python3.11
 
-# Install project dependencies
+# Install project dependencies (tomli not needed — stdlib tomllib used)
 RUN pip install --no-cache-dir \
     pyarrow \
     httpx \
-    duckdb \
-    tomli
+    duckdb
