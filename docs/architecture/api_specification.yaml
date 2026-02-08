@@ -54,9 +54,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
               example:
-                status: "healthy"
-                timestamp: "2025-01-15T08:32:15.123Z"
-                version: "1.0.0"
+                status: "ok"
+                message: "Portfolio API"
 
   /symbols:
     get:
@@ -71,15 +70,15 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: string
+                $ref: '#/components/schemas/SymbolsResponse'
               example:
-                - "BTCUSDT"
-                - "ETHUSDT"
-                - "BNBUSDT"
-                - "SOLUSDT"
-                - "ADAUSDT"
+                symbols:
+                  - "BTCUSDT"
+                  - "ETHUSDT"
+                  - "BNBUSDT"
+                  - "SOLUSDT"
+                  - "ADAUSDT"
+                count: 5
 
   /klines/{symbol}:
     get:
@@ -96,40 +95,13 @@ paths:
           schema:
             type: string
             example: BTCUSDT
-        - name: limit
-          in: query
-          required: false
-          description: Maximum number of records to return
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 1000
-            default: 100
-        - name: start_date
-          in: query
-          required: false
-          description: Start date for data range (ISO 8601)
-          schema:
-            type: string
-            format: date
-            example: "2025-01-01"
-        - name: end_date
-          in: query
-          required: false
-          description: End date for data range (ISO 8601)
-          schema:
-            type: string
-            format: date
-            example: "2025-01-31"
       responses:
         '200':
           description: Price history data
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Kline'
+                $ref: '#/components/schemas/KlinesResponse'
         '404':
           description: Symbol not found
           content:
@@ -150,17 +122,15 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: string
+                $ref: '#/components/schemas/MetricsListResponse'
               example:
-                - "returns"
-                - "volatility"
-                - "correlation"
-                - "covariance"
-                - "sharpe_ratio"
+                metrics:
+                  - "returns"
+                  - "volatility"
+                  - "correlation"
+                  - "covariance"
 
-  /metrics/{metric}:
+  /metrics/{name}:
     get:
       tags:
         - Analytics
@@ -168,7 +138,7 @@ paths:
       description: Returns calculated financial metric
       operationId: getMetric
       parameters:
-        - name: metric
+        - name: name
           in: path
           required: true
           description: Metric name
@@ -224,6 +194,29 @@ paths:
                 sharpe_ratio: 1.24
                 optimization_method: "scipy"
                 computed_at: "2025-01-15T00:05:32.123Z"
+        '404':
+          description: No portfolio computed yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/summary:
+    get:
+      tags:
+        - Analytics
+      summary: Get Portfolio Summary
+      description: |
+        Returns a lightweight summary of the optimal portfolio with
+        weights, expected return, volatility, and Sharpe ratio.
+      operationId: getPortfolioSummary
+      responses:
+        '200':
+          description: Portfolio summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortfolioSummaryResponse'
         '404':
           description: No portfolio computed yet
           content:
@@ -287,19 +280,28 @@ components:
       type: object
       required:
         - status
+        - message
       properties:
         status:
           type: string
-          enum: [healthy, degraded, unhealthy]
-        timestamp:
-          type: string
-          format: date-time
-        version:
+        message:
           type: string
 
-    Kline:
+    SymbolsResponse:
       type: object
-      description: OHLCV candle data
+      required:
+        - symbols
+        - count
+      properties:
+        symbols:
+          type: array
+          items:
+            type: string
+        count:
+          type: integer
+
+    KlineRecord:
+      type: object
       required:
         - timestamp
         - open
@@ -310,7 +312,6 @@ components:
       properties:
         timestamp:
           type: string
-          format: date-time
           description: Candle open timestamp
         open:
           type: number
@@ -333,18 +334,46 @@ components:
           format: double
           description: Trading volume
 
+    KlinesResponse:
+      type: object
+      required:
+        - symbol
+        - count
+        - data
+      properties:
+        symbol:
+          type: string
+          description: Trading pair symbol
+        count:
+          type: integer
+          description: Number of kline records
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/KlineRecord'
+
+    MetricsListResponse:
+      type: object
+      required:
+        - metrics
+      properties:
+        metrics:
+          type: array
+          items:
+            type: string
+
     MetricResponse:
       type: object
+      required:
+        - name
+        - data
       properties:
-        metric:
+        name:
           type: string
           description: Metric name
         data:
           type: object
           description: Metric data (structure varies by metric)
-        computed_at:
-          type: string
-          format: date-time
 
     PortfolioResponse:
       type: object
@@ -379,6 +408,30 @@ components:
           type: string
           format: date-time
           description: When the optimization was computed
+
+    PortfolioSummaryResponse:
+      type: object
+      required:
+        - weights
+      properties:
+        weights:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+          description: Optimal weight for each symbol
+        expected_return:
+          type: number
+          format: double
+          nullable: true
+        volatility:
+          type: number
+          format: double
+          nullable: true
+        sharpe_ratio:
+          type: number
+          format: double
+          nullable: true
 
     FrontierResponse:
       type: object
