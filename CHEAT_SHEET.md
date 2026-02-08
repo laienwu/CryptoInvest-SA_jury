@@ -330,7 +330,7 @@ uv run pytest tests/ --cov=src --cov-report=term-missing
 uv run pytest tests/test_transform.py -v
 ```
 
-**Resultat attendu:** 165 tests passed, 46% coverage
+**Resultat attendu:** 214 tests passed, 53% coverage
 
 ### 6.3 Docker - Demarrage Rapide
 
@@ -630,14 +630,17 @@ C'est le standard en finance quantitative."
 
 ### Q10: "Comment sont testes les composants?"
 
-**Reponse:** "J'utilise pytest avec 165 tests unitaires couvrant:
+**Reponse:** "J'utilise pytest avec 214 tests unitaires couvrant:
 - Les calculs financiers (returns, volatility, correlation)
 - L'optimisation de portefeuille (Markowitz)
 - Le storage layer (parquet, factory)
-- Les endpoints API
+- Les endpoints API (avec mock DI)
 - L'ingestion multi-sources
+- La frontière efficiente
+- Le backtesting walk-forward
+- La détection de drift OpenAPI spec
 
-Coverage global: 46%. Les modules critiques (transform, optimize, API) ont environ 59-74% de couverture."
+Coverage global: 53%. Les modules critiques (transform, optimize, API, config) ont 60-100% de couverture."
 
 ---
 
@@ -744,14 +747,14 @@ Schema:
 
 ## 10. CHECKLIST AVANT SOUTENANCE
 
-- [ ] Tests passent: `uv run pytest tests/ -v` (165 tests)
+- [ ] Tests passent: `uv run pytest tests/ -v` (214 tests)
 - [ ] Docker fonctionne: `docker compose up api streamlit`
 - [ ] API accessible: http://localhost:8000/docs
 - [ ] Dashboard accessible: http://localhost:8501
 - [ ] Donnees presentes dans data/
 - [ ] Pipeline execute sans erreur
 - [ ] DuckDB queries fonctionnent
-- [ ] Connaitre les 9 endpoints API
+- [ ] Connaitre les 10 endpoints API
 - [ ] Dashboard affiche KPIs, Pie chart, Correlation
 - [ ] Savoir expliquer Markowitz en 1 phrase
 - [ ] Savoir expliquer le star schema

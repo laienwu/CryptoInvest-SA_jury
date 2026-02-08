@@ -2,8 +2,8 @@
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-green.svg)](https://fastapi.tiangolo.com/)
- [![Tests](https://img.shields.io/badge/tests-124%20passed-brightgreen.svg)]()
-[![Couverture](https://img.shields.io/badge/coverage-43%25-yellow.svg)]()
+ [![Tests](https://img.shields.io/badge/tests-214%20passed-brightgreen.svg)]()
+[![Couverture](https://img.shields.io/badge/coverage-53%25-yellow.svg)]()
 
 A plate-forme d'ingénierie de données prête pour la production pour l'optimisation du portefeuille de crypto-monnaies à l'aide des données de marché Binance. Construit comme un projet de certification démontrant des pratiques modernes d'ingénierie des données.
 
@@ -111,6 +111,8 @@ uv run streamlit run src/dashboard/app.py
 | `GET /metrics/{name}` | Métrique spécifique (rendements, volatilité, corrélation, covariance) |
 | `GET /portfolio` | Pondérations optimales du portefeuille |
 | `GET /portfolio/summary` | KPI du portefeuille |
+| `GET /portfolio/frontier` | Frontière efficiente |
+| `GET /portfolio/backtest` | Résultats du backtest walk-forward |
 
 ## Tableau de bord
 
@@ -131,28 +133,34 @@ uv run pytest tests/ -v
 # Run with coverage
 uv run pytest tests/ --cov=src --cov-report=term-missing
 
-# Results: 124 tests, 43% coverage
+# Results: 214 tests, 53% coverage
 ```
 
 ## Structure du projet
 
 ```
 src/
+├── config.py                # Centralized PipelineConfig + load_config()
 ├── pipeline/                # ETL modules
 │   ├── ingest.py           # Binance API extraction
-│   ├── ingest_sources.py   # Multi-source orchestration
+│   ├── ingest_sources.py   # Multi-source orchestration (DataSource ABC)
+│   ├── ingest_scraping.py  # CoinGecko web scraping
+│   ├── ingest_postgres.py  # PostgreSQL benchmarks
 │   ├── transform.py        # Financial metrics calculation
-│   └── optimize.py         # Markowitz optimization
+│   ├── optimize.py         # Markowitz optimization + efficient frontier
+│   └── backtest.py         # Walk-forward backtesting engine
 ├── storage/                 # Data layer
 │   ├── base.py             # Abstract interface
+│   ├── _utils.py           # Shared storage utilities
 │   ├── parquet.py          # Data lake storage
 │   └── duckdb.py           # Data warehouse
 ├── api/                     # REST API
-│   └── main.py             # FastAPI endpoints
+│   ├── main.py             # FastAPI endpoints
+│   └── schemas.py          # Pydantic response models
 └── dashboard/               # Visualization
     └── app.py              # Streamlit app
 
-tests/                       # Test suite (124 tests)
+tests/                       # Test suite (214 tests)
 dags/                        # Airflow DAGs
 docs/                        # Documentation
 data/                        # Data zones (bronze/silver/gold)
@@ -167,9 +175,6 @@ Modifier `config.toml` :
 symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "ADAUSDT"]
 interval = "1d"
 period_days = 90
-
-[optimization]
-risk_free_rate = 0.05
 ```
 
 ## Technologies clés

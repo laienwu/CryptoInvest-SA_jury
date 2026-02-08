@@ -12,7 +12,7 @@ Usage:
 
 Available backends:
 - parquet: File-based storage using Apache Parquet (default)
-- (Future) duckdb: SQL on files using DuckDB
+- duckdb: SQL on files using DuckDB (star schema warehouse)
 - (Future) postgres: Full RDBMS for production
 
 Factory function:
@@ -61,7 +61,7 @@ def get_storage(name: str | None = None, **kwargs) -> Storage:
     Args:
         name: Name of the storage backend to use. Options:
               - "parquet" (default): File-based Parquet storage
-              - (Future) "duckdb": SQL on files
+              - "duckdb": SQL on files (star schema warehouse)
               - (Future) "postgres": PostgreSQL database
         **kwargs: Additional arguments passed to the storage constructor.
                   For ParquetStorage: data_dir (str | Path) - custom data directory
@@ -142,6 +142,7 @@ __all__ = [
     "StorageError",
     # Implementations
     "ParquetStorage",
+    "DuckDBStorage",
     # Utilities
     "register_storage",
     "list_available_backends",

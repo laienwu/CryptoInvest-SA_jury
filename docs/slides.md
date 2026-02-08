@@ -163,7 +163,9 @@ ingest → transform → optimize → frontier → backtest
 | `/symbols` | GET | Liste des symboles |
 | `/klines/{symbol}` | GET | Données OHLCV |
 | `/metrics` | GET | Métriques disponibles |
+| `/metrics/{name}` | GET | Métrique spécifique |
 | `/portfolio` | GET | Poids optimaux |
+| `/portfolio/summary` | GET | Résumé KPI portefeuille |
 | `/portfolio/frontier` | GET | Frontière efficiente |
 | `/portfolio/backtest` | GET | Résultats backtest |
 
@@ -257,7 +259,7 @@ Sharpe = (R_p - R_f) / σ_p
 
 ## Slide 20 — Qualité du code
 
-**208 tests — 9 fichiers de tests**
+**214 tests — 9 fichiers de tests**
 
 | Module | Tests | Couverture |
 |--------|-------|------------|
@@ -278,20 +280,23 @@ Sharpe = (R_p - R_f) / σ_p
 
 - Phase 1 : Hygiène code (logging, exceptions typées)
 - Phase 2 : Config centralisée, DataSource ABC, Depends() FastAPI, Pydantic
-- Phase 3 : Migration config, couverture tests 208
+- Phase 3 : Migration config, couverture tests 214
 
 ---
 
 ## Slide 22 — Docker & déploiement
 
-**docker-compose.yml — 5 services**
+**docker-compose.yml — 8 services**
 
 | Service | Port | Image |
 |---------|------|-------|
 | API | 8000 | Dockerfile |
 | Streamlit | 8501 | Dockerfile.streamlit |
-| Airflow | 8081 | Dockerfile.airflow |
-| PostgreSQL | 5433 | postgres:15 |
+| Airflow webserver | 8081 | Dockerfile.airflow |
+| Airflow scheduler | — | Dockerfile.airflow |
+| Airflow init | — | Dockerfile.airflow |
+| PostgreSQL (Airflow) | — | postgres:15 |
+| PostgreSQL (benchmarks) | 5433 | postgres:15 |
 | Pipeline | — | one-shot |
 
 ---
@@ -319,7 +324,7 @@ Sharpe = (R_p - R_f) / σ_p
 - Architecture modulaire (changement de backend sans impact)
 - PyArrow sans pandas : performance et typage
 - DuckDB : SQL analytique sans infrastructure
-- 208 tests : confiance pour refactorer
+- 214 tests : confiance pour refactorer
 
 ---
 
