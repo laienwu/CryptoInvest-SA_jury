@@ -18,7 +18,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-
 # Project root = two levels up from this file (src/config.py -> project root)
 _PROJECT_ROOT = Path(__file__).parent.parent
 

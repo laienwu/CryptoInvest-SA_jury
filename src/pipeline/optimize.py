@@ -22,15 +22,12 @@ Example usage:
     >>> print(result["weights"])
 """
 
-import json
+import logging
 import math
-from pathlib import Path
 from typing import Any
 
 from src.config import load_config
 from src.storage import get_storage
-
-import logging
 
 logger = logging.getLogger(__name__)
 

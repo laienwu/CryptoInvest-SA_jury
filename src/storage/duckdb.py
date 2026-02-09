@@ -19,10 +19,12 @@ Example usage:
     >>> storage.query("SELECT * FROM fact_prices LIMIT 10")
 """
 
+from __future__ import annotations
+
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .base import Storage, StorageError
 
@@ -32,7 +34,8 @@ try:
     DUCKDB_AVAILABLE = True
 except ImportError:
     DUCKDB_AVAILABLE = False
-    duckdb = None
+    if TYPE_CHECKING:
+        import duckdb
 
 
 DEFAULT_DATA_DIR = Path(__file__).parent.parent.parent / "data"
@@ -121,10 +124,10 @@ class DuckDBStorage(Storage):
             columns = [desc[0] for desc in self.conn.description]
             return [dict(zip(columns, row)) for row in result]
         except Exception as e:
-            raise StorageError(f"Query failed: {e}", operation="query")
+            raise StorageError(f"Query failed: {e}", operation="query") from e
 
-    def query_df(self, sql: str):
-        """Execute SQL and return DuckDB relation (for chaining)."""
+    def query_df(self, sql: str) -> duckdb.DuckDBPyConnection:
+        """Execute SQL and return DuckDB result (for chaining)."""
         return self.conn.execute(sql)
 
     # -------------------------------------------------------------------------
@@ -240,7 +243,8 @@ class DuckDBStorage(Storage):
                 values[s_idx[r["symbol"]]][d_idx[r["date"]]] = r["value"]
             return {"symbols": symbols, "dates": dates, "values": values}
         elif "data" in rows[0]:
-            return json.loads(rows[0]["data"])
+            result: dict[str, Any] = json.loads(rows[0]["data"])
+            return result
 
         raise StorageError(f"Unknown structure: {name}", operation="load_processed")
 
@@ -259,7 +263,7 @@ class DuckDBStorage(Storage):
         if not file_path.exists():
             raise StorageError(f"Not found: {name}", operation="load_output")
         with open(file_path) as f:
-            data = json.load(f)
+            data: dict[str, Any] = json.load(f)
         data.pop("_metadata", None)
         return data
 

@@ -24,7 +24,8 @@ def fetch_api(endpoint: str) -> dict | None:
     try:
         response = requests.get(f"{API_URL}{endpoint}", timeout=10)
         response.raise_for_status()
-        return response.json()
+        data: dict = response.json()
+        return data
     except requests.RequestException as e:
         st.error(f"API Error: {e}")
         return None
@@ -185,7 +186,7 @@ def render_volatility_chart() -> None:
     st.plotly_chart(fig, use_container_width=True)
 
 
-def main():
+def main() -> None:
     """Main dashboard entry point."""
     st.set_page_config(
         page_title="Portfolio Dashboard",

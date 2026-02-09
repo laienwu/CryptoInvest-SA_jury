@@ -8,18 +8,16 @@ Tests storage layer:
 - Abstract interface compliance
 """
 
-import json
-from pathlib import Path
 
 import pytest
 
 from src.storage import (
+    ParquetStorage,
     Storage,
     StorageError,
     get_storage,
     list_available_backends,
     register_storage,
-    ParquetStorage,
 )
 
 

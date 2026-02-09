@@ -22,11 +22,11 @@ Example usage:
     {'timestamp': '2024-01-01', 'open': 42000.0, 'high': 43000.0, ...}
 """
 
+import logging
 import time
 from datetime import datetime, timedelta
 from typing import Any
 
-import logging
 import requests
 
 from src.config import load_config
@@ -70,7 +70,7 @@ class BinanceAPIError(Exception):
 # =============================================================================
 
 
-def _make_request(url: str, params: dict[str, Any]) -> list[list[Any]]:
+def _make_request(url: str, params: dict[str, Any]) -> Any:
     """
     Make a GET request to Binance API with retry logic.
 

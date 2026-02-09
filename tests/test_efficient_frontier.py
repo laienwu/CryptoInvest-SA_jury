@@ -7,16 +7,14 @@ Tests:
 - compute_efficient_frontier full output structure
 """
 
-import math
 
 import pytest
 
 from src.pipeline.optimize import (
     _linspace,
     _optimize_for_target_return,
-    compute_efficient_frontier,
     calculate_portfolio_return,
-    calculate_portfolio_volatility,
+    compute_efficient_frontier,
 )
 
 

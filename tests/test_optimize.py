@@ -14,17 +14,17 @@ import math
 import pytest
 
 from src.pipeline.optimize import (
-    OptimizeError,
     RISK_FREE_RATE,
+    OptimizeError,
+    _generate_weight_combinations,
     calculate_portfolio_return,
     calculate_portfolio_variance,
     calculate_portfolio_volatility,
     calculate_sharpe_ratio,
     dot_product,
-    matrix_vector_multiply,
     matrix_inverse_2x2,
+    matrix_vector_multiply,
     optimize_minimum_variance,
-    _generate_weight_combinations,
 )
 
 

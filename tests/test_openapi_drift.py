@@ -9,8 +9,8 @@ If this test fails, update the YAML spec to match the code (or vice versa).
 
 from pathlib import Path
 
-import yaml
 import pytest
+import yaml
 
 from src.api.main import app
 

@@ -33,9 +33,11 @@ Example workflow:
     >>> loaded = storage.load_raw(["BTCUSDT", "ETHUSDT"])
 """
 
+from typing import Any
+
 from .base import Storage, StorageError
-from .parquet import ParquetStorage
 from .duckdb import DuckDBStorage
+from .parquet import ParquetStorage
 
 # Type alias for storage names
 StorageName = str
@@ -50,7 +52,7 @@ _STORAGE_REGISTRY: dict[str, type[Storage]] = {
 DEFAULT_STORAGE = "parquet"
 
 
-def get_storage(name: str | None = None, **kwargs) -> Storage:
+def get_storage(name: str | None = None, **kwargs: Any) -> Storage:
     """
     Factory function to get a storage implementation.
 

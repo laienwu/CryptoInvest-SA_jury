@@ -193,7 +193,8 @@ def calculate_log_returns(prices: list[list[float]]) -> list[list[float]]:
 def calculate_mean(values: list[float]) -> float:
     """Calculate mean of a list of values using pyarrow."""
     arr = pa.array(values, type=pa.float64())
-    return pc.mean(arr).as_py()
+    result: float = pc.mean(arr).as_py()
+    return result
 
 
 def calculate_stddev(values: list[float], ddof: int = 1) -> float:

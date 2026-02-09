@@ -23,25 +23,23 @@ import logging
 import math
 from typing import Any
 
-logger = logging.getLogger(__name__)
-
-from src.storage import get_storage
+from src.pipeline.optimize import (
+    RISK_FREE_RATE,
+    _grid_search_max_sharpe,
+    _try_scipy_optimization,
+    optimize_minimum_variance,
+)
 from src.pipeline.transform import (
     _align_data_by_date,
-    calculate_log_returns,
     calculate_covariance_matrix,
-    calculate_mean_returns,
+    calculate_log_returns,
     calculate_mean,
+    calculate_mean_returns,
     calculate_stddev,
 )
-from src.pipeline.optimize import (
-    _try_scipy_optimization,
-    _grid_search_max_sharpe,
-    optimize_minimum_variance,
-    calculate_portfolio_return,
-    RISK_FREE_RATE,
-)
+from src.storage import get_storage
 
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Exceptions
@@ -460,10 +458,10 @@ def run_backtest(
     logger.info("BACKTEST RESULTS")
     logger.info(f"{'Metric':<25} {'Strategy':>12} {'Equal Wt':>12} {'BTC Only':>12}")
     for metric_name in ["cumulative_return", "annualized_return", "max_drawdown", "sharpe_ratio", "calmar_ratio"]:
-        s = strategy_metrics[metric_name]
-        e = equal_metrics[metric_name]
-        b = btc_metrics[metric_name]
-        logger.info(f"{metric_name:<25} {s:>12.4f} {e:>12.4f} {b:>12.4f}")
+        sv = strategy_metrics[metric_name]
+        ev = equal_metrics[metric_name]
+        bv = btc_metrics[metric_name]
+        logger.info(f"{metric_name:<25} {sv:>12.4f} {ev:>12.4f} {bv:>12.4f}")
 
     if save:
         try:

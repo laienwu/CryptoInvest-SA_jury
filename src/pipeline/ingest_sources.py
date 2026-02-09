@@ -219,7 +219,7 @@ def load_symbols_metadata_csv(
     try:
         records: list[dict[str, Any]] = []
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             reader = csv.DictReader(f)
 
             for row in reader:
@@ -306,8 +306,8 @@ def load_portfolio_config_json(
     logger.info(f"Loading JSON: {file_path.name}")
 
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            config = json.load(f)
+        with open(file_path, encoding="utf-8") as f:
+            config: dict[str, Any] = json.load(f)
 
         logger.info(f"Loaded config: {config['portfolio']['name']}")
         return config

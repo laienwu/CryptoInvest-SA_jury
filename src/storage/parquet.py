@@ -33,6 +33,7 @@ Example usage:
 """
 
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -40,10 +41,8 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from ._utils import write_klines_parquet
 from .base import Storage, StorageError
-from ._utils import KLINES_SCHEMA, write_klines_parquet
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -355,7 +354,8 @@ class ParquetStorage(Storage):
                 return self._load_timeseries_table(table)
             elif "data" in columns:
                 # Generic JSON data
-                return json.loads(table["data"][0].as_py())
+                result: dict[str, Any] = json.loads(table["data"][0].as_py())
+                return result
             else:
                 raise StorageError(
                     f"Unknown data structure in '{name}'", operation="load_processed"
@@ -493,8 +493,8 @@ class ParquetStorage(Storage):
             )
 
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            with open(file_path, encoding="utf-8") as f:
+                data: dict[str, Any] = json.load(f)
 
             # Remove internal metadata from returned data
             if "_metadata" in data:

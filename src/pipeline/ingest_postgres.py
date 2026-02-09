@@ -19,9 +19,9 @@ Example usage:
     >>> print(benchmarks["sp500_return"])
 """
 
-import os
 import logging
-from datetime import datetime, date, timedelta
+import os
+from datetime import date, timedelta
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class DatabaseError(Exception):
 # =============================================================================
 
 
-def _get_connection():
+def _get_connection() -> Any:
     """
     Get a PostgreSQL connection.
 
@@ -71,14 +71,14 @@ def _get_connection():
     """
     try:
         import psycopg2
-    except ImportError:
-        raise DatabaseError("psycopg2 required: uv add psycopg2-binary")
+    except ImportError as exc:
+        raise DatabaseError("psycopg2 required: uv add psycopg2-binary") from exc
 
     try:
         conn = psycopg2.connect(**DB_CONFIG)
         return conn
     except psycopg2.Error as e:
-        raise DatabaseError(f"Connection failed: {e}")
+        raise DatabaseError(f"Connection failed: {e}") from e
 
 
 def test_connection() -> bool:
@@ -439,7 +439,7 @@ def load_benchmarks(
     except DatabaseError:
         raise
     except Exception as e:
-        raise DatabaseError(f"Query failed: {e}")
+        raise DatabaseError(f"Query failed: {e}") from e
 
 
 def load_index_returns(

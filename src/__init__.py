@@ -8,6 +8,6 @@ Subpackages:
 - storage: Pluggable storage abstraction (parquet, duckdb, postgres)
 """
 
-from .storage import get_storage, Storage, StorageError
+from .storage import Storage, StorageError, get_storage
 
 __all__ = ["get_storage", "Storage", "StorageError"]

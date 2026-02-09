@@ -16,10 +16,9 @@ Example usage:
     {'rank': 1, 'symbol': 'BTC', 'name': 'Bitcoin', ...}
 """
 
-import time
-from typing import Any
-from datetime import datetime
 import logging
+from datetime import datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +71,8 @@ def _get_page(url: str) -> str:
     """
     try:
         import requests
-    except ImportError:
-        raise ScrapingError("requests library required: uv add requests")
+    except ImportError as exc:
+        raise ScrapingError("requests library required: uv add requests") from exc
 
     headers = {
         "User-Agent": USER_AGENT,
@@ -84,16 +83,17 @@ def _get_page(url: str) -> str:
     try:
         response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
-        return response.text
-    except requests.exceptions.Timeout:
-        raise ScrapingError(f"Request timed out", url=url)
+        html: str = response.text
+        return html
+    except requests.exceptions.Timeout as e:
+        raise ScrapingError("Request timed out", url=url) from e
     except requests.exceptions.HTTPError as e:
-        raise ScrapingError(f"HTTP error: {e}", url=url)
+        raise ScrapingError(f"HTTP error: {e}", url=url) from e
     except requests.exceptions.RequestException as e:
-        raise ScrapingError(f"Request failed: {e}", url=url)
+        raise ScrapingError(f"Request failed: {e}", url=url) from e
 
 
-def _parse_html(html: str):
+def _parse_html(html: str) -> Any:
     """
     Parse HTML using BeautifulSoup.
 
@@ -108,8 +108,8 @@ def _parse_html(html: str):
     """
     try:
         from bs4 import BeautifulSoup
-    except ImportError:
-        raise ScrapingError("BeautifulSoup required: uv add beautifulsoup4")
+    except ImportError as exc:
+        raise ScrapingError("BeautifulSoup required: uv add beautifulsoup4") from exc
 
     return BeautifulSoup(html, "html.parser")
 
@@ -227,7 +227,7 @@ def scrape_market_rankings(limit: int = 20) -> list[dict[str, Any]]:
     return rankings
 
 
-def _scrape_coingecko_alternative(soup, limit: int) -> list[dict[str, Any]]:
+def _scrape_coingecko_alternative(soup: Any, limit: int) -> list[dict[str, Any]]:
     """
     Alternative scraping method when table structure changes.
 

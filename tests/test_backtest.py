@@ -16,12 +16,12 @@ import pytest
 
 from src.pipeline.backtest import (
     BacktestError,
+    _compute_metrics,
+    _compute_portfolio_daily_returns,
     _create_rolling_windows,
     _cumulative_values,
     _max_drawdown,
-    _compute_metrics,
     _optimize_on_window,
-    _compute_portfolio_daily_returns,
 )
 
 

@@ -10,7 +10,6 @@ Tests C8 compliance - 5 data source types:
 """
 
 import json
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -41,7 +40,7 @@ ETHUSDT,Ethereum,Smart Contracts,Layer 1,2015,2,false,Proof of Stake
 
     def test_csv_missing_file(self, tmp_path):
         """Test handling of missing CSV file."""
-        from src.pipeline.ingest_sources import load_symbols_metadata_csv, SourceError
+        from src.pipeline.ingest_sources import SourceError, load_symbols_metadata_csv
 
         with pytest.raises(SourceError):
             load_symbols_metadata_csv(tmp_path / "nonexistent.csv")
@@ -88,14 +87,14 @@ class TestJSONIngestion:
 
     def test_json_missing_file(self, tmp_path):
         """Test handling of missing JSON file."""
-        from src.pipeline.ingest_sources import load_portfolio_config_json, SourceError
+        from src.pipeline.ingest_sources import SourceError, load_portfolio_config_json
 
         with pytest.raises(SourceError):
             load_portfolio_config_json(tmp_path / "nonexistent.json")
 
     def test_json_invalid_format(self, tmp_path):
         """Test handling of invalid JSON format."""
-        from src.pipeline.ingest_sources import load_portfolio_config_json, SourceError
+        from src.pipeline.ingest_sources import SourceError, load_portfolio_config_json
 
         json_path = tmp_path / "invalid.json"
         json_path.write_text("not valid json {")
@@ -260,9 +259,9 @@ class TestIntegration:
     def test_multi_source_data_compatibility(self, tmp_path):
         """Test that data from different sources can be combined."""
         from src.pipeline.ingest_sources import (
-            load_symbols_metadata_csv,
-            load_portfolio_config_json,
             enrich_prices_with_metadata,
+            load_portfolio_config_json,
+            load_symbols_metadata_csv,
         )
 
         # Create CSV with all required columns

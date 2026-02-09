@@ -4,8 +4,6 @@ Pytest fixtures for portfolio optimization tests.
 Provides reusable test data and mock objects.
 """
 
-import json
-import tempfile
 from pathlib import Path
 
 import pytest
