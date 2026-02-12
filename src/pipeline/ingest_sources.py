@@ -331,9 +331,9 @@ def load_portfolio_config_json(
 
 
 def enrich_prices_with_metadata(
-    price_data: dict[str, list[dict]],
+    price_data: dict[str, list[dict[str, Any]]],
     metadata: list[dict[str, Any]],
-) -> dict[str, list[dict]]:
+) -> dict[str, list[dict[str, Any]]]:
     """
     Enrich price data with symbol metadata.
 
@@ -355,7 +355,7 @@ def enrich_prices_with_metadata(
     # Build metadata lookup
     meta_lookup = {m["symbol"]: m for m in metadata}
 
-    enriched: dict[str, list[dict]] = {}
+    enriched: dict[str, list[dict[str, Any]]] = {}
 
     for symbol, records in price_data.items():
         meta = meta_lookup.get(symbol, {})

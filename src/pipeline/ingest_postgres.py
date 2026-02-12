@@ -365,7 +365,7 @@ def load_benchmarks(
             ORDER BY mi.index_name, id.date
         """, (start_date, end_date))
 
-        indices: dict[str, list[dict]] = {}
+        indices: dict[str, list[dict[str, Any]]] = {}
         for row in cursor.fetchall():
             index_name, dt, close_value = row
             if index_name not in indices:
@@ -389,7 +389,7 @@ def load_benchmarks(
             ORDER BY portfolio_name, snapshot_date
         """, (start_date, end_date))
 
-        portfolio_history: list[dict] = []
+        portfolio_history: list[dict[str, Any]] = []
         for row in cursor.fetchall():
             portfolio_history.append({
                 "date": row[0].isoformat(),
@@ -416,7 +416,7 @@ def load_benchmarks(
             LIMIT 100
         """, (start_date, end_date))
 
-        comparisons: list[dict] = []
+        comparisons: list[dict[str, Any]] = []
         for row in cursor.fetchall():
             comparisons.append({
                 "date": row[0].isoformat(),

@@ -49,7 +49,7 @@ class Storage(ABC):
 
     @abstractmethod
     def save_raw(
-        self, data: dict[str, list[dict]], metadata: dict | None = None
+        self, data: dict[str, list[dict[str, Any]]], metadata: dict[str, Any] | None = None
     ) -> str:
         """
         Save raw ingested data (OHLCV klines).
@@ -70,7 +70,7 @@ class Storage(ABC):
     @abstractmethod
     def load_raw(
         self, symbols: list[str] | None = None
-    ) -> dict[str, list[dict]]:
+    ) -> dict[str, list[dict[str, Any]]]:
         """
         Load raw data, optionally filtered by symbols.
 

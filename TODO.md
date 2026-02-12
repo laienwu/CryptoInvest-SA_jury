@@ -44,7 +44,7 @@
 
 ## Code review — Low
 
-- [ ] **`MetricResponse.data: dict`**: Untyped dict, should be `dict[str, Any]`. (`schemas.py:42`)
+- [x] **`MetricResponse.data: dict`**: Untyped dict, should be `dict[str, Any]`. (`schemas.py:42`)
 - [ ] **No input validation in optimize**: `calculate_portfolio_return()` doesn't check weights sum or vector lengths. (`optimize.py:116`)
 - [ ] **Lazy imports**: `requests`, `BeautifulSoup`, `psycopg2` imported inside functions. Errors only surface at runtime. (`ingest_scraping.py:60`, `ingest_postgres.py:62`)
 - [x] **Missing type hints on internals**: `_parse_html`, `_scrape_coingecko_alternative` soup param. (`_utils.py:96`, `ingest_scraping.py:230`)

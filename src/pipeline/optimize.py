@@ -473,7 +473,7 @@ def compute_efficient_frontier(
     cov_matrix: list[list[float]],
     n_points: int = 50,
     risk_free_rate: float = RISK_FREE_RATE,
-) -> dict:
+) -> dict[str, Any]:
     """
     Compute the efficient frontier for a set of assets.
 
@@ -495,7 +495,7 @@ def compute_efficient_frontier(
     target_returns = _linspace(min_ret, max_ret, n_points)
 
     # Build frontier points
-    frontier: list[dict] = []
+    frontier: list[dict[str, Any]] = []
     for target in target_returns:
         weights = _optimize_for_target_return(mean_returns, cov_matrix, target)
         if weights is not None:
@@ -563,7 +563,7 @@ def compute_and_save_frontier(
     n_points: int = 50,
     risk_free_rate: float = RISK_FREE_RATE,
     save: bool = True,
-) -> dict:
+) -> dict[str, Any]:
     """
     Compute efficient frontier and save results.
 

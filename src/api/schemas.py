@@ -5,6 +5,8 @@ Provides typed, validated response schemas that also drive the
 auto-generated OpenAPI documentation.
 """
 
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -39,7 +41,7 @@ class MetricsListResponse(BaseModel):
 
 class MetricResponse(BaseModel):
     name: str
-    data: dict
+    data: dict[str, Any]
 
 
 class PortfolioSummaryResponse(BaseModel):

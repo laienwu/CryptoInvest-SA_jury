@@ -79,7 +79,7 @@ class TransformError(Exception):
 
 
 def _align_data_by_date(
-    raw_data: dict[str, list[dict]],
+    raw_data: dict[str, list[dict[str, Any]]],
 ) -> tuple[list[str], list[str], list[list[float]]]:
     """
     Align data across symbols by common dates.

@@ -101,7 +101,7 @@ class ParquetStorage(Storage):
     # -------------------------------------------------------------------------
 
     def save_raw(
-        self, data: dict[str, list[dict]], metadata: dict | None = None
+        self, data: dict[str, list[dict[str, Any]]], metadata: dict[str, Any] | None = None
     ) -> str:
         """
         Save raw ingested klines data to Parquet files.
@@ -145,7 +145,7 @@ class ParquetStorage(Storage):
 
     def load_raw(
         self, symbols: list[str] | None = None
-    ) -> dict[str, list[dict]]:
+    ) -> dict[str, list[dict[str, Any]]]:
         """
         Load raw klines data from Parquet files.
 
@@ -169,7 +169,7 @@ class ParquetStorage(Storage):
                 f"No raw data found in {klines_dir}", operation="load_raw"
             )
 
-        result: dict[str, list[dict]] = {}
+        result: dict[str, list[dict[str, Any]]] = {}
 
         for symbol in symbols:
             file_path = self._get_raw_path(symbol)

@@ -9,6 +9,7 @@ Connects to FastAPI backend to display:
 """
 
 import os
+from typing import Any
 
 import pandas as pd
 import plotly.express as px
@@ -19,19 +20,19 @@ import streamlit as st
 API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 
-def fetch_api(endpoint: str) -> dict | None:
+def fetch_api(endpoint: str) -> dict[str, Any] | None:
     """Fetch data from API endpoint."""
     try:
         response = requests.get(f"{API_URL}{endpoint}", timeout=10)
         response.raise_for_status()
-        data: dict = response.json()
+        data: dict[str, Any] = response.json()
         return data
     except requests.RequestException as e:
         st.error(f"API Error: {e}")
         return None
 
 
-def render_kpi_cards(portfolio: dict) -> None:
+def render_kpi_cards(portfolio: dict[str, Any]) -> None:
     """Render KPI metric cards."""
     col1, col2, col3 = st.columns(3)
 
@@ -58,7 +59,7 @@ def render_kpi_cards(portfolio: dict) -> None:
         )
 
 
-def render_allocation_chart(weights: dict) -> None:
+def render_allocation_chart(weights: dict[str, float]) -> None:
     """Render portfolio allocation pie chart."""
     if not weights:
         st.warning("No allocation data available")

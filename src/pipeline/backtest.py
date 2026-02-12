@@ -65,7 +65,7 @@ def _create_rolling_windows(
     prices_matrix: list[list[float]],
     train_window: int,
     test_window: int,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """
     Create rolling train/test windows from time series data.
 
@@ -377,7 +377,7 @@ def run_backtest(
     all_equal_returns: list[float] = []
     all_btc_returns: list[float] = []
     all_dates: list[str] = []
-    window_results: list[dict] = []
+    window_results: list[dict[str, Any]] = []
 
     equal_weights = [1.0 / n_symbols] * n_symbols
     btc_weights = [1.0] + [0.0] * (n_symbols - 1)  # 100% in first symbol (BTC)

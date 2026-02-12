@@ -38,7 +38,7 @@ def write_klines_parquet(
     symbol: str,
     records: list[dict[str, Any]],
     file_path: Path,
-    metadata: dict | None = None,
+    metadata: dict[str, Any] | None = None,
     compression: str = "snappy",
 ) -> None:
     """

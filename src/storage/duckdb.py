@@ -107,7 +107,7 @@ class DuckDBStorage(Storage):
                 FROM fact_prices
             """)
 
-    def query(self, sql: str) -> list[dict]:
+    def query(self, sql: str) -> list[dict[str, Any]]:
         """
         Execute SQL query and return results as list of dicts.
 
@@ -134,7 +134,7 @@ class DuckDBStorage(Storage):
     # Raw Data Operations (delegate to Parquet, add SQL layer)
     # -------------------------------------------------------------------------
 
-    def save_raw(self, data: dict[str, list[dict]], metadata: dict | None = None) -> str:
+    def save_raw(self, data: dict[str, list[dict[str, Any]]], metadata: dict[str, Any] | None = None) -> str:
         """Save raw data as Parquet files, then refresh SQL views."""
         from ._utils import write_klines_parquet
 
@@ -153,7 +153,7 @@ class DuckDBStorage(Storage):
         self._setup_views()
         return str(klines_dir)
 
-    def load_raw(self, symbols: list[str] | None = None) -> dict[str, list[dict]]:
+    def load_raw(self, symbols: list[str] | None = None) -> dict[str, list[dict[str, Any]]]:
         """Load raw data via SQL query."""
         if symbols:
             symbols_str = ", ".join(f"'{s}'" for s in symbols)
@@ -164,7 +164,7 @@ class DuckDBStorage(Storage):
         rows = self.query(sql)
 
         # Group by symbol
-        result: dict[str, list[dict]] = {}
+        result: dict[str, list[dict[str, Any]]] = {}
         for row in rows:
             symbol = row.pop("symbol")
             if symbol not in result:
@@ -288,7 +288,7 @@ class DuckDBStorage(Storage):
     # Star Schema Queries (C13 - faits/dimensions)
     # -------------------------------------------------------------------------
 
-    def get_prices_by_symbol(self, symbol: str) -> list[dict]:
+    def get_prices_by_symbol(self, symbol: str) -> list[dict[str, Any]]:
         """Get all prices for a symbol (fact query with dimension filter)."""
         return self.query(f"""
             SELECT f.*, d.year, d.month, d.day_of_week
@@ -298,7 +298,7 @@ class DuckDBStorage(Storage):
             ORDER BY f.timestamp
         """)
 
-    def get_daily_returns(self) -> list[dict]:
+    def get_daily_returns(self) -> list[dict[str, Any]]:
         """Calculate daily returns using SQL (C9 demo)."""
         return self.query("""
             SELECT
@@ -311,7 +311,7 @@ class DuckDBStorage(Storage):
             ORDER BY symbol, timestamp
         """)
 
-    def get_summary_stats(self) -> list[dict]:
+    def get_summary_stats(self) -> list[dict[str, Any]]:
         """Aggregate stats per symbol (analytical query demo)."""
         return self.query("""
             SELECT
