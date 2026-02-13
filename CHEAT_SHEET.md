@@ -204,7 +204,7 @@ def render_volatility_chart()        # Bar chart volatilites
 - Connecte a l'API via `API_URL=http://api:8000`
 - Port 8501 (Streamlit standard)
 - Plotly pour les graphiques interactifs
-- Pandas pour la manipulation de donnees
+- Pandas dans le dashboard uniquement (pipeline = PyArrow, ADR-003)
 
 ---
 
@@ -214,10 +214,8 @@ def render_volatility_chart()        # Bar chart volatilites
 
 ```python
 # Dans src/storage/__init__.py
-_STORAGE_REGISTRY = {
-    "parquet": ParquetStorage,
-    "duckdb": DuckDBStorage,
-}
+_mutable_registry = {"parquet": ParquetStorage, "duckdb": DuckDBStorage}
+_STORAGE_REGISTRY = MappingProxyType(_mutable_registry)  # read-only
 
 def get_storage(name="parquet") -> Storage:
     return _STORAGE_REGISTRY[name]()

@@ -259,18 +259,19 @@ Sharpe = (R_p - R_f) / σ_p
 
 ## Slide 20 — Qualité du code
 
-**214 tests — 9 fichiers de tests**
+**214 tests — 10 fichiers de tests**
 
 | Module | Tests | Couverture |
 |--------|-------|------------|
-| Config | 14 | TOML, env vars, defaults |
-| Transform | 30 | Calculs financiers |
-| Optimize | 22 | Markowitz, grid search |
-| Storage | 17 | Parquet, DuckDB |
+| Config | 18 | TOML, env vars, defaults |
+| Transform | 34 | Calculs financiers |
+| Optimize | 30 | Markowitz, validation |
+| Storage | 24 | Parquet, DuckDB, factory |
 | API | 22 | Endpoints (mock DI) |
-| Ingest sources | 36 | CSV, JSON, DataSource ABC |
-| Frontier | 13 | Frontière efficiente |
-| Backtest | 18 | Walk-forward |
+| Ingest sources | 39 | CSV, JSON, DataSource ABC |
+| Frontier | 16 | Frontière efficiente |
+| Backtest | 25 | Walk-forward |
+| OpenAPI drift | 6 | Spec vs code sync |
 
 ---
 
