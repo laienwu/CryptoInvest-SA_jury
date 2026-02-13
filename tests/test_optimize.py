@@ -115,11 +115,13 @@ class TestPortfolioReturn:
         expected = 0.5 * 0.15 + 0.3 * 0.20 + 0.2 * 0.10
         assert result == pytest.approx(expected)
 
-    def test_zero_weights(self, sample_mean_returns):
-        """Test return with zero weights."""
+    def test_zero_weights_rejected(self, sample_mean_returns):
+        """Test that zero weights are rejected (sum != 1)."""
+        from src.pipeline.optimize import OptimizeError
+
         weights = [0.0, 0.0, 0.0]
-        result = calculate_portfolio_return(weights, sample_mean_returns)
-        assert result == pytest.approx(0.0)
+        with pytest.raises(OptimizeError, match="sum to"):
+            calculate_portfolio_return(weights, sample_mean_returns)
 
 
 class TestPortfolioVariance:

@@ -6,19 +6,26 @@ Covers C12: Partager le jeu de données via API REST.
 Run with: uvicorn src.api.main:app --reload
 """
 
+import logging
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException
 
 from src.api.schemas import (
+    BacktestResponse,
+    FrontierResponse,
     HealthResponse,
     KlinesResponse,
     MetricResponse,
     MetricsListResponse,
+    PortfolioResponse,
     PortfolioSummaryResponse,
     SymbolsResponse,
 )
+from src.config import load_config
 from src.storage import Storage, get_storage
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Portfolio Optimization API",
@@ -29,7 +36,7 @@ app = FastAPI(
 
 def get_storage_dep() -> Storage:
     """Dependency: injectable storage backend."""
-    return get_storage("parquet")
+    return get_storage(load_config().storage_backend)
 
 
 @app.get("/", response_model=HealthResponse)
@@ -56,7 +63,8 @@ def get_klines(symbol: str, storage: Storage = Depends(get_storage_dep)) -> dict
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(500, str(e)) from e
+        logger.error("Failed to load klines for %s: %s", symbol, e)
+        raise HTTPException(500, "Internal server error") from e
 
 
 @app.get("/metrics", response_model=MetricsListResponse)
@@ -72,17 +80,19 @@ def get_metric(name: str, storage: Storage = Depends(get_storage_dep)) -> dict[s
         data = storage.load_processed(name)
         return {"name": name, "data": data}
     except Exception as e:
-        raise HTTPException(404, f"Metric {name} not found: {e}") from e
+        logger.warning("Metric %s not found: %s", name, e)
+        raise HTTPException(404, "Metric not found") from e
 
 
-@app.get("/portfolio")
+@app.get("/portfolio", response_model=PortfolioResponse)
 def get_portfolio(storage: Storage = Depends(get_storage_dep)) -> dict[str, Any]:
     """Get optimal portfolio weights."""
     try:
         data = storage.load_output("weights")
         return data
     except Exception as e:
-        raise HTTPException(404, f"Portfolio not found: {e}") from e
+        logger.warning("Portfolio not found: %s", e)
+        raise HTTPException(404, "Portfolio not found") from e
 
 
 @app.get("/portfolio/summary", response_model=PortfolioSummaryResponse)
@@ -97,27 +107,30 @@ def get_portfolio_summary(storage: Storage = Depends(get_storage_dep)) -> dict[s
             "sharpe_ratio": data.get("sharpe_ratio"),
         }
     except Exception as e:
-        raise HTTPException(404, f"Portfolio not found: {e}") from e
+        logger.warning("Portfolio not found: %s", e)
+        raise HTTPException(404, "Portfolio not found") from e
 
 
-@app.get("/portfolio/frontier")
+@app.get("/portfolio/frontier", response_model=FrontierResponse)
 def get_frontier(storage: Storage = Depends(get_storage_dep)) -> dict[str, Any]:
     """Get efficient frontier data."""
     try:
         data = storage.load_output("frontier")
         return data
     except Exception as e:
-        raise HTTPException(404, f"Frontier not found: {e}") from e
+        logger.warning("Frontier not found: %s", e)
+        raise HTTPException(404, "Frontier not found") from e
 
 
-@app.get("/portfolio/backtest")
+@app.get("/portfolio/backtest", response_model=BacktestResponse)
 def get_backtest(storage: Storage = Depends(get_storage_dep)) -> dict[str, Any]:
     """Get backtest results."""
     try:
         data = storage.load_output("backtest")
         return data
     except Exception as e:
-        raise HTTPException(404, f"Backtest not found: {e}") from e
+        logger.warning("Backtest not found: %s", e)
+        raise HTTPException(404, "Backtest not found") from e
 
 
 if __name__ == "__main__":

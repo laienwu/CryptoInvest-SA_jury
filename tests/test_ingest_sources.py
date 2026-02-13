@@ -408,7 +408,7 @@ class TestScrapingSource:
         mock_rankings = [{"name": "Bitcoin", "rank": 1}]
         with patch("src.pipeline.ingest_scraping.scrape_market_rankings", return_value=mock_rankings) as mock_fn:
             result = source.fetch()
-            mock_fn.assert_called_once_with(limit=10)
+            mock_fn.assert_called_once_with(limit=10, allow_fallback=True)
             assert result == {"market_rankings": mock_rankings}
 
 

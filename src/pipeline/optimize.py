@@ -110,6 +110,21 @@ def matrix_inverse_2x2(matrix: list[list[float]]) -> list[list[float]]:
 # =============================================================================
 
 
+def _validate_weights(weights: list[float], expected_len: int) -> None:
+    """Validate portfolio weight vector."""
+    if len(weights) != expected_len:
+        raise OptimizeError(
+            f"Weights length {len(weights)} != expected {expected_len}",
+            operation="validate",
+        )
+    weight_sum = sum(weights)
+    if abs(weight_sum - 1.0) > 0.01:
+        raise OptimizeError(
+            f"Weights sum to {weight_sum:.4f}, expected ~1.0",
+            operation="validate",
+        )
+
+
 def calculate_portfolio_return(
     weights: list[float], mean_returns: list[float]
 ) -> float:
@@ -122,7 +137,11 @@ def calculate_portfolio_return(
 
     Returns:
         Expected portfolio return (annualized).
+
+    Raises:
+        OptimizeError: If weights/returns length mismatch or weights don't sum to ~1.
     """
+    _validate_weights(weights, len(mean_returns))
     return dot_product(weights, mean_returns)
 
 
@@ -140,7 +159,11 @@ def calculate_portfolio_variance(
 
     Returns:
         Portfolio variance.
+
+    Raises:
+        OptimizeError: If weights length doesn't match matrix dimensions or weights don't sum to ~1.
     """
+    _validate_weights(weights, len(cov_matrix))
     # Cov * w
     cov_w = matrix_vector_multiply(cov_matrix, weights)
     # w' * (Cov * w)

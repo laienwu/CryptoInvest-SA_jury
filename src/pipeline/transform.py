@@ -23,13 +23,12 @@ Example usage:
 
 import logging
 import math
-import tomllib
-from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
 import pyarrow.compute as pc
 
+from src.config import load_config
 from src.storage import get_storage
 
 logger = logging.getLogger(__name__)
@@ -38,25 +37,12 @@ logger = logging.getLogger(__name__)
 # Configuration
 # =============================================================================
 
+_cfg = load_config()
 
-def _load_config() -> dict[str, Any]:
-    """Load config from config.toml."""
-    config_path = Path(__file__).parent.parent.parent / "config.toml"
-    if config_path.exists():
-        with open(config_path, "rb") as f:
-            return tomllib.load(f)
-    return {}
-
-
-_config = _load_config()
-_portfolio = _config.get("portfolio", {})
-
-DEFAULT_SYMBOLS: list[str] = _portfolio.get(
-    "symbols", ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "ADAUSDT"]
-)
+DEFAULT_SYMBOLS: list[str] = list(_cfg.symbols)
 
 # Trading days per year for annualization (crypto = 365)
-TRADING_DAYS_PER_YEAR: int = 365
+TRADING_DAYS_PER_YEAR: int = _cfg.trading_days_per_year
 
 
 # =============================================================================

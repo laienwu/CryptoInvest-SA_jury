@@ -43,8 +43,12 @@ class Storage(ABC):
 
     Implementations:
     - ParquetStorage: File-based storage using Apache Parquet format
-    - (Future) DuckDBStorage: SQL on files using DuckDB
-    - (Future) PostgresStorage: Full RDBMS for production
+    - DuckDBStorage: SQL-on-files using DuckDB (star schema views)
+
+    Note: Concrete backends may expose additional specialized methods
+    beyond this interface (e.g. DuckDBStorage provides SQL query methods
+    for C9/C13 certification requirements). These are by design and do
+    not belong on the ABC (interface segregation principle).
     """
 
     @abstractmethod

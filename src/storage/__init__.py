@@ -33,6 +33,7 @@ Example workflow:
     >>> loaded = storage.load_raw(["BTCUSDT", "ETHUSDT"])
 """
 
+from types import MappingProxyType
 from typing import Any
 
 from .base import Storage, StorageError
@@ -42,11 +43,15 @@ from .parquet import ParquetStorage
 # Type alias for storage names
 StorageName = str
 
-# Registry of available storage implementations
-_STORAGE_REGISTRY: dict[str, type[Storage]] = {
+# Registry of available storage implementations.
+# _mutable_registry is the private, writable store; _STORAGE_REGISTRY is the
+# read-only proxy exposed to the rest of the codebase.  Mutations go through
+# register_storage() only.
+_mutable_registry: dict[str, type[Storage]] = {
     "parquet": ParquetStorage,
     "duckdb": DuckDBStorage,
 }
+_STORAGE_REGISTRY: MappingProxyType[str, type[Storage]] = MappingProxyType(_mutable_registry)
 
 # Default storage backend
 DEFAULT_STORAGE = "parquet"
@@ -118,11 +123,13 @@ def register_storage(name: str, storage_class: type[Storage]) -> None:
         >>> register_storage("my_backend", MyStorage)
         >>> storage = get_storage("my_backend")
     """
+    global _STORAGE_REGISTRY
     if not issubclass(storage_class, Storage):
         raise TypeError(
             f"{storage_class.__name__} must inherit from Storage"
         )
-    _STORAGE_REGISTRY[name] = storage_class
+    _mutable_registry[name] = storage_class
+    _STORAGE_REGISTRY = MappingProxyType(_mutable_registry)
 
 
 def list_available_backends() -> list[str]:

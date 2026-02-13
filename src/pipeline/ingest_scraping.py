@@ -119,7 +119,9 @@ def _parse_html(html: str) -> Any:
 # =============================================================================
 
 
-def scrape_market_rankings(limit: int = 20) -> list[dict[str, Any]]:
+def scrape_market_rankings(
+    limit: int = 20, *, allow_fallback: bool = False
+) -> list[dict[str, Any]]:
     """
     Scrape cryptocurrency market rankings from CoinGecko.
 
@@ -136,12 +138,14 @@ def scrape_market_rankings(limit: int = 20) -> list[dict[str, Any]]:
 
     Args:
         limit: Maximum number of coins to return.
+        allow_fallback: If True, return demo data when scraping fails.
+            If False (default), raise ScrapingError instead.
 
     Returns:
         List of dictionaries with market data.
 
     Raises:
-        ScrapingError: If scraping fails.
+        ScrapingError: If scraping fails and allow_fallback is False.
 
     Example:
         >>> data = scrape_market_rankings(limit=5)
@@ -161,8 +165,11 @@ def scrape_market_rankings(limit: int = 20) -> list[dict[str, Any]]:
     table = soup.find("table")
 
     if not table:
-        # Fallback: try to find data in divs (CoinGecko uses dynamic loading)
-        logger.warning("Table not found, using alternative parsing")
+        if not allow_fallback:
+            raise ScrapingError(
+                "Table not found on page (site structure may have changed)", url=url
+            )
+        logger.warning("Table not found, using demonstration fallback data")
         return _scrape_coingecko_alternative(soup, limit)
 
     rows = table.find_all("tr")[1:]  # Skip header

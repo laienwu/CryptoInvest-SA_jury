@@ -285,7 +285,13 @@ class DuckDBStorage(Storage):
         return sorted(f.stem for f in (self.data_dir / "output").glob("*.json"))
 
     # -------------------------------------------------------------------------
-    # Star Schema Queries (C13 - faits/dimensions)
+    # Analytical methods (C9/C13 — DuckDB-only, not on Storage ABC)
+    #
+    # These methods are intentionally absent from the Storage ABC.
+    # They exist to demonstrate SQL extraction (C9) and star-schema
+    # analytical queries (C13) for the certification. They require SQL
+    # capabilities that are specific to DuckDB and would violate
+    # interface segregation if added to the base class.
     # -------------------------------------------------------------------------
 
     def get_prices_by_symbol(self, symbol: str) -> list[dict[str, Any]]:

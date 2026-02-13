@@ -145,7 +145,7 @@ class ScrapingSource(DataSource):
 
     def fetch(self) -> dict[str, Any]:
         from src.pipeline.ingest_scraping import scrape_market_rankings
-        return {"market_rankings": scrape_market_rankings(limit=self._limit)}
+        return {"market_rankings": scrape_market_rankings(limit=self._limit, allow_fallback=True)}
 
 
 class PostgresSource(DataSource):
@@ -422,6 +422,7 @@ def ingest_all_sources(
     logger.info("=" * 60)
 
     sources_loaded: list[str] = []
+    sources_failed: list[dict[str, str]] = []
     result: dict[str, Any] = {}
 
     # Build source list
@@ -451,6 +452,7 @@ def ingest_all_sources(
             sources_loaded.append(source.name)
         except (SourceError, Exception) as e:
             logger.warning(f"Source {source.name} failed: {e}")
+            sources_failed.append({"source": source.name, "error": str(e)})
 
     # Data Aggregation (C10)
     metadata = result.get("metadata", [])
@@ -471,6 +473,8 @@ def ingest_all_sources(
             logger.info(f"Added market rankings for {len(market_data)} symbols")
 
     result["sources"] = sources_loaded
+    if sources_failed:
+        result["failures"] = sources_failed
 
     # Summary
     logger.info("=" * 60)

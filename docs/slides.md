@@ -104,10 +104,10 @@ for source in sources:
 **DuckDB — SQL analytique sur fichiers**
 
 ```sql
-SELECT ds.symbol_name, AVG(fp.close_price)
+SELECT ds.symbol, AVG(fp.close) AS avg_close
 FROM fact_prices fp
-JOIN dim_symbol ds ON fp.symbol_key = ds.symbol_key
-GROUP BY ds.symbol_name
+JOIN dim_symbol ds ON fp.symbol = ds.symbol
+GROUP BY ds.symbol
 ```
 
 - Star schema : `fact_prices`, `dim_symbol`, `dim_date`

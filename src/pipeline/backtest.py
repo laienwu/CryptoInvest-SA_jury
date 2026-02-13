@@ -23,8 +23,8 @@ import logging
 import math
 from typing import Any
 
+from src.config import load_config
 from src.pipeline.optimize import (
-    RISK_FREE_RATE,
     _grid_search_max_sharpe,
     _try_scipy_optimization,
     optimize_minimum_variance,
@@ -40,6 +40,9 @@ from src.pipeline.transform import (
 from src.storage import get_storage
 
 logger = logging.getLogger(__name__)
+
+_cfg = load_config()
+RISK_FREE_RATE: float = _cfg.risk_free_rate
 
 # =============================================================================
 # Exceptions
