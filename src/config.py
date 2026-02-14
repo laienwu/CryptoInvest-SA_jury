@@ -114,3 +114,77 @@ def load_config(config_path: Path | None = None) -> PipelineConfig:
         kwargs["risk_free_rate"] = float(env_risk_free)
 
     return PipelineConfig(**kwargs)
+
+
+# =============================================================================
+# Database configuration (infrastructure, separate from pipeline parameters)
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class DatabaseConfig:
+    """Immutable PostgreSQL connection configuration."""
+
+    host: str = "localhost"
+    port: int = 5432
+    database: str = "portfolio_benchmarks"
+    user: str = "portfolio"
+    password: str = ""
+
+
+def load_db_config(config_path: Path | None = None) -> DatabaseConfig:
+    """
+    Load database configuration from config.toml ``[database]`` section,
+    overlaid with ``POSTGRES_*`` environment variables.
+
+    Precedence (highest wins):
+        1. Environment variables (POSTGRES_HOST, POSTGRES_PORT, etc.)
+        2. config.toml ``[database]`` values
+        3. DatabaseConfig defaults
+
+    Args:
+        config_path: Path to config.toml. Defaults to project root.
+
+    Returns:
+        Frozen DatabaseConfig dataclass.
+    """
+    if config_path is None:
+        config_path = _PROJECT_ROOT / "config.toml"
+
+    toml_data = _read_toml(config_path)
+    database = toml_data.get("database", {})
+
+    kwargs: dict[str, Any] = {}
+
+    if "host" in database:
+        kwargs["host"] = database["host"]
+    if "port" in database:
+        kwargs["port"] = int(database["port"])
+    if "database" in database:
+        kwargs["database"] = database["database"]
+    if "user" in database:
+        kwargs["user"] = database["user"]
+    if "password" in database:
+        kwargs["password"] = database["password"]
+
+    env_host = os.environ.get("POSTGRES_HOST")
+    if env_host:
+        kwargs["host"] = env_host
+
+    env_port = os.environ.get("POSTGRES_PORT")
+    if env_port:
+        kwargs["port"] = int(env_port)
+
+    env_db = os.environ.get("POSTGRES_DB")
+    if env_db:
+        kwargs["database"] = env_db
+
+    env_user = os.environ.get("POSTGRES_USER")
+    if env_user:
+        kwargs["user"] = env_user
+
+    env_password = os.environ.get("POSTGRES_PASSWORD")
+    if env_password:
+        kwargs["password"] = env_password
+
+    return DatabaseConfig(**kwargs)

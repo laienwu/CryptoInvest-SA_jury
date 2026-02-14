@@ -42,6 +42,10 @@
 - [x] **`ingest_all_sources()` loses error info**: Now tracks `failures` list with source name and error message in result dict.
 - [x] **Duplicated path calculation**: `transform.py` and `ingest.py` now use `load_config()`. Storage modules (`parquet.py`, `duckdb.py`) keep own defaults intentionally — storage layer is independent of pipeline config.
 
+## Code review — Rewrite
+
+- [x] **`ingest_postgres.py` rewrite**: Removed duplicate `SCHEMA_SQL`/`initialize_schema()` (handled by `init-benchmarks.sql`), extracted demo data generation to `scripts/generate_benchmarks.py`, replaced module-level `DB_CONFIG` with frozen `DatabaseConfig` dataclass + `load_db_config()` in `config.py`, added context managers for all DB connections/cursors, fixed `load_benchmarks_fallback()` global RNG state leak.
+
 ## Code review — Low
 
 - [x] **`MetricResponse.data: dict`**: Untyped dict, should be `dict[str, Any]`. (`schemas.py:42`)

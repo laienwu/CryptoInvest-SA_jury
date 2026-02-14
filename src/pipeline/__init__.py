@@ -32,6 +32,7 @@ from .ingest import ingest_data, ingest_incremental
 
 # -- Source loaders (used in demos / CHEAT_SHEET) -----------------------------
 from .ingest_postgres import (
+    BenchmarkRepository,
     DatabaseError,
     load_benchmarks,
     load_benchmarks_fallback,
@@ -67,6 +68,8 @@ __all__ = [
     "load_portfolio_config_json",
     "load_benchmarks",
     "load_benchmarks_fallback",
+    # Repository
+    "BenchmarkRepository",
     # Exceptions
     "BacktestError",
     "DatabaseError",
