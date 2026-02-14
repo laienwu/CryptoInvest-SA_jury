@@ -33,20 +33,6 @@ from src.config import load_config
 
 logger = logging.getLogger(__name__)
 
-# =============================================================================
-# Configuration (from centralized config)
-# =============================================================================
-
-_cfg = load_config()
-
-DEFAULT_SYMBOLS: list[str] = list(_cfg.symbols)
-DEFAULT_INTERVAL: str = _cfg.interval
-DEFAULT_PERIOD_DAYS: int = _cfg.period_days
-
-BINANCE_API_BASE: str = _cfg.binance_api_base
-RATE_LIMIT_DELAY: float = _cfg.rate_limit_delay
-MAX_RETRIES: int = _cfg.max_retries
-
 # Retry delay multiplier (exponential backoff)
 RETRY_DELAY_MULTIPLIER: float = 2.0
 
@@ -70,13 +56,20 @@ class BinanceAPIError(Exception):
 # =============================================================================
 
 
-def _make_request(url: str, params: dict[str, Any]) -> Any:
+def _make_request(
+    url: str,
+    params: dict[str, Any],
+    rate_limit_delay: float = 0.5,
+    max_retries: int = 3,
+) -> Any:
     """
     Make a GET request to Binance API with retry logic.
 
     Args:
         url: Full API endpoint URL.
         params: Query parameters for the request.
+        rate_limit_delay: Base delay between retries in seconds.
+        max_retries: Maximum number of retry attempts.
 
     Returns:
         JSON response as a list of kline data.
@@ -85,9 +78,9 @@ def _make_request(url: str, params: dict[str, Any]) -> Any:
         BinanceAPIError: If the request fails after all retries.
     """
     last_exception: Exception | None = None
-    delay = RATE_LIMIT_DELAY
+    delay = rate_limit_delay
 
-    for attempt in range(MAX_RETRIES):
+    for attempt in range(max_retries):
         try:
             response = requests.get(url, params=params, timeout=30)
 
@@ -109,18 +102,18 @@ def _make_request(url: str, params: dict[str, Any]) -> Any:
 
         except requests.exceptions.Timeout:
             last_exception = BinanceAPIError("Request timed out")
-            logger.warning(f"Timeout on attempt {attempt + 1}/{MAX_RETRIES}")
+            logger.warning(f"Timeout on attempt {attempt + 1}/{max_retries}")
 
         except requests.exceptions.ConnectionError as e:
             last_exception = BinanceAPIError(f"Connection error: {e}")
-            logger.warning(f"Connection error on attempt {attempt + 1}/{MAX_RETRIES}")
+            logger.warning(f"Connection error on attempt {attempt + 1}/{max_retries}")
 
         except requests.exceptions.RequestException as e:
             last_exception = BinanceAPIError(f"Request error: {e}")
-            logger.warning(f"Request error on attempt {attempt + 1}/{MAX_RETRIES}")
+            logger.warning(f"Request error on attempt {attempt + 1}/{max_retries}")
 
         # Exponential backoff
-        if attempt < MAX_RETRIES - 1:
+        if attempt < max_retries - 1:
             time.sleep(delay)
             delay *= RETRY_DELAY_MULTIPLIER
 
@@ -129,10 +122,14 @@ def _make_request(url: str, params: dict[str, Any]) -> Any:
 
 def fetch_klines(
     symbol: str,
-    interval: str = DEFAULT_INTERVAL,
+    interval: str = "1d",
     start_time: datetime | None = None,
     end_time: datetime | None = None,
     limit: int = 1000,
+    api_base: str = "https://api.binance.com",
+    rate_limit_delay: float = 0.5,
+    max_retries: int = 3,
+    period_days: int = 90,
 ) -> list[dict[str, Any]]:
     """
     Fetch klines (candlestick data) for a single symbol from Binance API.
@@ -140,9 +137,13 @@ def fetch_klines(
     Args:
         symbol: Trading pair symbol (e.g., "BTCUSDT").
         interval: Kline interval (e.g., "1d", "1h", "15m").
-        start_time: Start datetime for data. Defaults to 90 days ago.
+        start_time: Start datetime for data. Defaults to period_days ago.
         end_time: End datetime for data. Defaults to now.
         limit: Maximum number of klines to fetch (max 1000).
+        api_base: Binance API base URL.
+        rate_limit_delay: Base delay for retries in seconds.
+        max_retries: Maximum number of retry attempts.
+        period_days: Default number of days to fetch when start_time is None.
 
     Returns:
         List of dictionaries with kline data.
@@ -160,7 +161,7 @@ def fetch_klines(
     if end_time is None:
         end_time = datetime.now()
     if start_time is None:
-        start_time = end_time - timedelta(days=DEFAULT_PERIOD_DAYS)
+        start_time = end_time - timedelta(days=period_days)
 
     # Convert to milliseconds timestamp
     start_ms = int(start_time.timestamp() * 1000)
@@ -175,11 +176,11 @@ def fetch_klines(
         "limit": min(limit, 1000),  # Ensure we don't exceed API limit
     }
 
-    url = f"{BINANCE_API_BASE}/api/v3/klines"
+    url = f"{api_base}/api/v3/klines"
     logger.info(f"Fetching {symbol} klines from {start_time.date()} to {end_time.date()}...")
 
     # Make API request
-    raw_klines = _make_request(url, params)
+    raw_klines = _make_request(url, params, rate_limit_delay, max_retries)
 
     # Parse response into structured format
     # Binance kline format:
@@ -206,16 +207,16 @@ def fetch_klines(
 
 def fetch_all_symbols(
     symbols: list[str] | None = None,
-    interval: str = DEFAULT_INTERVAL,
-    period_days: int = DEFAULT_PERIOD_DAYS,
+    interval: str | None = None,
+    period_days: int | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     """
     Fetch klines for multiple symbols and return as a dictionary.
 
     Args:
-        symbols: List of trading pair symbols. Defaults to DEFAULT_SYMBOLS.
-        interval: Kline interval (e.g., "1d", "1h").
-        period_days: Number of days of historical data to fetch.
+        symbols: List of trading pair symbols. Defaults to config symbols.
+        interval: Kline interval (e.g., "1d", "1h"). Defaults to config interval.
+        period_days: Number of days of historical data to fetch. Defaults to config.
 
     Returns:
         Dictionary with symbol as key and list of kline dicts as value.
@@ -233,8 +234,13 @@ def fetch_all_symbols(
         >>> btc_prices = data["BTCUSDT"]
         >>> print(btc_prices[0]["close"])
     """
+    cfg = load_config()
     if symbols is None:
-        symbols = DEFAULT_SYMBOLS.copy()
+        symbols = list(cfg.symbols)
+    if interval is None:
+        interval = cfg.interval
+    if period_days is None:
+        period_days = cfg.period_days
 
     end_time = datetime.now()
     start_time = end_time - timedelta(days=period_days)
@@ -252,12 +258,16 @@ def fetch_all_symbols(
                 interval=interval,
                 start_time=start_time,
                 end_time=end_time,
+                api_base=cfg.binance_api_base,
+                rate_limit_delay=cfg.rate_limit_delay,
+                max_retries=cfg.max_retries,
+                period_days=period_days,
             )
             result[symbol] = klines
 
             # Rate limit delay between symbols
             if i < len(symbols) - 1:
-                time.sleep(RATE_LIMIT_DELAY)
+                time.sleep(cfg.rate_limit_delay)
 
         except BinanceAPIError as e:
             logger.error(f"Failed to fetch {symbol}: {e.message}")
@@ -274,8 +284,8 @@ def fetch_all_symbols(
 
 def ingest_data(
     symbols: list[str] | None = None,
-    interval: str = DEFAULT_INTERVAL,
-    period_days: int = DEFAULT_PERIOD_DAYS,
+    interval: str | None = None,
+    period_days: int | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     """
     Main entry point for data ingestion (full refresh).
@@ -284,9 +294,9 @@ def ingest_data(
     Fetches historical OHLCV data for multiple cryptocurrency pairs.
 
     Args:
-        symbols: List of trading pair symbols. Defaults to DEFAULT_SYMBOLS.
-        interval: Kline interval (e.g., "1d", "1h").
-        period_days: Number of days of historical data to fetch.
+        symbols: List of trading pair symbols. Defaults to config symbols.
+        interval: Kline interval (e.g., "1d", "1h"). Defaults to config interval.
+        period_days: Number of days of historical data to fetch. Defaults to config.
 
     Returns:
         Dictionary with symbol as key and list of OHLCV dicts as value.
@@ -306,7 +316,7 @@ def ingest_data(
 
 def ingest_incremental(
     symbols: list[str] | None = None,
-    interval: str = DEFAULT_INTERVAL,
+    interval: str | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     """
     Incremental data ingestion - only fetch new data since last ingest.
@@ -315,8 +325,8 @@ def ingest_incremental(
     and returns merged data ready to save.
 
     Args:
-        symbols: List of trading pair symbols. Defaults to DEFAULT_SYMBOLS.
-        interval: Kline interval (e.g., "1d", "1h").
+        symbols: List of trading pair symbols. Defaults to config symbols.
+        interval: Kline interval (e.g., "1d", "1h"). Defaults to config interval.
 
     Returns:
         Dictionary with merged old + new data for each symbol.
@@ -327,10 +337,13 @@ def ingest_incremental(
     """
     from src.storage import get_storage
 
+    cfg = load_config()
     if symbols is None:
-        symbols = DEFAULT_SYMBOLS.copy()
+        symbols = list(cfg.symbols)
+    if interval is None:
+        interval = cfg.interval
 
-    storage = get_storage()
+    storage = get_storage(cfg.storage_backend)
     result: dict[str, list[dict[str, Any]]] = {}
 
     logger.info("Starting incremental ingestion...")
@@ -351,8 +364,8 @@ def ingest_incremental(
             logger.info(f"{symbol}: Last data {last_date_str}, fetching from {start_time.date()}")
         else:
             # No existing data, fetch full period
-            start_time = datetime.now() - timedelta(days=DEFAULT_PERIOD_DAYS)
-            logger.info(f"{symbol}: No existing data, fetching {DEFAULT_PERIOD_DAYS} days")
+            start_time = datetime.now() - timedelta(days=cfg.period_days)
+            logger.info(f"{symbol}: No existing data, fetching {cfg.period_days} days")
 
         # Fetch new data
         end_time = datetime.now()
@@ -367,6 +380,10 @@ def ingest_incremental(
                 interval=interval,
                 start_time=start_time,
                 end_time=end_time,
+                api_base=cfg.binance_api_base,
+                rate_limit_delay=cfg.rate_limit_delay,
+                max_retries=cfg.max_retries,
+                period_days=cfg.period_days,
             )
         except BinanceAPIError as e:
             logger.error(f"Failed to fetch {symbol}: {e.message}")
@@ -386,7 +403,7 @@ def ingest_incremental(
         result[symbol] = merged
         logger.info(f"{symbol}: {len(existing_records)} existing + {len(new_records)} new = {len(merged)} total")
 
-        time.sleep(RATE_LIMIT_DELAY)
+        time.sleep(cfg.rate_limit_delay)
 
     total = sum(len(v) for v in result.values())
     logger.info(f"Incremental ingestion complete: {total} total records")
@@ -399,7 +416,7 @@ def fetch_current_prices(symbols: list[str] | None = None) -> dict[str, float]:
     Fetch current spot prices for multiple symbols.
 
     Args:
-        symbols: List of trading pair symbols. Defaults to DEFAULT_SYMBOLS.
+        symbols: List of trading pair symbols. Defaults to config symbols.
 
     Returns:
         Dictionary mapping symbol to current price.
@@ -412,48 +429,21 @@ def fetch_current_prices(symbols: list[str] | None = None) -> dict[str, float]:
         >>> print(prices)
         {'BTCUSDT': 45000.0, 'ETHUSDT': 3000.0}
     """
+    cfg = load_config()
     if symbols is None:
-        symbols = DEFAULT_SYMBOLS.copy()
+        symbols = list(cfg.symbols)
 
-    url = f"{BINANCE_API_BASE}/api/v3/ticker/price"
+    url = f"{cfg.binance_api_base}/api/v3/ticker/price"
     prices: dict[str, float] = {}
 
     for symbol in symbols:
         params = {"symbol": symbol}
         try:
-            response = _make_request(url, params)
+            response = _make_request(url, params, cfg.rate_limit_delay, cfg.max_retries)
             prices[symbol] = float(response["price"])
-            time.sleep(RATE_LIMIT_DELAY)
+            time.sleep(cfg.rate_limit_delay)
         except BinanceAPIError as e:
             logger.error(f"Failed to fetch price for {symbol}: {e.message}")
             continue
 
     return prices
-
-
-# =============================================================================
-# Main execution (for testing)
-# =============================================================================
-
-if __name__ == "__main__":
-    # Test the ingestion module
-    print("Testing Binance data ingestion...")
-    print("=" * 50)
-
-    # Fetch data for default symbols
-    data = ingest_data()
-
-    # Display sample data
-    if data:
-        for symbol, klines in data.items():
-            print(f"\n{symbol}: {len(klines)} records")
-            if klines:
-                print(f"  First record: {klines[0]}")
-                print(f"  Last record:  {klines[-1]}")
-
-    # Fetch current prices
-    print("\n" + "=" * 50)
-    print("Current prices:")
-    prices = fetch_current_prices()
-    for symbol, price in prices.items():
-        print(f"  {symbol}: ${price:,.2f}")

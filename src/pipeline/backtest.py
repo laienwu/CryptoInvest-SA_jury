@@ -24,25 +24,18 @@ import math
 from typing import Any
 
 from src.config import load_config
-from src.pipeline.optimize import (
-    _grid_search_max_sharpe,
-    _try_scipy_optimization,
-    optimize_minimum_variance,
-)
+from src.pipeline.optimize import optimize_weights
 from src.pipeline.transform import (
-    _align_data_by_date,
+    align_data_by_date,
     calculate_covariance_matrix,
     calculate_log_returns,
     calculate_mean,
     calculate_mean_returns,
     calculate_stddev,
 )
-from src.storage import get_storage
+from src.storage import Storage, get_storage
 
 logger = logging.getLogger(__name__)
-
-_cfg = load_config()
-RISK_FREE_RATE: float = _cfg.risk_free_rate
 
 # =============================================================================
 # Exceptions
@@ -132,7 +125,8 @@ def _create_rolling_windows(
 def _optimize_on_window(
     prices_window: list[list[float]],
     strategy: str = "max_sharpe",
-    risk_free_rate: float = RISK_FREE_RATE,
+    risk_free_rate: float = 0.05,
+    trading_days: int = 365,
 ) -> list[float]:
     """
     Optimize portfolio weights on a training price window.
@@ -144,29 +138,19 @@ def _optimize_on_window(
         prices_window: 2D list [n_symbols][n_train_days] of prices.
         strategy: "max_sharpe" or "min_variance".
         risk_free_rate: Risk-free rate for Sharpe calculation.
+        trading_days: Trading days per year for annualization.
 
     Returns:
         Optimal weights.
 
     Raises:
-        BacktestError: If unknown strategy.
+        BacktestError: If unknown strategy (via optimize_weights).
     """
     returns = calculate_log_returns(prices_window)
-    cov_matrix = calculate_covariance_matrix(returns)
-    mean_returns = calculate_mean_returns(returns)
+    cov_matrix = calculate_covariance_matrix(returns, trading_days)
+    mean_returns = calculate_mean_returns(returns, trading_days)
 
-    if strategy == "max_sharpe":
-        weights = _try_scipy_optimization(mean_returns, cov_matrix, risk_free_rate)
-        if weights is None:
-            weights = _grid_search_max_sharpe(mean_returns, cov_matrix, risk_free_rate)
-        return weights
-    elif strategy == "min_variance":
-        return optimize_minimum_variance(cov_matrix)
-    else:
-        raise BacktestError(
-            f"Unknown strategy: {strategy}. Use 'max_sharpe' or 'min_variance'.",
-            operation="optimize",
-        )
+    return optimize_weights(strategy, mean_returns, cov_matrix, risk_free_rate)
 
 
 # =============================================================================
@@ -258,7 +242,8 @@ def _max_drawdown(values: list[float]) -> float:
 
 def _compute_metrics(
     returns: list[float],
-    risk_free_rate: float = RISK_FREE_RATE,
+    risk_free_rate: float = 0.05,
+    trading_days: int = 365,
 ) -> dict[str, float]:
     """
     Compute performance metrics from a return series.
@@ -266,6 +251,7 @@ def _compute_metrics(
     Args:
         returns: List of daily log returns.
         risk_free_rate: Annualized risk-free rate.
+        trading_days: Trading days per year for annualization.
 
     Returns:
         Dictionary with cumulative_return, annualized_return,
@@ -284,23 +270,35 @@ def _compute_metrics(
     cum_return = sum(returns)
     cumulative_return = math.exp(cum_return) - 1
 
-    # Annualized return (365 trading days for crypto)
+    # Annualized return
     n_days = len(returns)
-    annualized_return = (math.exp(cum_return) ** (365 / n_days)) - 1 if n_days > 0 else 0.0
+    annualized_return = (math.exp(cum_return) ** (trading_days / n_days)) - 1 if n_days > 0 else 0.0
 
     # Max drawdown
     values = _cumulative_values(returns)
     max_dd = _max_drawdown(values)
 
     # Sharpe ratio (annualized)
-    daily_rf = risk_free_rate / 365
+    daily_rf = risk_free_rate / trading_days
     mean_daily = calculate_mean(returns)
     std_daily = calculate_stddev(returns) if len(returns) > 1 else 0.0
     sharpe = (
-        (mean_daily - daily_rf) / std_daily * math.sqrt(365)
+        (mean_daily - daily_rf) / std_daily * math.sqrt(trading_days)
         if std_daily > 1e-10
         else 0.0
     )
+
+    # Sortino ratio (annualized, penalizes only downside volatility)
+    downside_returns = [r - daily_rf for r in returns if r < daily_rf]
+    if len(downside_returns) > 1:
+        downside_dev = math.sqrt(sum(r ** 2 for r in downside_returns) / len(downside_returns))
+        sortino = (
+            (mean_daily - daily_rf) / downside_dev * math.sqrt(trading_days)
+            if downside_dev > 1e-10
+            else 0.0
+        )
+    else:
+        sortino = 0.0
 
     # Calmar ratio
     calmar = annualized_return / abs(max_dd) if abs(max_dd) > 1e-10 else 0.0
@@ -310,6 +308,7 @@ def _compute_metrics(
         "annualized_return": round(annualized_return, 6),
         "max_drawdown": round(max_dd, 6),
         "sharpe_ratio": round(sharpe, 6),
+        "sortino_ratio": round(sortino, 6),
         "calmar_ratio": round(calmar, 6),
     }
 
@@ -323,8 +322,8 @@ def run_backtest(
     train_window: int = 60,
     test_window: int = 30,
     strategy: str = "max_sharpe",
-    storage_backend: str = "parquet",
-    risk_free_rate: float = RISK_FREE_RATE,
+    storage: Storage | None = None,
+    risk_free_rate: float = 0.05,
     save: bool = True,
 ) -> dict[str, Any]:
     """
@@ -339,7 +338,7 @@ def run_backtest(
         train_window: Training window size in days.
         test_window: Test window size in days.
         strategy: Optimization strategy ("max_sharpe" or "min_variance").
-        storage_backend: Storage backend to use.
+        storage: Storage instance. If None, resolves from config.
         risk_free_rate: Risk-free rate.
         save: Whether to save results.
 
@@ -354,7 +353,10 @@ def run_backtest(
     logger.info(f"Train window: {train_window} days")
     logger.info(f"Test window: {test_window} days")
 
-    storage = get_storage(storage_backend)
+    cfg = load_config()
+    if storage is None:
+        storage = get_storage(cfg.storage_backend)
+    trading_days = cfg.trading_days_per_year
 
     # Load raw data
     try:
@@ -366,7 +368,7 @@ def run_backtest(
         ) from e
 
     # Align data
-    symbols, dates, prices_matrix = _align_data_by_date(raw_data)
+    symbols, dates, prices_matrix = align_data_by_date(raw_data)
     n_symbols = len(symbols)
     logger.info(f"Symbols: {symbols}")
     logger.info(f"Data points: {len(dates)}")
@@ -383,7 +385,15 @@ def run_backtest(
     window_results: list[dict[str, Any]] = []
 
     equal_weights = [1.0 / n_symbols] * n_symbols
-    btc_weights = [1.0] + [0.0] * (n_symbols - 1)  # 100% in first symbol (BTC)
+
+    # Find BTC index by symbol name instead of assuming position 0
+    btc_idx = 0
+    for i, sym in enumerate(symbols):
+        if "BTC" in sym:
+            btc_idx = i
+            break
+    btc_weights = [0.0] * n_symbols
+    btc_weights[btc_idx] = 1.0
 
     for window in windows:
         ti, te = window["train_start_idx"], window["train_end_idx"]
@@ -394,7 +404,7 @@ def run_backtest(
         test_prices = [s[tsi:tei] for s in prices_matrix]
 
         # Optimize on training data
-        opt_weights = _optimize_on_window(train_prices, strategy, risk_free_rate)
+        opt_weights = _optimize_on_window(train_prices, strategy, risk_free_rate, trading_days)
 
         # Compute test returns for all strategies
         strategy_returns = _compute_portfolio_daily_returns(test_prices, opt_weights)
@@ -431,12 +441,17 @@ def run_backtest(
     btc_values = _cumulative_values(all_btc_returns)
 
     # Compute metrics
-    strategy_metrics = _compute_metrics(all_strategy_returns, risk_free_rate)
-    equal_metrics = _compute_metrics(all_equal_returns, risk_free_rate)
-    btc_metrics = _compute_metrics(all_btc_returns, risk_free_rate)
+    strategy_metrics = _compute_metrics(all_strategy_returns, risk_free_rate, trading_days)
+    equal_metrics = _compute_metrics(all_equal_returns, risk_free_rate, trading_days)
+    btc_metrics = _compute_metrics(all_btc_returns, risk_free_rate, trading_days)
 
     result: dict[str, Any] = {
         "windows": window_results,
+        "daily_returns": {
+            "strategy": [round(r, 8) for r in all_strategy_returns],
+            "equal_weight": [round(r, 8) for r in all_equal_returns],
+            "btc_only": [round(r, 8) for r in all_btc_returns],
+        },
         "cumulative_values": {
             "dates": all_dates,
             "strategy": [round(v, 6) for v in strategy_values],
@@ -477,11 +492,3 @@ def run_backtest(
 
     logger.info("Backtest complete")
     return result
-
-
-# =============================================================================
-# Main execution (for testing)
-# =============================================================================
-
-if __name__ == "__main__":
-    run_backtest()

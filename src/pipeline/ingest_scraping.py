@@ -269,9 +269,8 @@ def _scrape_coingecko_alternative(soup: Any, limit: int) -> list[dict[str, Any]]
 
     result = []
     for item in sample_data[:limit]:
-        item["scraped_at"] = datetime.now().isoformat()
-        item["source"] = "coingecko_scrape_fallback"
-        result.append(item)
+        entry = {**item, "scraped_at": datetime.now().isoformat(), "source": "coingecko_scrape_fallback"}
+        result.append(entry)
 
     return result
 
@@ -359,41 +358,3 @@ def enrich_with_market_data(
 
     return result
 
-
-# =============================================================================
-# Main execution (for testing)
-# =============================================================================
-
-if __name__ == "__main__":
-    print("Testing web scraping module...")
-    print("=" * 50)
-
-    try:
-        # Scrape market rankings
-        rankings = scrape_market_rankings(limit=10)
-
-        print("\n" + "=" * 50)
-        print("SCRAPED DATA")
-        print("=" * 50)
-
-        for coin in rankings:
-            print(f"  #{coin['rank']} {coin['symbol']}: ${coin['price_usd']:,.2f} "
-                  f"({coin['change_24h_pct']:+.1f}%)")
-
-        # Test enrichment
-        print("\n" + "=" * 50)
-        print("ENRICHMENT TEST")
-        print("=" * 50)
-
-        portfolio_symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
-        enriched = enrich_with_market_data(portfolio_symbols, rankings)
-
-        for symbol, data in enriched.items():
-            if data.get("rank"):
-                print(f"  {symbol}: Rank #{data['rank']}, "
-                      f"MCap ${data['market_cap_usd']/1e9:.1f}B")
-
-    except ScrapingError as e:
-        print(f"ERROR: {e.message}")
-        if e.url:
-            print(f"  URL: {e.url}")

@@ -31,19 +31,6 @@ from src.config import load_config
 
 logger = logging.getLogger(__name__)
 
-# =============================================================================
-# Configuration (from centralized config)
-# =============================================================================
-
-_cfg = load_config()
-
-DATA_DIR: Path = _cfg.data_dir
-REFERENCE_DIR: Path = _cfg.reference_dir
-
-# Source file paths
-SYMBOLS_METADATA_CSV = REFERENCE_DIR / "symbols_metadata.csv"
-PORTFOLIO_CONFIG_JSON = REFERENCE_DIR / "portfolio_config.json"
-
 
 # =============================================================================
 # Exceptions
@@ -87,29 +74,37 @@ class DataSource(ABC):
 class CSVSource(DataSource):
     """CSV file data source (symbols metadata)."""
 
+    def __init__(self, path: Path | None = None):
+        self._path = path
+
     @property
     def name(self) -> str:
         return "csv"
 
     def is_available(self) -> bool:
-        return SYMBOLS_METADATA_CSV.exists()
+        path = self._path or load_config().reference_dir / "symbols_metadata.csv"
+        return path.exists()
 
     def fetch(self) -> dict[str, Any]:
-        return {"metadata": load_symbols_metadata_csv()}
+        return {"metadata": load_symbols_metadata_csv(self._path)}
 
 
 class JSONSource(DataSource):
     """JSON file data source (portfolio configuration)."""
+
+    def __init__(self, path: Path | None = None):
+        self._path = path
 
     @property
     def name(self) -> str:
         return "json"
 
     def is_available(self) -> bool:
-        return PORTFOLIO_CONFIG_JSON.exists()
+        path = self._path or load_config().reference_dir / "portfolio_config.json"
+        return path.exists()
 
     def fetch(self) -> dict[str, Any]:
-        return {"config": load_portfolio_config_json()}
+        return {"config": load_portfolio_config_json(self._path)}
 
 
 class BinanceAPISource(DataSource):
@@ -206,7 +201,8 @@ def load_symbols_metadata_csv(
         {'symbol': 'BTCUSDT', 'name': 'Bitcoin', 'sector': 'Currency', ...}
     """
     if file_path is None:
-        file_path = SYMBOLS_METADATA_CSV
+        cfg = load_config()
+        file_path = cfg.reference_dir / "symbols_metadata.csv"
 
     if not file_path.exists():
         raise SourceError(
@@ -295,7 +291,8 @@ def load_portfolio_config_json(
         0.05
     """
     if file_path is None:
-        file_path = PORTFOLIO_CONFIG_JSON
+        cfg = load_config()
+        file_path = cfg.reference_dir / "portfolio_config.json"
 
     if not file_path.exists():
         raise SourceError(
@@ -426,7 +423,10 @@ def ingest_all_sources(
     result: dict[str, Any] = {}
 
     # Build source list
-    sources: list[DataSource] = [CSVSource(), JSONSource()]
+    cfg = load_config()
+    csv_path = cfg.reference_dir / "symbols_metadata.csv"
+    json_path = cfg.reference_dir / "portfolio_config.json"
+    sources: list[DataSource] = [CSVSource(csv_path), JSONSource(json_path)]
     if include_api:
         # Resolve symbols from config if needed
         api_symbols = symbols
@@ -450,7 +450,7 @@ def ingest_all_sources(
             data = source.fetch()
             result.update(data)
             sources_loaded.append(source.name)
-        except (SourceError, Exception) as e:
+        except Exception as e:
             logger.warning(f"Source {source.name} failed: {e}")
             sources_failed.append({"source": source.name, "error": str(e)})
 
@@ -550,35 +550,3 @@ def get_symbols_by_category(category: str) -> list[str]:
     metadata = load_symbols_metadata_csv()
     return [m["symbol"] for m in metadata if m["category"] == category]
 
-
-# =============================================================================
-# Main execution (for testing)
-# =============================================================================
-
-if __name__ == "__main__":
-    print("Testing multi-source ingestion...")
-    print()
-
-    # Test without API (faster)
-    data = ingest_all_sources(include_api=False)
-
-    print("\n" + "=" * 50)
-    print("METADATA SAMPLE")
-    print("=" * 50)
-    if "metadata" in data:
-        for m in data["metadata"][:3]:
-            print(f"  {m['symbol']}: {m['name']} ({m['sector']})")
-
-    print("\n" + "=" * 50)
-    print("CONFIG SAMPLE")
-    print("=" * 50)
-    if "config" in data:
-        print(f"  Portfolio: {data['config']['portfolio']['name']}")
-        print(f"  Risk-free rate: {data['config']['risk_parameters']['risk_free_rate']}")
-
-    # Test with API
-    print("\n" + "=" * 50)
-    print("FULL TEST WITH API")
-    print("=" * 50)
-    # Uncomment to test with API:
-    # data = ingest_all_sources(symbols=["BTCUSDT", "ETHUSDT"])

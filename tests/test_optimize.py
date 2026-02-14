@@ -14,7 +14,6 @@ import math
 import pytest
 
 from src.pipeline.optimize import (
-    RISK_FREE_RATE,
     OptimizeError,
     _generate_weight_combinations,
     calculate_portfolio_return,
@@ -26,6 +25,8 @@ from src.pipeline.optimize import (
     matrix_vector_multiply,
     optimize_minimum_variance,
 )
+
+RISK_FREE_RATE: float = 0.05
 
 
 class TestMatrixOperations:

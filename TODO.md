@@ -79,3 +79,36 @@ This is the service locator anti-pattern — same issue as `load_db_config()` in
 ## Low — Redundant exception catch in ingest_sources.py
 
 - [x] **ingest_sources.py** (line 453): `except (SourceError, Exception)` — `Exception` already covers `SourceError`. Should be just `except Exception`.
+
+---
+
+## Storage cleanup (found during review)
+
+- [x] **parquet.py**: `if __name__` demo block (lines 575–680) — same pattern deleted from pipeline modules
+- [x] **duckdb.py** `list_raw_symbols()` (line 278): `except (StorageError, Exception)` — redundant catch, same fix as ingest_sources
+
+---
+
+## Dashboard — Financial analyst improvements
+
+### Phase 1 — Dashboard-only (no backend changes) ✅
+
+- [x] Weights evolution chart, return distribution + VaR, current portfolio on frontier, CSV exports
+
+### Phase 2 — Small backend enrichment ✅
+
+- [x] Daily returns in backtest output, Sortino ratio
+
+### Phase 3 — Professional dashboard rewrite ✅
+
+- [x] Global styling constants (COLORS, CHART_LAYOUT, styled_layout helper)
+- [x] Dashboard page: 5 KPI cards (Sortino + Max DD from backtest), donut allocation, risk-return bubble scatter, side-by-side correlation + covariance heatmaps, monthly returns heatmap
+- [x] Symbols page: technical chart (SMA 20/50, Bollinger Bands, RSI, volume + MA), summary stat cards
+- [x] Metrics page: cumulative returns line chart, horizontal sorted bars, annotated heatmaps, risk-return summary table with per-symbol Sharpe
+- [x] Frontier page: iso-Sharpe curves (S=0.5/1.0/1.5/2.0), horizontal sorted weight bars, asset labels on markers
+- [x] Backtest page: drawdown comparison (3 strategies), monthly returns heatmap, per-window expanders with weights
+
+### Phase 4 — Optional enhancements (not started)
+
+- [ ] **Risk contribution** (Dashboard page): Marginal risk contribution pie chart (weight × marginal vol). Needs helper in optimize.py + API exposure.
+- [ ] **Rolling correlation** (Metrics page): Rolling 30-day correlation line chart. Needs new API endpoint or client-side computation from raw klines.

@@ -27,18 +27,9 @@ import math
 from typing import Any
 
 from src.config import load_config
-from src.storage import get_storage
+from src.storage import Storage, get_storage
 
 logger = logging.getLogger(__name__)
-
-# =============================================================================
-# Configuration (from centralized config)
-# =============================================================================
-
-_cfg = load_config()
-
-RISK_FREE_RATE: float = _cfg.risk_free_rate
-GRID_STEPS: int = _cfg.grid_steps
 
 
 # =============================================================================
@@ -191,7 +182,7 @@ def calculate_sharpe_ratio(
     weights: list[float],
     mean_returns: list[float],
     cov_matrix: list[list[float]],
-    risk_free_rate: float = RISK_FREE_RATE,
+    risk_free_rate: float = 0.05,
 ) -> float:
     """
     Calculate Sharpe ratio of a portfolio.
@@ -224,7 +215,7 @@ def calculate_sharpe_ratio(
 def _try_scipy_optimization(
     mean_returns: list[float],
     cov_matrix: list[list[float]],
-    risk_free_rate: float = RISK_FREE_RATE,
+    risk_free_rate: float = 0.05,
 ) -> list[float] | None:
     """
     Try to optimize using scipy if available.
@@ -315,7 +306,9 @@ def optimize_minimum_variance(cov_matrix: list[list[float]]) -> list[float]:
     return _grid_search_min_variance(cov_matrix)
 
 
-def _grid_search_min_variance(cov_matrix: list[list[float]]) -> list[float]:
+def _grid_search_min_variance(
+    cov_matrix: list[list[float]], grid_steps: int = 20
+) -> list[float]:
     """
     Find minimum variance portfolio using grid search.
 
@@ -323,6 +316,7 @@ def _grid_search_min_variance(cov_matrix: list[list[float]]) -> list[float]:
 
     Args:
         cov_matrix: Covariance matrix.
+        grid_steps: Number of discrete steps (resolution).
 
     Returns:
         Approximate minimum variance weights.
@@ -332,7 +326,7 @@ def _grid_search_min_variance(cov_matrix: list[list[float]]) -> list[float]:
     best_variance = calculate_portfolio_variance(best_weights, cov_matrix)
 
     # Generate weight combinations
-    for weights in _generate_weight_combinations(n, GRID_STEPS):
+    for weights in _generate_weight_combinations(n, grid_steps):
         variance = calculate_portfolio_variance(weights, cov_matrix)
         if variance < best_variance:
             best_variance = variance
@@ -344,7 +338,8 @@ def _grid_search_min_variance(cov_matrix: list[list[float]]) -> list[float]:
 def _grid_search_max_sharpe(
     mean_returns: list[float],
     cov_matrix: list[list[float]],
-    risk_free_rate: float = RISK_FREE_RATE,
+    risk_free_rate: float = 0.05,
+    grid_steps: int = 20,
 ) -> list[float]:
     """
     Find maximum Sharpe ratio portfolio using grid search.
@@ -353,6 +348,7 @@ def _grid_search_max_sharpe(
         mean_returns: Annualized mean returns.
         cov_matrix: Annualized covariance matrix.
         risk_free_rate: Risk-free rate.
+        grid_steps: Number of discrete steps (resolution).
 
     Returns:
         Approximate optimal weights.
@@ -364,7 +360,7 @@ def _grid_search_max_sharpe(
     )
 
     # Generate weight combinations
-    for weights in _generate_weight_combinations(n, GRID_STEPS):
+    for weights in _generate_weight_combinations(n, grid_steps):
         sharpe = calculate_sharpe_ratio(
             weights, mean_returns, cov_matrix, risk_free_rate
         )
@@ -402,6 +398,7 @@ def _optimize_for_target_return(
     cov_matrix: list[list[float]],
     target_return: float,
     tolerance: float = 0.01,
+    grid_steps: int = 20,
 ) -> list[float] | None:
     """
     Find minimum variance portfolio for a given target return.
@@ -454,7 +451,7 @@ def _optimize_for_target_return(
     except ImportError:
         # Fallback: grid search with tolerance matching
         return _grid_search_target_return(
-            mean_returns, cov_matrix, target_return, tolerance
+            mean_returns, cov_matrix, target_return, tolerance, grid_steps
         )
 
 
@@ -463,6 +460,7 @@ def _grid_search_target_return(
     cov_matrix: list[list[float]],
     target_return: float,
     tolerance: float = 0.01,
+    grid_steps: int = 20,
 ) -> list[float] | None:
     """
     Find min variance portfolio near a target return using grid search.
@@ -472,6 +470,7 @@ def _grid_search_target_return(
         cov_matrix: Annualized covariance matrix.
         target_return: Target portfolio return.
         tolerance: Acceptable deviation from target.
+        grid_steps: Number of discrete steps (resolution).
 
     Returns:
         Best weights or None if no feasible combination found.
@@ -480,7 +479,7 @@ def _grid_search_target_return(
     best_weights: list[float] | None = None
     best_variance = float("inf")
 
-    for weights in _generate_weight_combinations(n, GRID_STEPS):
+    for weights in _generate_weight_combinations(n, grid_steps):
         port_return = calculate_portfolio_return(weights, mean_returns)
         if abs(port_return - target_return) <= tolerance:
             variance = calculate_portfolio_variance(weights, cov_matrix)
@@ -495,7 +494,8 @@ def compute_efficient_frontier(
     mean_returns: list[float],
     cov_matrix: list[list[float]],
     n_points: int = 50,
-    risk_free_rate: float = RISK_FREE_RATE,
+    risk_free_rate: float = 0.05,
+    grid_steps: int = 20,
 ) -> dict[str, Any]:
     """
     Compute the efficient frontier for a set of assets.
@@ -520,7 +520,7 @@ def compute_efficient_frontier(
     # Build frontier points
     frontier: list[dict[str, Any]] = []
     for target in target_returns:
-        weights = _optimize_for_target_return(mean_returns, cov_matrix, target)
+        weights = _optimize_for_target_return(mean_returns, cov_matrix, target, grid_steps=grid_steps)
         if weights is not None:
             vol = calculate_portfolio_volatility(weights, cov_matrix)
             ret = calculate_portfolio_return(weights, mean_returns)
@@ -582,9 +582,9 @@ def compute_efficient_frontier(
 
 
 def compute_and_save_frontier(
-    storage_backend: str = "parquet",
+    storage: Storage | None = None,
     n_points: int = 50,
-    risk_free_rate: float = RISK_FREE_RATE,
+    risk_free_rate: float = 0.05,
     save: bool = True,
 ) -> dict[str, Any]:
     """
@@ -594,7 +594,7 @@ def compute_and_save_frontier(
     computes the efficient frontier, and saves to output.
 
     Args:
-        storage_backend: Storage backend to use.
+        storage: Storage instance. If None, resolves from config.
         n_points: Number of frontier points.
         risk_free_rate: Risk-free rate.
         save: Whether to save results.
@@ -604,7 +604,9 @@ def compute_and_save_frontier(
     """
     logger.info("Computing efficient frontier")
 
-    storage = get_storage(storage_backend)
+    if storage is None:
+        cfg = load_config()
+        storage = get_storage(cfg.storage_backend)
 
     try:
         covariance_data = storage.load_processed("covariance")
@@ -684,13 +686,61 @@ def _generate_weight_combinations(
 
 
 # =============================================================================
+# Public Optimization Façade
+# =============================================================================
+
+
+def optimize_weights(
+    strategy: str,
+    mean_returns: list[float],
+    cov_matrix: list[list[float]],
+    risk_free_rate: float = 0.05,
+    grid_steps: int = 20,
+) -> list[float]:
+    """
+    Compute optimal portfolio weights for a given strategy.
+
+    Encapsulates strategy dispatch (max_sharpe with scipy→grid fallback,
+    min_variance). This is the public API that other modules (e.g. backtest)
+    should call instead of private optimization functions.
+
+    Args:
+        strategy: "max_sharpe" or "min_variance".
+        mean_returns: Annualized mean returns per asset.
+        cov_matrix: Annualized covariance matrix.
+        risk_free_rate: Risk-free rate for Sharpe calculation.
+        grid_steps: Grid resolution for fallback search.
+
+    Returns:
+        Optimal portfolio weights.
+
+    Raises:
+        OptimizeError: If unknown strategy.
+    """
+    if strategy == "max_sharpe":
+        weights = _try_scipy_optimization(mean_returns, cov_matrix, risk_free_rate)
+        if weights is None:
+            weights = _grid_search_max_sharpe(
+                mean_returns, cov_matrix, risk_free_rate, grid_steps
+            )
+        return weights
+    elif strategy == "min_variance":
+        return optimize_minimum_variance(cov_matrix)
+    else:
+        raise OptimizeError(
+            f"Unknown strategy: {strategy}. Use 'max_sharpe' or 'min_variance'.",
+            operation="optimize",
+        )
+
+
+# =============================================================================
 # Main Optimization Function
 # =============================================================================
 
 
 def optimize_portfolio(
-    storage_backend: str = "parquet",
-    risk_free_rate: float = RISK_FREE_RATE,
+    storage: Storage | None = None,
+    risk_free_rate: float = 0.05,
     save: bool = True,
 ) -> dict[str, Any]:
     """
@@ -706,7 +756,7 @@ def optimize_portfolio(
     4. Save results to storage
 
     Args:
-        storage_backend: Storage backend to use. Defaults to "parquet".
+        storage: Storage instance. If None, resolves from config.
         risk_free_rate: Risk-free rate for Sharpe calculation.
         save: Whether to save results to storage.
 
@@ -726,8 +776,9 @@ def optimize_portfolio(
     """
     logger.info("Starting portfolio optimization")
 
-    # Get storage instance
-    storage = get_storage(storage_backend)
+    cfg = load_config()
+    if storage is None:
+        storage = get_storage(cfg.storage_backend)
 
     # Load required data
     logger.info("Loading processed data")
@@ -749,9 +800,6 @@ def optimize_portfolio(
 
     # Optimization
     logger.info("Running optimization")
-    method = "scipy"
-
-    # Try scipy first
     optimal_weights = _try_scipy_optimization(
         mean_returns, cov_matrix, risk_free_rate
     )
@@ -760,9 +808,10 @@ def optimize_portfolio(
         logger.info("scipy not available, using grid search")
         method = "grid_search"
         optimal_weights = _grid_search_max_sharpe(
-            mean_returns, cov_matrix, risk_free_rate
+            mean_returns, cov_matrix, risk_free_rate, cfg.grid_steps
         )
     else:
+        method = "scipy"
         logger.info("Using scipy SLSQP optimization")
 
     # Calculate portfolio metrics
@@ -815,12 +864,12 @@ def optimize_portfolio(
     return result
 
 
-def load_optimal_portfolio(storage_backend: str = "parquet") -> dict[str, Any]:
+def load_optimal_portfolio(storage: Storage | None = None) -> dict[str, Any]:
     """
     Load previously computed optimal portfolio from storage.
 
     Args:
-        storage_backend: Storage backend to use.
+        storage: Storage instance. If None, resolves from config.
 
     Returns:
         Optimal portfolio data.
@@ -828,7 +877,9 @@ def load_optimal_portfolio(storage_backend: str = "parquet") -> dict[str, Any]:
     Raises:
         OptimizeError: If loading fails.
     """
-    storage = get_storage(storage_backend)
+    if storage is None:
+        cfg = load_config()
+        storage = get_storage(cfg.storage_backend)
 
     try:
         return storage.load_output("weights")
@@ -844,8 +895,8 @@ def load_optimal_portfolio(storage_backend: str = "parquet") -> dict[str, Any]:
 
 
 def calculate_equal_weight_portfolio(
-    storage_backend: str = "parquet",
-    risk_free_rate: float = RISK_FREE_RATE,
+    storage: Storage | None = None,
+    risk_free_rate: float = 0.05,
 ) -> dict[str, Any]:
     """
     Calculate metrics for equal-weight portfolio (benchmark).
@@ -853,13 +904,15 @@ def calculate_equal_weight_portfolio(
     Useful for comparison with the optimized portfolio.
 
     Args:
-        storage_backend: Storage backend to use.
+        storage: Storage instance. If None, resolves from config.
         risk_free_rate: Risk-free rate.
 
     Returns:
         Equal weight portfolio metrics.
     """
-    storage = get_storage(storage_backend)
+    if storage is None:
+        cfg = load_config()
+        storage = get_storage(cfg.storage_backend)
 
     covariance_data = storage.load_processed("covariance")
     mean_returns_data = storage.load_processed("mean_returns")
@@ -885,42 +938,3 @@ def calculate_equal_weight_portfolio(
         "sharpe_ratio": sharpe_ratio,
     }
 
-
-# =============================================================================
-# Main execution (for testing)
-# =============================================================================
-
-if __name__ == "__main__":
-    print("Testing portfolio optimization...")
-    print("=" * 50)
-
-    try:
-        # Run optimization
-        result = optimize_portfolio()
-
-        # Compare with equal weight
-        print("\n" + "=" * 50)
-        print("COMPARISON WITH EQUAL WEIGHT PORTFOLIO")
-        print("=" * 50)
-
-        equal_weight = calculate_equal_weight_portfolio()
-        print("\nEqual Weight Portfolio:")
-        print(f"  Expected Return: {equal_weight['expected_return']:.2%}")
-        print(f"  Volatility:      {equal_weight['volatility']:.2%}")
-        print(f"  Sharpe Ratio:    {equal_weight['sharpe_ratio']:.4f}")
-
-        print("\nOptimal Portfolio:")
-        print(f"  Expected Return: {result['expected_return']:.2%}")
-        print(f"  Volatility:      {result['volatility']:.2%}")
-        print(f"  Sharpe Ratio:    {result['sharpe_ratio']:.4f}")
-
-        # Improvement
-        sharpe_improvement = (
-            result["sharpe_ratio"] - equal_weight["sharpe_ratio"]
-        ) / abs(equal_weight["sharpe_ratio"]) * 100
-        print(f"\nSharpe Ratio Improvement: {sharpe_improvement:+.1f}%")
-
-    except OptimizeError as e:
-        print(f"ERROR: {e.message}")
-        if e.operation:
-            print(f"  Operation: {e.operation}")

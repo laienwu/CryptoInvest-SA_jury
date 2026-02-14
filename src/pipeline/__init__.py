@@ -49,8 +49,14 @@ from .optimize import (
     compute_and_save_frontier,
     load_optimal_portfolio,
     optimize_portfolio,
+    optimize_weights,
 )
-from .transform import TransformError, load_processed_metrics, transform_data
+from .transform import (
+    TransformError,
+    align_data_by_date,
+    load_processed_metrics,
+    transform_data,
+)
 
 __all__ = [
     # Pipeline stages
@@ -60,8 +66,10 @@ __all__ = [
     "transform_data",
     "load_processed_metrics",
     "optimize_portfolio",
+    "optimize_weights",
     "compute_and_save_frontier",
     "load_optimal_portfolio",
+    "align_data_by_date",
     "run_backtest",
     # Source loaders
     "load_symbols_metadata_csv",

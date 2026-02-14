@@ -14,7 +14,6 @@ import math
 import pytest
 
 from src.pipeline.transform import (
-    TRADING_DAYS_PER_YEAR,
     TransformError,
     calculate_correlation,
     calculate_correlation_matrix,
@@ -26,6 +25,8 @@ from src.pipeline.transform import (
     calculate_stddev,
     calculate_volatility,
 )
+
+TRADING_DAYS_PER_YEAR: int = 365
 
 
 class TestCalculateMean:
@@ -311,9 +312,9 @@ class TestDataAlignment:
 
     def test_align_common_dates(self, sample_raw_data):
         """Test that data is aligned by common dates."""
-        from src.pipeline.transform import _align_data_by_date
+        from src.pipeline.transform import align_data_by_date
 
-        symbols, dates, prices = _align_data_by_date(sample_raw_data)
+        symbols, dates, prices = align_data_by_date(sample_raw_data)
 
         assert len(symbols) == 2
         assert len(dates) == 10
@@ -322,14 +323,14 @@ class TestDataAlignment:
 
     def test_empty_data_raises_error(self):
         """Test that empty data raises TransformError."""
-        from src.pipeline.transform import _align_data_by_date
+        from src.pipeline.transform import align_data_by_date
 
         with pytest.raises(TransformError):
-            _align_data_by_date({})
+            align_data_by_date({})
 
     def test_mismatched_dates(self):
         """Test handling of mismatched dates."""
-        from src.pipeline.transform import _align_data_by_date
+        from src.pipeline.transform import align_data_by_date
 
         data = {
             "BTCUSDT": [
@@ -342,7 +343,7 @@ class TestDataAlignment:
             ],
         }
 
-        symbols, dates, prices = _align_data_by_date(data)
+        symbols, dates, prices = align_data_by_date(data)
 
         # Only 2024-01-02 is common
         assert len(dates) == 1

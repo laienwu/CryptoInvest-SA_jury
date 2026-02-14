@@ -181,6 +181,7 @@ class TestMetrics:
         assert "annualized_return" in metrics
         assert "max_drawdown" in metrics
         assert "sharpe_ratio" in metrics
+        assert "sortino_ratio" in metrics
         assert "calmar_ratio" in metrics
 
     def test_positive_returns_positive_sharpe(self):
@@ -228,8 +229,10 @@ class TestOptimizeOnWindow:
         assert all(w >= -0.01 for w in weights)
 
     def test_unknown_strategy_raises(self, sample_prices):
-        """Test that unknown strategy raises BacktestError."""
-        with pytest.raises(BacktestError):
+        """Test that unknown strategy raises OptimizeError."""
+        from src.pipeline.optimize import OptimizeError
+
+        with pytest.raises(OptimizeError):
             _optimize_on_window(sample_prices, strategy="unknown")
 
 

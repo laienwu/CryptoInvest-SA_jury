@@ -275,7 +275,7 @@ class DuckDBStorage(Storage):
         try:
             rows = self.query("SELECT DISTINCT symbol FROM dim_symbol ORDER BY symbol")
             return [r["symbol"] for r in rows]
-        except (StorageError, Exception):
+        except Exception:
             return []
 
     def list_processed(self) -> list[str]:
