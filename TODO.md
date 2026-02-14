@@ -1,54 +1,81 @@
 # TODO — Repo Cleanup
 
-## Bugs
-- [x] **Dockerfiles Python version**: pyproject.toml requires >=3.13 but Dockerfile/Dockerfile.streamlit use 3.12-slim, Dockerfile.airflow uses 3.11. Update base images.
-- [x] **OpenAPI spec vs actual API**: HealthResponse fields wrong, /symbols returns wrapped object not array, /klines has phantom query params, /portfolio/summary missing from spec.
-- [x] **`--profile full` doesn't start Airflow**: docker-compose.yml only assigns `full` to postgres-benchmarks. Airflow services need `full` profile too, or fix docs.
+## Critical — Stale config at import (all pipeline modules)
 
-## Stale docs
-- [x] **Test count**: README says 124, CHEAT_SHEET says 165, CLAUDE.md/slides say 208. Run pytest, update all.
-- [x] **Coverage %**: README says 43%, CHEAT_SHEET says 46%. Run coverage, update both.
-- [x] **README project structure**: Missing ingest_scraping.py, ingest_postgres.py, backtest.py, schemas.py, config.py, _utils.py.
-- [x] **README config example**: Shows fake `[optimization]` section that doesn't exist in config.toml or load_config().
-- [x] **README API endpoints**: Lists 7 of 10. Missing /metrics/{name}, /portfolio/frontier, /portfolio/backtest. Also fix slides (missing /portfolio/summary) and CHEAT_SHEET checklist ("9 endpoints").
+Every module below calls `_cfg = load_config()` at module level, freezing config
+at import time. Environment variable changes and TOML edits after import are
+silently ignored. This is the same bug we fixed in `ingest_postgres.py`.
 
-## Minor code
-- [x] **DuckDB "(Future)" docstring**: storage/__init__.py says DuckDB is future but it's already imported and registered.
-- [x] **DuckDBStorage missing from `__all__`**: storage/__init__.py exports ParquetStorage but not DuckDBStorage.
-- [x] **Useless `tomli` in Dockerfile.airflow**: Code uses stdlib `tomllib`. Remove the pip install.
-- [x] **`scipy` undeclared**: Used in optimize.py but not in pyproject.toml. Add as optional dependency.
+- [x] **ingest.py** (line 40): `_cfg = load_config()` → 6 module-level constants derived from it (`DEFAULT_SYMBOLS`, `BINANCE_API_BASE`, `RATE_LIMIT_DELAY`, `MAX_RETRIES`, `DEFAULT_INTERVAL`, `DEFAULT_PERIOD_DAYS`). Functions use these stale constants as default parameter values, making them doubly frozen.
+- [x] **transform.py** (line 40): `_cfg = load_config()` → `DEFAULT_SYMBOLS`, `TRADING_DAYS_PER_YEAR`
+- [x] **optimize.py** (line 38): `_cfg = load_config()` → `RISK_FREE_RATE`, `GRID_STEPS`
+- [x] **backtest.py** (line 44): `_cfg = load_config()` → `RISK_FREE_RATE`
+- [x] **ingest_sources.py** (line 38): `_cfg = load_config()` → `DATA_DIR`, `REFERENCE_DIR`, `SYMBOLS_METADATA_CSV`, `PORTFOLIO_CONFIG_JSON`. DataSource subclasses reference these stale paths.
 
-## Slides
-- [x] **SQL column names**: Slide 8 fixed to use actual DuckDB column names (`symbol`, `close`, `symbol_id`).
-- [x] **Service count**: Slide 22 says "5 services", docker-compose.yml has 8.
+**Fix pattern**: Either resolve config inside functions (like `load_db_config()` in ingest_postgres), or accept config via parameter injection. For pure functions (transform math), accept the value as a parameter; for orchestration functions, resolve at call time.
 
-## Code review — Critical
+---
 
-- [x] **API leaks raw exception details**: `str(e)` passed to HTTP 500 responses. Information disclosure risk. (`api/main.py:55,72,82,97,107,117`)
-- [x] **3 endpoints missing `response_model`**: `/portfolio`, `/portfolio/frontier`, `/portfolio/backtest` return untyped dicts. Breaks OpenAPI contract. (`api/main.py:75,100,110`)
-- [x] **Hardcoded `"parquet"` in API**: `get_storage_dep()` ignores `PipelineConfig.storage_backend`. (`api/main.py:29`)
-- [x] **Module-level config loading**: `transform.py` replaced custom `_load_config()` with centralized `load_config()`. (`transform.py:42`)
-- [x] **Silent fallback to fake data**: Scraping fallback now opt-in via `allow_fallback` param. Default raises `ScrapingError`. (`ingest_scraping.py:122`)
-- [x] **DuckDB leaks through Storage ABC**: Documented as intentional (interface segregation for C9/C13). ABC docstring updated. (`base.py:34`, `duckdb.py:287`)
+## Critical — Cross-module coupling to private functions
 
-## Code review — Medium
+- [x] **backtest.py** (lines 28–39): Imports 6 private/internal names from optimize and transform: `_grid_search_max_sharpe`, `_try_scipy_optimization`, `_align_data_by_date`, `calculate_log_returns`, `calculate_mean_returns`, `calculate_covariance_matrix`. The underscore-prefixed functions are implementation details — backtest is tightly coupled to their signatures. If optimize refactors its internals, backtest breaks silently. Either promote `_try_scipy_optimization` / `_grid_search_max_sharpe` to public API, or expose a single `optimize_weights(strategy, returns, cov, rf)` façade that backtest calls.
 
-- [x] **Broad `except Exception` in ingest**: Reviewed — `fetch_all_symbols` uses specific `BinanceAPIError`, not broad `Exception`. `ingest_incremental` fallback-to-empty is intentional for resilience. No change needed.
-- [x] **Magic number `365`**: Now reads from `PipelineConfig.trading_days_per_year` via `load_config()`. (`transform.py`)
-- [x] **Duplicated `RISK_FREE_RATE` / `GRID_STEPS`**: `backtest.py` now reads `RISK_FREE_RATE` from `load_config()` directly instead of importing from `optimize.py`.
-- [x] **Fat `pipeline/__init__.py`**: Trimmed from 47 to 22 exports. Internal helpers removed; import from submodules directly.
-- [x] **`_STORAGE_REGISTRY` is mutable global**: Now uses `MappingProxyType` read-only proxy. Mutations go through `register_storage()` only.
-- [x] **Inconsistent error handling**: Documented as intentional per-domain pattern in `pipeline/__init__.py` docstring. Ingest = best-effort (continue), transform/optimize/backtest = all-or-nothing (reraise).
-- [x] **`ingest_all_sources()` loses error info**: Now tracks `failures` list with source name and error message in result dict.
-- [x] **Duplicated path calculation**: `transform.py` and `ingest.py` now use `load_config()`. Storage modules (`parquet.py`, `duckdb.py`) keep own defaults intentionally — storage layer is independent of pipeline config.
+---
 
-## Code review — Rewrite
+## Medium — `if __name__` demo blocks in production modules
 
-- [x] **`ingest_postgres.py` rewrite**: Removed duplicate `SCHEMA_SQL`/`initialize_schema()` (handled by `init-benchmarks.sql`), extracted demo data generation to `scripts/generate_benchmarks.py`, replaced module-level `DB_CONFIG` with frozen `DatabaseConfig` dataclass + `load_db_config()` in `config.py`, added context managers for all DB connections/cursors, fixed `load_benchmarks_fallback()` global RNG state leak.
+These mix demo/test concerns with production code. Same issue we fixed in
+`ingest_postgres.py` by extracting to `scripts/generate_benchmarks.py`.
 
-## Code review — Low
+- [x] **ingest.py** (lines 438–460)
+- [x] **transform.py** (lines 579–616)
+- [x] **optimize.py** (lines 893–927)
+- [x] **backtest.py** (lines 486–487)
+- [x] **ingest_scraping.py** (lines 367–400)
+- [x] **ingest_sources.py** (lines 558–585)
 
-- [x] **`MetricResponse.data: dict`**: Untyped dict, should be `dict[str, Any]`. (`schemas.py:42`)
-- [x] **No input validation in optimize**: Added `_validate_weights()` — checks length match and sum ≈ 1.0. Called from `calculate_portfolio_return()` and `calculate_portfolio_variance()`.
-- [x] **Lazy imports**: By design — `requests`, `beautifulsoup4`, `psycopg2` are optional deps with explicit `ImportError` messages guiding installation. No change needed.
-- [x] **Missing type hints on internals**: `_parse_html`, `_scrape_coingecko_alternative` soup param. (`_utils.py:96`, `ingest_scraping.py:230`)
+**Fix**: Delete them. They add no test coverage (pytest never runs `__main__`), and anyone needing a quick test can use the one-liners in CLAUDE.md's "Commandes rapides" section.
+
+---
+
+## Medium — Service locator via `get_storage()` instead of injection
+
+Multiple functions create their own storage internally via `get_storage(backend)`.
+This is the service locator anti-pattern — same issue as `load_db_config()` inside
+`_get_connection()` that the user flagged in the ingest_postgres review.
+
+- [x] **transform.py**: `transform_data()` and `load_processed_metrics()` call `get_storage(storage_backend)`
+- [x] **optimize.py**: `optimize_portfolio()`, `compute_and_save_frontier()`, `calculate_equal_weight_portfolio()`, `load_optimal_portfolio()` all call `get_storage()`
+- [x] **backtest.py**: `run_backtest()` calls `get_storage(storage_backend)`
+
+**Fix**: Accept a `Storage` instance (or None with fallback). Callers inject; functions don't resolve their own dependencies.
+
+---
+
+## Medium — Hardcoded magic number `365` in backtest.py
+
+- [x] **backtest.py** `_compute_metrics()` (lines 289, 296, 300): Hardcodes `365` for annualization instead of using `_cfg.trading_days_per_year`. If the project ever switches to traditional market days (252), backtest and transform would diverge silently.
+
+---
+
+## Low — Fragile BTC-first assumption in backtest.py
+
+- [x] **backtest.py** (line 386): `btc_weights = [1.0] + [0.0] * (n_symbols - 1)` assumes the first symbol in the data is always BTC. If symbol order changes (alphabetical sort, config change), the "BTC-only" benchmark becomes a random single-asset portfolio. Should find BTC by name.
+
+---
+
+## Low — Mutation of module-level data in ingest_scraping.py
+
+- [x] **ingest_scraping.py** `_scrape_coingecko_alternative()` (line 273): Mutates dicts inside the module-level `sample_data` list (`item["scraped_at"] = ...`). On second call, the dicts already have stale `scraped_at` keys. Should copy before mutating.
+
+---
+
+## Low — `print()` utilities in transform.py
+
+- [x] **transform.py** `print_correlation_matrix()` and `print_covariance_matrix()` (lines 531–572): Use `print()` directly. These are debug/demo helpers that don't belong in a production module. Either delete or move to a CLI script.
+
+---
+
+## Low — Redundant exception catch in ingest_sources.py
+
+- [x] **ingest_sources.py** (line 453): `except (SourceError, Exception)` — `Exception` already covers `SourceError`. Should be just `except Exception`.

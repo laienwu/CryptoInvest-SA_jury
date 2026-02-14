@@ -29,20 +29,9 @@ import pyarrow as pa
 import pyarrow.compute as pc
 
 from src.config import load_config
-from src.storage import get_storage
+from src.storage import Storage, get_storage
 
 logger = logging.getLogger(__name__)
-
-# =============================================================================
-# Configuration
-# =============================================================================
-
-_cfg = load_config()
-
-DEFAULT_SYMBOLS: list[str] = list(_cfg.symbols)
-
-# Trading days per year for annualization (crypto = 365)
-TRADING_DAYS_PER_YEAR: int = _cfg.trading_days_per_year
 
 
 # =============================================================================
@@ -64,7 +53,7 @@ class TransformError(Exception):
 # =============================================================================
 
 
-def _align_data_by_date(
+def align_data_by_date(
     raw_data: dict[str, list[dict[str, Any]]],
 ) -> tuple[list[str], list[str], list[list[float]]]:
     """
@@ -209,14 +198,17 @@ def calculate_stddev(values: list[float], ddof: int = 1) -> float:
         return math.sqrt(sample_variance)
 
 
-def calculate_volatility(returns: list[list[float]]) -> list[float]:
+def calculate_volatility(
+    returns: list[list[float]], trading_days: int = 365
+) -> list[float]:
     """
     Calculate annualized volatility for each symbol.
 
-    Volatility = std(returns) * sqrt(trading_days_per_year)
+    Volatility = std(returns) * sqrt(trading_days)
 
     Args:
         returns: 2D list [n_symbols][n_periods] of returns.
+        trading_days: Trading days per year for annualization (crypto = 365).
 
     Returns:
         List [n_symbols] of annualized volatilities.
@@ -228,7 +220,7 @@ def calculate_volatility(returns: list[list[float]]) -> list[float]:
         daily_std = calculate_stddev(symbol_returns, ddof=1)
 
         # Annualize: multiply by sqrt of trading days
-        annualized_vol = daily_std * math.sqrt(TRADING_DAYS_PER_YEAR)
+        annualized_vol = daily_std * math.sqrt(trading_days)
         volatilities.append(annualized_vol)
 
     return volatilities
@@ -310,7 +302,9 @@ def calculate_correlation_matrix(returns: list[list[float]]) -> list[list[float]
     return matrix
 
 
-def calculate_covariance_matrix(returns: list[list[float]]) -> list[list[float]]:
+def calculate_covariance_matrix(
+    returns: list[list[float]], trading_days: int = 365
+) -> list[list[float]]:
     """
     Calculate annualized covariance matrix between symbols.
 
@@ -319,6 +313,7 @@ def calculate_covariance_matrix(returns: list[list[float]]) -> list[list[float]]
 
     Args:
         returns: 2D list [n_symbols][n_periods] of returns.
+        trading_days: Trading days per year for annualization (crypto = 365).
 
     Returns:
         2D list [n_symbols][n_symbols] annualized covariance matrix.
@@ -331,19 +326,22 @@ def calculate_covariance_matrix(returns: list[list[float]]) -> list[list[float]]
         for j in range(n_symbols):
             cov = calculate_covariance(returns[i], returns[j], ddof=1)
             # Annualize: multiply by trading days
-            annualized_cov = cov * TRADING_DAYS_PER_YEAR
+            annualized_cov = cov * trading_days
             row.append(annualized_cov)
         matrix.append(row)
 
     return matrix
 
 
-def calculate_mean_returns(returns: list[list[float]]) -> list[float]:
+def calculate_mean_returns(
+    returns: list[list[float]], trading_days: int = 365
+) -> list[float]:
     """
     Calculate annualized mean returns for each symbol.
 
     Args:
         returns: 2D list [n_symbols][n_periods] of returns.
+        trading_days: Trading days per year for annualization (crypto = 365).
 
     Returns:
         List [n_symbols] of annualized mean returns.
@@ -355,7 +353,7 @@ def calculate_mean_returns(returns: list[list[float]]) -> list[float]:
         daily_mean = calculate_mean(symbol_returns)
 
         # Annualize: multiply by trading days
-        annualized_mean = daily_mean * TRADING_DAYS_PER_YEAR
+        annualized_mean = daily_mean * trading_days
         mean_returns.append(annualized_mean)
 
     return mean_returns
@@ -369,7 +367,7 @@ def calculate_mean_returns(returns: list[list[float]]) -> list[float]:
 def transform_data(
     symbols: list[str] | None = None,
     save: bool = True,
-    storage_backend: str = "parquet",
+    storage: Storage | None = None,
 ) -> dict[str, Any]:
     """
     Main entry point for data transformation.
@@ -381,7 +379,7 @@ def transform_data(
     Args:
         symbols: List of symbols to transform. If None, transforms all available.
         save: Whether to save results to storage. Defaults to True.
-        storage_backend: Storage backend to use. Defaults to "parquet".
+        storage: Storage instance. If None, resolves from config.
 
     Returns:
         Dictionary containing all computed metrics:
@@ -403,8 +401,10 @@ def transform_data(
     """
     logger.info("Starting data transformation")
 
-    # Get storage instance
-    storage = get_storage(storage_backend)
+    cfg = load_config()
+    if storage is None:
+        storage = get_storage(cfg.storage_backend)
+    trading_days = cfg.trading_days_per_year
 
     # Load raw data
     logger.info("Loading raw data")
@@ -415,7 +415,7 @@ def transform_data(
 
     # Align data by date
     logger.info("Aligning data across symbols")
-    symbols_list, dates, prices_matrix = _align_data_by_date(raw_data)
+    symbols_list, dates, prices_matrix = align_data_by_date(raw_data)
 
     # Calculate log returns
     logger.info("Calculating log returns")
@@ -428,12 +428,12 @@ def transform_data(
 
     # Calculate metrics
     logger.info("Calculating volatility")
-    volatility = calculate_volatility(returns)
+    volatility = calculate_volatility(returns, trading_days)
     for i, symbol in enumerate(symbols_list):
         logger.debug(f"{symbol}: {volatility[i]:.2%} annualized")
 
     logger.info("Calculating mean returns")
-    mean_returns = calculate_mean_returns(returns)
+    mean_returns = calculate_mean_returns(returns, trading_days)
     for i, symbol in enumerate(symbols_list):
         logger.debug(f"{symbol}: {mean_returns[i]:.2%} annualized")
 
@@ -441,7 +441,7 @@ def transform_data(
     correlation = calculate_correlation_matrix(returns)
 
     logger.info("Calculating covariance matrix")
-    covariance = calculate_covariance_matrix(returns)
+    covariance = calculate_covariance_matrix(returns, trading_days)
 
     # Prepare results in storage-compatible format
     results: dict[str, Any] = {
@@ -490,7 +490,7 @@ def transform_data(
 
 
 def load_processed_metrics(
-    storage_backend: str = "parquet",
+    storage: Storage | None = None,
 ) -> dict[str, Any]:
     """
     Load previously computed metrics from storage.
@@ -498,7 +498,7 @@ def load_processed_metrics(
     Convenience function to load all processed metrics at once.
 
     Args:
-        storage_backend: Storage backend to use. Defaults to "parquet".
+        storage: Storage instance. If None, resolves from config.
 
     Returns:
         Dictionary containing all metrics (same structure as transform_data output).
@@ -506,7 +506,9 @@ def load_processed_metrics(
     Raises:
         TransformError: If loading fails.
     """
-    storage = get_storage(storage_backend)
+    if storage is None:
+        cfg = load_config()
+        storage = get_storage(cfg.storage_backend)
 
     try:
         results = {
@@ -523,93 +525,3 @@ def load_processed_metrics(
         ) from e
 
 
-# =============================================================================
-# Utility Functions
-# =============================================================================
-
-
-def print_correlation_matrix(correlation: dict[str, Any]) -> None:
-    """
-    Pretty-print a correlation matrix.
-
-    Args:
-        correlation: Correlation data with 'symbols' and 'matrix' keys.
-    """
-    symbols = correlation["symbols"]
-    matrix = correlation["matrix"]
-
-    # Header
-    header = "       " + "  ".join(f"{s[:6]:>8}" for s in symbols)
-    print(header)
-    print("-" * len(header))
-
-    # Rows
-    for i, symbol in enumerate(symbols):
-        row = f"{symbol[:6]:>6} "
-        row += "  ".join(f"{matrix[i][j]:>8.4f}" for j in range(len(symbols)))
-        print(row)
-
-
-def print_covariance_matrix(covariance: dict[str, Any]) -> None:
-    """
-    Pretty-print a covariance matrix.
-
-    Args:
-        covariance: Covariance data with 'symbols' and 'matrix' keys.
-    """
-    symbols = covariance["symbols"]
-    matrix = covariance["matrix"]
-
-    # Header
-    header = "       " + "  ".join(f"{s[:6]:>10}" for s in symbols)
-    print(header)
-    print("-" * len(header))
-
-    # Rows
-    for i, symbol in enumerate(symbols):
-        row = f"{symbol[:6]:>6} "
-        row += "  ".join(f"{matrix[i][j]:>10.6f}" for j in range(len(symbols)))
-        print(row)
-
-
-# =============================================================================
-# Main execution (for testing)
-# =============================================================================
-
-if __name__ == "__main__":
-    print("Testing data transformation...")
-    print("=" * 50)
-
-    try:
-        # Run transformation
-        results = transform_data()
-
-        # Display results
-        print("\n" + "=" * 50)
-        print("RESULTS SUMMARY")
-        print("=" * 50)
-
-        # Volatility
-        print("\nAnnualized Volatility:")
-        for i, symbol in enumerate(results["volatility"]["symbols"]):
-            vol = results["volatility"]["values"][i]
-            print(f"  {symbol}: {vol:.2%}")
-
-        # Mean returns
-        print("\nAnnualized Mean Returns:")
-        for i, symbol in enumerate(results["mean_returns"]["symbols"]):
-            ret = results["mean_returns"]["values"][i]
-            print(f"  {symbol}: {ret:.2%}")
-
-        # Correlation matrix
-        print("\nCorrelation Matrix:")
-        print_correlation_matrix(results["correlation"])
-
-        # Covariance matrix
-        print("\nAnnualized Covariance Matrix:")
-        print_covariance_matrix(results["covariance"])
-
-    except TransformError as e:
-        print(f"ERROR: {e.message}")
-        if e.operation:
-            print(f"  Operation: {e.operation}")
