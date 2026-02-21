@@ -699,6 +699,35 @@ def render_sorted_bar(symbols: list[str], values: list[float], title: str, fmt: 
     st.plotly_chart(fig, use_container_width=True)
 
 
+def _metric_to_dataframe(data: Any) -> pd.DataFrame:
+    """Safely convert a metric data dict to a displayable DataFrame."""
+    if not isinstance(data, dict):
+        try:
+            return pd.DataFrame(data)
+        except Exception:
+            return pd.DataFrame({"raw": [str(data)]})
+
+    if "matrix" in data:
+        symbols = data.get("symbols", [])
+        return pd.DataFrame(data["matrix"], index=symbols, columns=symbols)
+
+    if "values" in data and "symbols" in data:
+        symbols = data.get("symbols", [])
+        values = data.get("values", [])
+        if "dates" in data:
+            return pd.DataFrame(
+                {sym: values[i] for i, sym in enumerate(symbols) if i < len(values)},
+                index=data["dates"],
+            )
+        return pd.DataFrame({"Symbol": symbols, "Value": values})
+
+    # Fallback: show each key as a row to avoid unhashable type errors
+    rows = []
+    for k, v in data.items():
+        rows.append({"Key": k, "Value": str(v) if isinstance(v, list) else v})
+    return pd.DataFrame(rows)
+
+
 def render_risk_return_table(
     mean_ret_data: dict[str, Any], vol_data: dict[str, Any],
 ) -> None:
@@ -783,24 +812,8 @@ def page_metrics() -> None:
     # Raw data table + CSV
     st.markdown("---")
     st.subheader("Raw Data")
-    if isinstance(data, dict):
-        # Flatten for display
-        if "matrix" in data:
-            symbols = data.get("symbols", [])
-            df = pd.DataFrame(data["matrix"], index=symbols, columns=symbols)
-        elif "values" in data and "symbols" in data:
-            if "dates" in data:
-                df = pd.DataFrame(
-                    {sym: data["values"][i] for i, sym in enumerate(data["symbols"])
-                     if i < len(data["values"])},
-                    index=data["dates"],
-                )
-            else:
-                df = pd.DataFrame({"Symbol": data["symbols"], "Value": data["values"]})
-        else:
-            df = pd.DataFrame(data)
-    else:
-        df = pd.DataFrame(data)
+    df = _metric_to_dataframe(data)
+
 
     st.dataframe(df, use_container_width=True)
     render_csv_export(df, f"{selected_metric}.csv")

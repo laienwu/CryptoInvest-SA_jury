@@ -118,19 +118,19 @@ services:
     volumes:
       - ./data:/app/data
       - ./config.toml:/app/config.toml:ro
-    command: python -c "
-      from src.pipeline import ingest_data, transform_data, optimize_portfolio;
+    command: >
+      python -c "from src.pipeline import ingest_data, transform_data, optimize_portfolio;
+      from src.pipeline.optimize import compute_and_save_frontier;
+      from src.pipeline.backtest import run_backtest;
       from src.storage import get_storage;
       storage = get_storage();
       print('=== INGEST ===');
-      data = ingest_data();
-      storage.save_raw(data);
-      print('=== TRANSFORM ===');
-      transform_data();
-      print('=== OPTIMIZE ===');
-      optimize_portfolio();
-      print('=== DONE ===');
-      "
+      data = ingest_data(); storage.save_raw(data);
+      print('=== TRANSFORM ==='); transform_data();
+      print('=== OPTIMIZE ==='); optimize_portfolio();
+      print('=== FRONTIER ==='); compute_and_save_frontier();
+      print('=== BACKTEST ==='); run_backtest();
+      print('=== DONE ===')"
     profiles:
       - pipeline
 
