@@ -647,7 +647,9 @@ Coverage global: 53%. Les modules critiques (transform, optimize, API, config) o
 ### Donnees actuelles
 
 ```
-Symboles: BTCUSDT, ETHUSDT, BNBUSDT, SOLUSDT, ADAUSDT
+Symboles: BTCUSDT, ETHUSDT, BNBUSDT, SOLUSDT, ADAUSDT,
+          LINKUSDT, DOTUSDT, AVAXUSDT, MATICUSDT, ATOMUSDT,
+          XRPUSDT, DOGEUSDT, FILUSDT  (13 actifs)
 Periode: 90 jours par defaut
 Interval: 1d (journalier)
 ```
@@ -793,6 +795,65 @@ Schema:
 - Externaliser secrets et durcir la configuration securite
 - Ajouter tests d'integration end-to-end (API + storage + dashboard)
 - Etendre l'optimisation avec contraintes metier (max poids, contraintes sectorielles)
+
+---
+
+## 13. DASHBOARD EMBED — OPTIONS POUR LA SOUTENANCE
+
+### Option A: Navigateur local (recommande — risque zero)
+
+Ouvrir http://localhost:8501 pendant la presentation. Interactif, pas de setup.
+
+### Option B: ngrok — URL publique temporaire
+
+Permet au jury d'acceder au dashboard depuis leur machine pendant la demo.
+
+```bash
+# Installer une fois
+winget install ngrok
+
+# Exposer le dashboard
+ngrok http 8501
+# → donne: https://xxxx.ngrok-free.app
+```
+
+Tier gratuit suffisant pour une soutenance de 30 min.
+
+### Option C: Streamlit Community Cloud — URL permanente
+
+Deployer sur https://share.streamlit.io avec le repo GitHub.
+Donne une URL `https://yourapp.streamlit.app` a mettre dans le rapport et les slides.
+
+**Caveat:** le dashboard appelle `http://api:8000` (reseau Docker interne).
+Pour un deploy cloud, il faudrait pointer `API_URL` vers un endpoint public
+ou mocker les donnees dans l'app.
+
+### Option D: iframe dans un HTML
+
+```html
+<iframe src="http://localhost:8501"
+        width="100%" height="800px" frameborder="0">
+</iframe>
+```
+
+Fonctionne dans un fichier HTML ouvert localement pour le jury.
+
+### Option E: Capture video / GIF
+
+Enregistrer une demo avec OBS ou ShareX et l'integrer dans les slides PowerPoint/Canva.
+Utile comme filet de secours si la demo live tombe.
+
+---
+
+### Recommandation pour la soutenance
+
+| Contexte | Solution |
+|----------|----------|
+| Presentation live | Navigateur `localhost:8501` — zero risque |
+| Rapport / slides | Screenshots de chaque page avec legende |
+| Jury veut explorer apres | ngrok pendant la seance |
+| URL permanente dans le rapport | Streamlit Community Cloud |
+| Backup si demo plante | Video/GIF enregistre a l'avance |
 
 ---
 
