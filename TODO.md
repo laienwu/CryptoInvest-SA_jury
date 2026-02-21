@@ -1,114 +1,73 @@
-# TODO — Repo Cleanup
+# TODO
 
-## Critical — Stale config at import (all pipeline modules)
-
-Every module below calls `_cfg = load_config()` at module level, freezing config
-at import time. Environment variable changes and TOML edits after import are
-silently ignored. This is the same bug we fixed in `ingest_postgres.py`.
-
-- [x] **ingest.py** (line 40): `_cfg = load_config()` → 6 module-level constants derived from it (`DEFAULT_SYMBOLS`, `BINANCE_API_BASE`, `RATE_LIMIT_DELAY`, `MAX_RETRIES`, `DEFAULT_INTERVAL`, `DEFAULT_PERIOD_DAYS`). Functions use these stale constants as default parameter values, making them doubly frozen.
-- [x] **transform.py** (line 40): `_cfg = load_config()` → `DEFAULT_SYMBOLS`, `TRADING_DAYS_PER_YEAR`
-- [x] **optimize.py** (line 38): `_cfg = load_config()` → `RISK_FREE_RATE`, `GRID_STEPS`
-- [x] **backtest.py** (line 44): `_cfg = load_config()` → `RISK_FREE_RATE`
-- [x] **ingest_sources.py** (line 38): `_cfg = load_config()` → `DATA_DIR`, `REFERENCE_DIR`, `SYMBOLS_METADATA_CSV`, `PORTFOLIO_CONFIG_JSON`. DataSource subclasses reference these stale paths.
-
-**Fix pattern**: Either resolve config inside functions (like `load_db_config()` in ingest_postgres), or accept config via parameter injection. For pure functions (transform math), accept the value as a parameter; for orchestration functions, resolve at call time.
+All Phases 1–3 complete. All code review critical/medium/low items complete.
+Remaining work is dashboard enhancements (Phases 4–6).
 
 ---
 
-## Critical — Cross-module coupling to private functions
-
-- [x] **backtest.py** (lines 28–39): Imports 6 private/internal names from optimize and transform: `_grid_search_max_sharpe`, `_try_scipy_optimization`, `_align_data_by_date`, `calculate_log_returns`, `calculate_mean_returns`, `calculate_covariance_matrix`. The underscore-prefixed functions are implementation details — backtest is tightly coupled to their signatures. If optimize refactors its internals, backtest breaks silently. Either promote `_try_scipy_optimization` / `_grid_search_max_sharpe` to public API, or expose a single `optimize_weights(strategy, returns, cov, rf)` façade that backtest calls.
-
----
-
-## Medium — `if __name__` demo blocks in production modules
-
-These mix demo/test concerns with production code. Same issue we fixed in
-`ingest_postgres.py` by extracting to `scripts/generate_benchmarks.py`.
-
-- [x] **ingest.py** (lines 438–460)
-- [x] **transform.py** (lines 579–616)
-- [x] **optimize.py** (lines 893–927)
-- [x] **backtest.py** (lines 486–487)
-- [x] **ingest_scraping.py** (lines 367–400)
-- [x] **ingest_sources.py** (lines 558–585)
-
-**Fix**: Delete them. They add no test coverage (pytest never runs `__main__`), and anyone needing a quick test can use the one-liners in CLAUDE.md's "Commandes rapides" section.
-
----
-
-## Medium — Service locator via `get_storage()` instead of injection
-
-Multiple functions create their own storage internally via `get_storage(backend)`.
-This is the service locator anti-pattern — same issue as `load_db_config()` inside
-`_get_connection()` that the user flagged in the ingest_postgres review.
-
-- [x] **transform.py**: `transform_data()` and `load_processed_metrics()` call `get_storage(storage_backend)`
-- [x] **optimize.py**: `optimize_portfolio()`, `compute_and_save_frontier()`, `calculate_equal_weight_portfolio()`, `load_optimal_portfolio()` all call `get_storage()`
-- [x] **backtest.py**: `run_backtest()` calls `get_storage(storage_backend)`
-
-**Fix**: Accept a `Storage` instance (or None with fallback). Callers inject; functions don't resolve their own dependencies.
-
----
-
-## Medium — Hardcoded magic number `365` in backtest.py
-
-- [x] **backtest.py** `_compute_metrics()` (lines 289, 296, 300): Hardcodes `365` for annualization instead of using `_cfg.trading_days_per_year`. If the project ever switches to traditional market days (252), backtest and transform would diverge silently.
-
----
-
-## Low — Fragile BTC-first assumption in backtest.py
-
-- [x] **backtest.py** (line 386): `btc_weights = [1.0] + [0.0] * (n_symbols - 1)` assumes the first symbol in the data is always BTC. If symbol order changes (alphabetical sort, config change), the "BTC-only" benchmark becomes a random single-asset portfolio. Should find BTC by name.
-
----
-
-## Low — Mutation of module-level data in ingest_scraping.py
-
-- [x] **ingest_scraping.py** `_scrape_coingecko_alternative()` (line 273): Mutates dicts inside the module-level `sample_data` list (`item["scraped_at"] = ...`). On second call, the dicts already have stale `scraped_at` keys. Should copy before mutating.
-
----
-
-## Low — `print()` utilities in transform.py
-
-- [x] **transform.py** `print_correlation_matrix()` and `print_covariance_matrix()` (lines 531–572): Use `print()` directly. These are debug/demo helpers that don't belong in a production module. Either delete or move to a CLI script.
-
----
-
-## Low — Redundant exception catch in ingest_sources.py
-
-- [x] **ingest_sources.py** (line 453): `except (SourceError, Exception)` — `Exception` already covers `SourceError`. Should be just `except Exception`.
-
----
-
-## Storage cleanup (found during review)
-
-- [x] **parquet.py**: `if __name__` demo block (lines 575–680) — same pattern deleted from pipeline modules
-- [x] **duckdb.py** `list_raw_symbols()` (line 278): `except (StorageError, Exception)` — redundant catch, same fix as ingest_sources
-
----
-
-## Dashboard — Financial analyst improvements
-
-### Phase 1 — Dashboard-only (no backend changes) ✅
-
-- [x] Weights evolution chart, return distribution + VaR, current portfolio on frontier, CSV exports
-
-### Phase 2 — Small backend enrichment ✅
-
-- [x] Daily returns in backtest output, Sortino ratio
-
-### Phase 3 — Professional dashboard rewrite ✅
-
-- [x] Global styling constants (COLORS, CHART_LAYOUT, styled_layout helper)
-- [x] Dashboard page: 5 KPI cards (Sortino + Max DD from backtest), donut allocation, risk-return bubble scatter, side-by-side correlation + covariance heatmaps, monthly returns heatmap
-- [x] Symbols page: technical chart (SMA 20/50, Bollinger Bands, RSI, volume + MA), summary stat cards
-- [x] Metrics page: cumulative returns line chart, horizontal sorted bars, annotated heatmaps, risk-return summary table with per-symbol Sharpe
-- [x] Frontier page: iso-Sharpe curves (S=0.5/1.0/1.5/2.0), horizontal sorted weight bars, asset labels on markers
-- [x] Backtest page: drawdown comparison (3 strategies), monthly returns heatmap, per-window expanders with weights
-
-### Phase 4 — Optional enhancements (not started)
+## Dashboard — Phase 4 — Optional enhancements
 
 - [ ] **Risk contribution** (Dashboard page): Marginal risk contribution pie chart (weight × marginal vol). Needs helper in optimize.py + API exposure.
-- [ ] **Rolling correlation** (Metrics page): Rolling 30-day correlation line chart. Needs new API endpoint or client-side computation from raw klines.
+- [ ] **Rolling correlation** (Metrics page): Rolling 30-day correlation line chart. Client-side from `/metrics/returns`.
+
+---
+
+## Dashboard — Phase 5 — UX / polish
+
+Quick wins. All computable client-side from existing API responses.
+
+- [ ] **Cache `fetch_api`** — `@st.cache_data(ttl=300)` + "🔄 Refresh" button in sidebar. Every page switch currently re-fetches all endpoints. Makes navigation instant after first load.
+- [ ] **Format backtest metrics table** — `cumulative_return = 0.15` renders as `0.15`, not `15 %`. Apply `fmt_pct()` / `fmt_ratio()` to all numeric fields in the table.
+- [ ] **KPI delta vs equal weight** — `st.metric` has built-in `delta` argument. Show `Sharpe: 1.2 (+0.3 vs equal weight)`. Data already in `/portfolio/backtest`.
+- [ ] **Sidebar: date range + last refresh** — pull `min(date)` / `max(date)` from klines and display `Data: 2024-11-01 → 2025-02-21`.
+- [ ] **Symbols page: total return KPI** — 5th stat card `Total Return since start: +42.3 %` (last / first close − 1).
+- [ ] **Chart type labels** — rename `["technical", "candlestick", "line"]` → `["Full (SMA + Bollinger + RSI)", "Candlestick + Volume", "Line only"]`.
+- [ ] **Auto-refresh toggle** — `st.sidebar.toggle("Auto-refresh 30s")` + `st.rerun()`.
+- [ ] **VaR x-axis label** — `render_return_distribution` formats log returns as `:.2%` (wrong). Convert to simple returns first or relabel axis as "Log Return".
+
+---
+
+## Dashboard — Phase 6 — New charts & Risk Analysis page
+
+All computed client-side from existing endpoints. No new API endpoints needed.
+
+### 6a — Dashboard page additions
+
+- [ ] **Normalized price comparison** — all 13 symbols rebased to 1.0 on day 1, overlaid line chart. From `/klines/{sym}`. Highest jury impact single chart.
+- [ ] **HHI concentration score** — 6th KPI card. `HHI = Σ(wᵢ²)`. 1/13 ≈ 0.077 = perfectly diversified, 1.0 = full concentration. From `/portfolio` weights.
+- [ ] **Rolling 30-day average pairwise correlation** — single line over time showing mean correlation across all pairs. From `/metrics/returns`. Justifies the 8 new symbols added.
+
+### 6b — New "Risk Analysis" page (6th sidebar entry, between Metrics and Frontier)
+
+- [ ] **Rolling volatility per symbol** — 30-day rolling std × √365, overlaid line chart. Reveals vol regimes.
+- [ ] **Skewness / Kurtosis table** — per-symbol: Ann. Return, Ann. Vol, Sharpe, Skewness, Kurtosis, VaR 95%. Addresses jury Q on tail risks.
+- [ ] **Beta vs BTC bar chart** — regress each symbol's daily returns against BTC. β > 1 amplifies, β < 1 hedges. Horizontal sorted bar.
+- [ ] **VaR / CVaR per symbol** — 95th percentile per asset, horizontal bar chart.
+- [ ] **Correlation network graph** — Plotly scatter: nodes = symbols, edges = lines with opacity ∝ |ρ|, color = positive/negative. More intuitive than a heatmap for the diversification story.
+
+### 6c — Symbols page additions
+
+- [ ] **Compare 2 symbols** — "Compare mode" toggle; second selector; both normalized to 1.0 on shared axis.
+
+### 6d — Backtest page additions
+
+- [ ] **Win rate by window** — % of rolling windows where strategy beat equal weight. Bar chart + KPI.
+- [ ] **Per-symbol return contribution** — stacked bar per window: (weight × return) per symbol. Shows which assets drove / dragged performance.
+
+---
+
+## Implementation order
+
+```
+Phase 5 (quick wins, low risk)
+└── cache → format backtest table → KPI deltas → sidebar date → total return KPI → labels
+
+Phase 6a (Dashboard additions, high jury impact)
+└── normalized prices → HHI KPI → rolling avg correlation
+
+Phase 6b (Risk page — most new code, all client-side)
+└── rolling vol → skew/kurt table → beta chart → VaR per symbol → network graph
+
+Phase 6c + 6d (smaller scope)
+└── compare mode → win rate → contribution chart
+```
