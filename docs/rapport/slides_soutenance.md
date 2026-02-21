@@ -141,7 +141,7 @@ GLOBAL                           ████████████ 100%
 └─────────────────────────────────────────────────────────┘
 ```
 
-- **5 conteneurs Docker** orchestrés via docker-compose
+- **7 services Docker** orchestrés via docker-compose (API, Streamlit, Pipeline, PostgreSQL, Airflow ×3)
 - **Airflow** = orchestrateur unique (DAG journalier automatique)
 - **pipeline service** = bootstrap initial seulement
 
@@ -157,7 +157,7 @@ GLOBAL                           ████████████ 100%
 |------|---------|--------|-----------|
 | Bronze (`data/raw/`) | Données brutes Binance | Parquet | 90 jours |
 | Silver (`data/processed/`) | Rendements, métriques | Parquet | 1 an |
-| Gold (`data/output/`) | Portefeuille optimisé, frontier | Parquet | Permanent |
+| Gold (`data/output/`) | Portefeuille optimisé, frontier | Parquet | 30 jours (écrasement) |
 
 - **Catalogue de données** complet : schéma, lignage, qualité, propriétaire (C20)
 - **RGPD** : données publiques, aucune PII, pas d'applicabilité directe (C21)
@@ -215,6 +215,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 
 | Endpoint | Description |
 |----------|-------------|
+| `GET /` | Health check |
 | `GET /symbols` | Liste des 13 symboles |
 | `GET /klines/{symbol}` | Historique OHLCV |
 | `GET /metrics` | Toutes les métriques |
@@ -259,7 +260,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 2. Optimisation SLSQP (scipy) : max Sharpe ratio, contraintes budget
 3. Fallback grid search si scipy indisponible
 4. Génération de la frontier efficiente (100 points)
-5. Walk-forward backtest : train 90j → test 30j (glissant)
+5. Walk-forward backtest : train 60j → test 30j (glissant)
 
 **Résultats (exemple) :**
 - Sharpe ratio optimisé vs equal weight : mesuré en live
