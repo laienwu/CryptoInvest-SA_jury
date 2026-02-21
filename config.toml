@@ -1,5 +1,5 @@
 [portfolio]
-symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "ADAUSDT"]
+symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "ADAUSDT", "LINKUSDT", "DOTUSDT", "AVAXUSDT", "MATICUSDT", "ATOMUSDT", "XRPUSDT", "DOGEUSDT", "FILUSDT"]
 interval = "1d"
 period_days = 90
 risk_free_rate = 0.05

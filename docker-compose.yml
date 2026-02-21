@@ -1,3 +1,26 @@
+# =============================================================================
+# ORCHESTRATION ARCHITECTURE
+# =============================================================================
+# AIRFLOW  = single authoritative orchestrator for all scheduled/daily runs.
+#            DAG: ingest_incremental → transform → optimize → frontier → backtest
+#            Runs daily at 00:00. Do NOT add cron jobs or extra pipeline
+#            services that duplicate this work.
+#
+# PIPELINE = one-shot bootstrap service ONLY.
+#            Use when: (1) initial setup with empty data/, or
+#                      (2) new symbols added to config.toml (need full history).
+#            Uses ingest_data() (full fetch, not incremental).
+#            NOT a substitute for Airflow. NOT scheduled. Runs once then exits.
+#            Profile: --profile pipeline
+#
+# Profiles quick reference:
+#   (no profile)        api + streamlit (default runtime)
+#   --profile pipeline  one-shot bootstrap (full ingest → transform → optimize → frontier → backtest)
+#   --profile airflow   Airflow scheduler + webserver + postgres metadata DB
+#   --profile benchmarks postgres-benchmarks only
+#   --profile full      all of the above
+# =============================================================================
+
 x-airflow-common: &airflow-common
   build:
     context: .
@@ -19,9 +42,69 @@ x-airflow-common: &airflow-common
       condition: service_healthy
 
 services:
-  # ===================
-  # AIRFLOW SERVICES
-  # ===================
+  # ===========================================================================
+  # APP SERVICES (default — no profile needed)
+  # ===========================================================================
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./config.toml:/app/config.toml:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://api:8000
+      - STREAMLIT_CLIENT_SHOW_ERROR_DETAILS=false
+      - STREAMLIT_LOGGER_LEVEL=warning
+      - STREAMLIT_SERVER_HEADLESS=true
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # ===========================================================================
+  # BOOTSTRAP (--profile pipeline)
+  # One-shot: runs once, exits. Use for initial setup or when adding new symbols.
+  # After this completes, Airflow takes over for daily incremental updates.
+  # ===========================================================================
+
+  pipeline:
+    build: .
+    volumes:
+      - ./data:/app/data
+      - ./config.toml:/app/config.toml:ro
+    command: >
+      python -c "from src.pipeline import ingest_data, transform_data, optimize_portfolio;
+      from src.pipeline.optimize import compute_and_save_frontier;
+      from src.pipeline.backtest import run_backtest;
+      from src.storage import get_storage;
+      storage = get_storage();
+      print('=== BOOTSTRAP: full ingest (all symbols, full history) ===');
+      data = ingest_data(); storage.save_raw(data);
+      print('=== TRANSFORM ==='); transform_data();
+      print('=== OPTIMIZE ==='); optimize_portfolio();
+      print('=== FRONTIER ==='); compute_and_save_frontier();
+      print('=== BACKTEST ==='); run_backtest();
+      print('=== BOOTSTRAP COMPLETE — Airflow will handle daily updates ===')"
+    restart: "no"
+    profiles:
+      - pipeline
+
+  # ===========================================================================
+  # AIRFLOW — single orchestrator for daily scheduled runs (--profile airflow)
+  # DAG: ingest_incremental → transform → optimize → frontier → backtest @ 00:00
+  # ===========================================================================
+
   postgres:
     image: postgres:15
     environment:
@@ -77,9 +160,11 @@ services:
       - airflow
       - full
 
-  # ===================
-  # BENCHMARKS DATABASE
-  # ===================
+  # ===========================================================================
+  # BENCHMARKS DATABASE (--profile benchmarks)
+  # PostgreSQL for benchmark index data (S&P 500, BTC buy-and-hold, etc.)
+  # ===========================================================================
+
   postgres-benchmarks:
     image: postgres:15
     environment:
@@ -98,61 +183,6 @@ services:
     profiles:
       - benchmarks
       - full
-
-  # ===================
-  # APP SERVICES
-  # ===================
-  api:
-    build: .
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./data:/app/data
-      - ./config.toml:/app/config.toml:ro
-    environment:
-      - PYTHONUNBUFFERED=1
-    restart: unless-stopped
-
-  pipeline:
-    build: .
-    volumes:
-      - ./data:/app/data
-      - ./config.toml:/app/config.toml:ro
-    command: >
-      python -c "from src.pipeline import ingest_data, transform_data, optimize_portfolio;
-      from src.pipeline.optimize import compute_and_save_frontier;
-      from src.pipeline.backtest import run_backtest;
-      from src.storage import get_storage;
-      storage = get_storage();
-      print('=== INGEST ===');
-      data = ingest_data(); storage.save_raw(data);
-      print('=== TRANSFORM ==='); transform_data();
-      print('=== OPTIMIZE ==='); optimize_portfolio();
-      print('=== FRONTIER ==='); compute_and_save_frontier();
-      print('=== BACKTEST ==='); run_backtest();
-      print('=== DONE ===')"
-    profiles:
-      - pipeline
-
-  # ===================
-  # STREAMLIT DASHBOARD
-  # ===================
-  streamlit:
-    build:
-      context: .
-      dockerfile: Dockerfile.streamlit
-    ports:
-      - "8501:8501"
-    environment:
-      - API_URL=http://api:8000
-      # Streamlit runtime config (equivalent to CLI flags)
-      - STREAMLIT_CLIENT_SHOW_ERROR_DETAILS=false
-      - STREAMLIT_LOGGER_LEVEL=warning
-      - STREAMLIT_SERVER_HEADLESS=true
-    depends_on:
-      - api
-    restart: unless-stopped
-
 
 volumes:
   postgres-data:
