@@ -170,7 +170,9 @@ binance/
 │       ├── 08_scd_dimensions.md
 │       ├── 09_catalogue_donnees.md
 │       ├── 10_merise.md
-│       └── slides_soutenance.md
+│       ├── slides_soutenance.md
+│       ├── demo_guide.md
+│       └── questions_jury.md
 ├── Dockerfile
 ├── docker-compose.yml
 ├── pyproject.toml

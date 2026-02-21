@@ -341,7 +341,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 **Livrables :**
 - 5 000+ lignes de code Python production-ready
 - 10 documents de rapport certification
-- 5 conteneurs Docker orchestrés
+- 7 services Docker orchestrés
 - API REST + dashboard interactif déployés
 
 > *Notes : Conclure sur la cohérence bout-en-bout : du besoin métier jusqu'au dashboard live.*

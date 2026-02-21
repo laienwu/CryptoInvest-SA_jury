@@ -185,12 +185,13 @@ GET /portfolio/backtest # Resultats backtest
 
 ```python
 # Structure du dashboard Streamlit
-# 5 pages accessibles via sidebar:
-# - Dashboard: KPIs + Pie chart + Volatility + Correlation
+# 6 pages accessibles via sidebar:
+# - Dashboard: KPIs + Pie chart + Risk contribution + Correlation
 # - Symbols: Selection symbole + Price chart + Raw data
 # - Metrics: Exploration des metriques calculees
 # - Frontier: Frontiere efficiente + CML + poids
 # - Backtest: Courbes cumulatives + metriques + drawdown
+# - Risk: Vol roulante, beta, skew/kurtosis, VaR/CVaR, reseau
 
 # Composants principaux:
 def render_kpi_cards(portfolio)     # 3 metriques: Return, Vol, Sharpe
@@ -328,7 +329,7 @@ uv run pytest tests/ --cov=src --cov-report=term-missing
 uv run pytest tests/test_transform.py -v
 ```
 
-**Resultat attendu:** 214 tests passed, 53% coverage
+**Resultat attendu:** 254 tests passed
 
 ### 6.3 Docker - Demarrage Rapide
 
@@ -628,7 +629,7 @@ C'est le standard en finance quantitative."
 
 ### Q10: "Comment sont testes les composants?"
 
-**Reponse:** "J'utilise pytest avec 214 tests unitaires couvrant:
+**Reponse:** "J'utilise pytest avec 254 tests unitaires couvrant:
 - Les calculs financiers (returns, volatility, correlation)
 - L'optimisation de portefeuille (Markowitz)
 - Le storage layer (parquet, factory)
@@ -747,14 +748,14 @@ Schema:
 
 ## 10. CHECKLIST AVANT SOUTENANCE
 
-- [ ] Tests passent: `uv run pytest tests/ -v` (214 tests)
+- [ ] Tests passent: `uv run pytest tests/ -v` (254 tests)
 - [ ] Docker fonctionne: `docker compose up api streamlit`
 - [ ] API accessible: http://localhost:8000/docs
 - [ ] Dashboard accessible: http://localhost:8501
 - [ ] Donnees presentes dans data/
 - [ ] Pipeline execute sans erreur
 - [ ] DuckDB queries fonctionnent
-- [ ] Connaitre les 10 endpoints API
+- [ ] Connaitre les 9 endpoints API
 - [ ] Dashboard affiche KPIs, Pie chart, Correlation
 - [ ] Savoir expliquer Markowitz en 1 phrase
 - [ ] Savoir expliquer le star schema

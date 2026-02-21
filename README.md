@@ -133,7 +133,7 @@ uv run pytest tests/ -v
 # Run with coverage
 uv run pytest tests/ --cov=src --cov-report=term-missing
 
-# Results: 214 tests, 53% coverage
+# Results: 254 tests
 ```
 
 ## Structure du projet
@@ -160,7 +160,7 @@ src/
 └── dashboard/               # Visualization
     └── app.py              # Streamlit app
 
-tests/                       # Test suite (214 tests)
+tests/                       # Test suite (254 tests)
 dags/                        # Airflow DAGs
 docs/                        # Documentation
 data/                        # Data zones (bronze/silver/gold)

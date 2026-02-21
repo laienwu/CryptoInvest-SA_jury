@@ -1,5 +1,3 @@
 # TODO
 
-All Phases 1–6 complete. All Phase 4 optional enhancements complete.
-
-Nothing pending.
+All drift and consistency fixes complete. Nothing pending.
