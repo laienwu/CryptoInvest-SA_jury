@@ -85,7 +85,7 @@ def styled_layout(fig: go.Figure, **overrides: Any) -> go.Figure:
 # =============================================================================
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)  # type: ignore[untyped-decorator]
 def fetch_api(endpoint: str) -> dict[str, Any] | None:
     """Fetch data from API endpoint, cached for 5 minutes."""
     try:
@@ -219,7 +219,7 @@ def _compute_skewness(returns: list[float]) -> float:
     std = (sum((r - mean) ** 2 for r in returns) / n) ** 0.5
     if std < 1e-10:
         return 0.0
-    return sum(((r - mean) / std) ** 3 for r in returns) / n
+    return float(sum(((r - mean) / std) ** 3 for r in returns) / n)
 
 
 def _compute_kurtosis(returns: list[float]) -> float:
@@ -231,7 +231,7 @@ def _compute_kurtosis(returns: list[float]) -> float:
     std = (sum((r - mean) ** 2 for r in returns) / n) ** 0.5
     if std < 1e-10:
         return 0.0
-    return sum(((r - mean) / std) ** 4 for r in returns) / n - 3.0
+    return float(sum(((r - mean) / std) ** 4 for r in returns) / n - 3.0)
 
 
 def _compute_var_cvar(
@@ -523,7 +523,7 @@ def render_normalized_prices(symbols: list[str]) -> None:
         elif "open_time" in df.columns:
             dates = pd.to_datetime(df["open_time"], unit="ms").dt.strftime("%Y-%m-%d").tolist()
         else:
-            dates = list(range(len(df)))  # type: ignore[assignment]
+            dates = [str(i) for i in range(len(df))]
 
         closes = pd.to_numeric(df["close"], errors="coerce").tolist()
         if not closes or closes[0] == 0:
@@ -1161,7 +1161,6 @@ def page_metrics() -> None:
                 with col_a:
                     sym_a = st.selectbox("Symbol A", pair_symbols, key="pair_a")
                 with col_b:
-                    default_b = pair_symbols[1] if pair_symbols[0] == sym_a else pair_symbols[0]
                     sym_b = st.selectbox(
                         "Symbol B",
                         [s for s in pair_symbols if s != sym_a],
@@ -1470,7 +1469,7 @@ def render_beta_chart(returns_data: dict[str, Any]) -> None:
 
     btc_returns = values[btc_idx]
     betas = []
-    for i, sym in enumerate(symbols):
+    for i in range(len(symbols)):
         if i == btc_idx:
             betas.append(1.0)
         else:

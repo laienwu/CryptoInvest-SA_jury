@@ -107,7 +107,26 @@ GLOBAL                           ████████████ 100%
 
 ---
 
-## SLIDE 7 — Architecture Globale
+## SLIDE 7 — Communication Projet (C7)
+
+**Stratégie multi-canal adaptée aux parties prenantes**
+
+| Support | Cible | Format |
+|---------|-------|--------|
+| Rapport professionnel | Jury | Markdown/PDF (10 documents) |
+| Slides soutenance | Jury | PDF (cette présentation) |
+| Documentation API | Développeurs | Swagger UI auto-générée |
+| README + CLAUDE.md | Contributeurs | Markdown dans le repo |
+
+- **6 jalons de communication** : lancement → pipeline → métriques → DWH → API → soutenance
+- **Accessibilité** : RGAA respecté (titres hiérarchiques, contraste, texte structuré)
+- **Retours intégrés** : points hebdo formateur, rétrospectives, commits traçables dans Git
+
+> *Notes : Montrer la documentation API auto-générée sur /docs. Souligner que chaque jalon a fait l'objet d'une démonstration au formateur.*
+
+---
+
+## SLIDE 8 — Architecture Globale
 
 **Vue C4 — Niveau Contexte**
 
@@ -130,7 +149,7 @@ GLOBAL                           ████████████ 100%
 
 ---
 
-## SLIDE 8 — Data Lake — Architecture 3 Zones (C18, C19, C20, C21)
+## SLIDE 9 — Data Lake — Architecture 3 Zones (C18, C19, C20, C21)
 
 **Zones Bronze / Silver / Gold + gouvernance**
 
@@ -148,7 +167,7 @@ GLOBAL                           ████████████ 100%
 
 ---
 
-## SLIDE 9 — Pipeline ETL & Orchestration (C8, C10, C15, C16)
+## SLIDE 10 — Pipeline ETL & Orchestration (C8, C10, C15, C16)
 
 **Airflow DAG : 4 tâches séquentielles**
 
@@ -167,7 +186,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 
 ---
 
-## SLIDE 10 — Data Warehouse & Modélisation (C9, C11, C13, C14, C17)
+## SLIDE 11 — Data Warehouse & Modélisation (C9, C11, C13, C14, C17)
 
 **Schéma en étoile dans DuckDB**
 
@@ -190,7 +209,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 
 ---
 
-## SLIDE 11 — Exposition API REST (C12)
+## SLIDE 12 — Exposition API REST (C12)
 
 **FastAPI — 9 endpoints, OpenAPI auto-générée**
 
@@ -212,7 +231,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 
 ---
 
-## SLIDE 12 — Dashboard Interactif (C12)
+## SLIDE 13 — Dashboard Interactif (C12)
 
 **Streamlit — 6 pages, Plotly, cache 5 min**
 
@@ -231,7 +250,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 
 ---
 
-## SLIDE 13 — Optimisation de Portefeuille
+## SLIDE 14 — Optimisation de Portefeuille
 
 **Théorie de Markowitz — implémentation pure Python**
 
@@ -250,7 +269,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 
 ---
 
-## SLIDE 14 — Qualité & Tests
+## SLIDE 15 — Qualité & Tests
 
 **254 tests — 100% passants — ruff + mypy strict clean**
 
@@ -272,7 +291,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 
 ---
 
-## SLIDE 15 — Choix Techniques — Justifications ADR
+## SLIDE 16 — Choix Techniques — Justifications ADR
 
 **Pourquoi ces choix résistent à un peer review ?**
 
@@ -288,7 +307,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 
 ---
 
-## SLIDE 16 — Conformité RGPD & Éco-conception (C21)
+## SLIDE 17 — Conformité RGPD & Éco-conception (C21)
 
 **RGPD : données publiques, pas d'applicabilité directe**
 
@@ -307,7 +326,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 
 ---
 
-## SLIDE 17 — Résultats & Bilan
+## SLIDE 18 — Résultats & Bilan
 
 **Projet 100% complet — 21 compétences couvertes**
 
@@ -328,7 +347,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 
 ---
 
-## SLIDE 18 — Perspectives & Limites
+## SLIDE 19 — Perspectives & Limites
 
 **Ce qui a été fait — ce qui pourrait évoluer**
 
@@ -347,7 +366,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 
 ---
 
-## SLIDE 19 — Conclusion
+## SLIDE 20 — Conclusion
 
 **Un système de données complet, de bout en bout**
 
@@ -367,7 +386,7 @@ Besoin métier → 5 sources → Data Lake → DWH → API → Dashboard
 
 ---
 
-## SLIDE 20 — Questions & Réponses
+## SLIDE 21 — Questions & Réponses
 
 *[Slide de fond pendant les questions]*
 
