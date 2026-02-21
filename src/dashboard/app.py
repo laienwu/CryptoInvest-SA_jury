@@ -2,17 +2,20 @@
 Streamlit dashboard for portfolio optimization visualization.
 
 Connects to FastAPI backend to display:
-- KPI cards (expected return, volatility, Sharpe ratio, Sortino, Max DD)
-- Portfolio allocation donut chart + risk-return scatter
-- Correlation & covariance heatmaps
-- Monthly returns heatmap
-- Technical price charts (SMA, Bollinger, RSI, volume)
+- KPI cards (return, vol, Sharpe, Sortino, Max DD, HHI concentration)
+- Portfolio allocation donut + risk-return scatter
+- Normalized price comparison (all symbols rebased to 1.0)
+- Rolling average pairwise correlation over time
+- Correlation & covariance heatmaps + monthly returns heatmap
+- Technical price charts (SMA, Bollinger, RSI, volume) + compare mode
 - Efficient frontier with iso-Sharpe curves
+- Risk Analysis page: rolling vol, skew/kurtosis, beta, VaR/CVaR, network
 - Walk-forward backtest analytics
 """
 
 import math
 import os
+import time
 from typing import Any
 
 import pandas as pd
@@ -82,16 +85,126 @@ def styled_layout(fig: go.Figure, **overrides: Any) -> go.Figure:
 # =============================================================================
 
 
+@st.cache_data(ttl=300, show_spinner=False)
 def fetch_api(endpoint: str) -> dict[str, Any] | None:
-    """Fetch data from API endpoint."""
+    """Fetch data from API endpoint, cached for 5 minutes."""
     try:
         response = requests.get(f"{API_URL}{endpoint}", timeout=10)
         response.raise_for_status()
         data: dict[str, Any] = response.json()
         return data
-    except requests.RequestException as e:
-        st.error(f"API Error: {e}")
+    except requests.RequestException:
         return None
+
+
+# =============================================================================
+# Math Helpers (pure Python, no Streamlit state)
+# =============================================================================
+
+
+def _compute_hhi(weights: dict[str, float]) -> float:
+    """Herfindahl-Hirschman Index = sum(w²). 1/n = diversified, 1.0 = concentrated."""
+    return sum(w ** 2 for w in weights.values())
+
+
+def _compute_rolling_avg_corr(
+    returns_matrix: list[list[float]],
+    window: int = 30,
+) -> list[float | None]:
+    """Compute rolling average pairwise correlation across all symbol pairs."""
+    n_symbols = len(returns_matrix)
+    if n_symbols < 2:
+        return []
+    n_dates = min(len(r) for r in returns_matrix)
+    result: list[float | None] = [None] * n_dates
+    for t in range(window - 1, n_dates):
+        corrs = []
+        for i in range(n_symbols):
+            for j in range(i + 1, n_symbols):
+                xi = returns_matrix[i][t - window + 1:t + 1]
+                xj = returns_matrix[j][t - window + 1:t + 1]
+                mean_i = sum(xi) / window
+                mean_j = sum(xj) / window
+                cov = sum((xi[k] - mean_i) * (xj[k] - mean_j) for k in range(window)) / window
+                var_i = sum((x - mean_i) ** 2 for x in xi) / window
+                var_j = sum((x - mean_j) ** 2 for x in xj) / window
+                denom = (var_i * var_j) ** 0.5
+                if denom > 1e-10:
+                    corrs.append(cov / denom)
+        result[t] = sum(corrs) / len(corrs) if corrs else None
+    return result
+
+
+def _compute_rolling_vol(
+    returns: list[float],
+    window: int = 30,
+    trading_days: int = 365,
+) -> list[float | None]:
+    """Compute rolling annualized volatility."""
+    result: list[float | None] = [None] * len(returns)
+    for i in range(window - 1, len(returns)):
+        seg = returns[i - window + 1:i + 1]
+        mean = sum(seg) / window
+        var = sum((r - mean) ** 2 for r in seg) / window
+        result[i] = (var ** 0.5) * (trading_days ** 0.5)
+    return result
+
+
+def _compute_beta(
+    sym_returns: list[float],
+    market_returns: list[float],
+) -> float:
+    """Compute beta = Cov(sym, market) / Var(market)."""
+    n = min(len(sym_returns), len(market_returns))
+    if n < 2:
+        return 1.0
+    s = sym_returns[:n]
+    m = market_returns[:n]
+    mean_s = sum(s) / n
+    mean_m = sum(m) / n
+    cov = sum((s[i] - mean_s) * (m[i] - mean_m) for i in range(n)) / n
+    var_m = sum((r - mean_m) ** 2 for r in m) / n
+    return cov / var_m if var_m > 1e-10 else 1.0
+
+
+def _compute_skewness(returns: list[float]) -> float:
+    """Third standardized moment."""
+    n = len(returns)
+    if n < 3:
+        return 0.0
+    mean = sum(returns) / n
+    std = (sum((r - mean) ** 2 for r in returns) / n) ** 0.5
+    if std < 1e-10:
+        return 0.0
+    return sum(((r - mean) / std) ** 3 for r in returns) / n
+
+
+def _compute_kurtosis(returns: list[float]) -> float:
+    """Excess kurtosis (Fisher): 4th standardized moment − 3."""
+    n = len(returns)
+    if n < 4:
+        return 0.0
+    mean = sum(returns) / n
+    std = (sum((r - mean) ** 2 for r in returns) / n) ** 0.5
+    if std < 1e-10:
+        return 0.0
+    return sum(((r - mean) / std) ** 4 for r in returns) / n - 3.0
+
+
+def _compute_var_cvar(
+    returns: list[float],
+    confidence: float = 0.95,
+) -> tuple[float, float]:
+    """Compute VaR and CVaR at given confidence from a return series."""
+    if len(returns) < 5:
+        return 0.0, 0.0
+    sorted_r = sorted(returns)
+    n = len(sorted_r)
+    idx = max(0, int(n * (1 - confidence)) - 1)
+    var = sorted_r[idx]
+    tail = sorted_r[:idx + 1]
+    cvar = sum(tail) / len(tail) if tail else var
+    return var, cvar
 
 
 # =============================================================================
@@ -135,17 +248,13 @@ def render_monthly_returns_heatmap(
     symbols: list[str],
     title: str = "Monthly Returns Heatmap",
 ) -> None:
-    """Render a calendar-grid monthly returns heatmap.
-
-    Rows = year-month, columns = symbols. Color = total return for that month.
-    """
+    """Render a calendar-grid monthly returns heatmap."""
     if not dates or not values or not symbols:
         return
 
-    # Build month → symbol → cumulative return
     month_returns: dict[str, dict[str, float]] = {}
     for day_idx, date_str in enumerate(dates):
-        month_key = date_str[:7]  # "YYYY-MM"
+        month_key = date_str[:7]
         if month_key not in month_returns:
             month_returns[month_key] = {s: 0.0 for s in symbols}
         for sym_idx, sym in enumerate(symbols):
@@ -179,30 +288,63 @@ def render_kpi_cards(
     portfolio: dict[str, Any],
     backtest_metrics: dict[str, Any] | None = None,
 ) -> None:
-    """Render 5 KPI metric cards across the top row."""
-    cols = st.columns(5)
+    """Render 6 KPI cards: 5 performance metrics + HHI concentration."""
+    cols = st.columns(6)
 
     expected_return = portfolio.get("expected_return")
     volatility = portfolio.get("volatility")
     sharpe = portfolio.get("sharpe_ratio")
+    weights = portfolio.get("weights", {})
 
-    sortino = None
-    max_dd = None
+    sortino = max_dd = equal_sharpe = equal_sortino = equal_max_dd = None
     if backtest_metrics:
         strat = backtest_metrics.get("strategy", {})
+        eq = backtest_metrics.get("equal_weight", {})
         sortino = strat.get("sortino_ratio")
         max_dd = strat.get("max_drawdown")
+        equal_sharpe = eq.get("sharpe_ratio")
+        equal_sortino = eq.get("sortino_ratio")
+        equal_max_dd = eq.get("max_drawdown")
+
+    hhi = _compute_hhi(weights) if weights else None
+    n = len(weights)
+    hhi_min = 1 / n if n > 0 else None
 
     with cols[0]:
         st.metric("Expected Return", fmt_pct(expected_return))
     with cols[1]:
         st.metric("Volatility", fmt_pct(volatility))
     with cols[2]:
-        st.metric("Sharpe Ratio", fmt_ratio(sharpe))
+        delta_sharpe = (
+            f"{sharpe - equal_sharpe:+.2f} vs equal"
+            if sharpe is not None and equal_sharpe is not None
+            else None
+        )
+        st.metric("Sharpe Ratio", fmt_ratio(sharpe), delta=delta_sharpe)
     with cols[3]:
-        st.metric("Sortino Ratio", fmt_ratio(sortino))
+        delta_sortino = (
+            f"{sortino - equal_sortino:+.2f} vs equal"
+            if sortino is not None and equal_sortino is not None
+            else None
+        )
+        st.metric("Sortino Ratio", fmt_ratio(sortino), delta=delta_sortino)
     with cols[4]:
-        st.metric("Max Drawdown", fmt_pct(max_dd))
+        delta_dd = (
+            f"{max_dd - equal_max_dd:+.2%} vs equal"
+            if max_dd is not None and equal_max_dd is not None
+            else None
+        )
+        st.metric("Max Drawdown", fmt_pct(max_dd), delta=delta_dd, delta_color="inverse")
+    with cols[5]:
+        hhi_label = f"{hhi:.3f}" if hhi is not None else "N/A"
+        hhi_delta = f"min={hhi_min:.3f}" if hhi_min is not None else None
+        st.metric(
+            "HHI Concentration",
+            hhi_label,
+            delta=hhi_delta,
+            delta_color="off",
+            help="Herfindahl index: lower = more diversified. Perfect = 1/n.",
+        )
 
 
 def render_allocation_donut(weights: dict[str, float]) -> None:
@@ -242,7 +384,6 @@ def render_risk_return_scatter(
         return
 
     w = [weights.get(s, 0.0) for s in symbols]
-    # Scale bubble size: minimum visible size + proportional
     max_w = max(w) if w else 1.0
     sizes = [max(8, (wi / max_w) * 50) if max_w > 0 else 15 for wi in w]
 
@@ -281,6 +422,90 @@ def render_risk_return_scatter(
     st.plotly_chart(fig, use_container_width=True)
 
 
+def render_normalized_prices(symbols: list[str]) -> None:
+    """All symbols rebased to 1.0 on day 1, overlaid line chart."""
+    if not symbols:
+        return
+
+    fig = go.Figure()
+    for i, sym in enumerate(symbols):
+        klines = fetch_api(f"/klines/{sym}")
+        if not klines or not klines.get("data"):
+            continue
+        df = pd.DataFrame(klines["data"])
+        if "timestamp" in df.columns:
+            dates = pd.to_datetime(df["timestamp"]).dt.strftime("%Y-%m-%d").tolist()
+        elif "open_time" in df.columns:
+            dates = pd.to_datetime(df["open_time"], unit="ms").dt.strftime("%Y-%m-%d").tolist()
+        else:
+            dates = list(range(len(df)))  # type: ignore[assignment]
+
+        closes = pd.to_numeric(df["close"], errors="coerce").tolist()
+        if not closes or closes[0] == 0:
+            continue
+
+        normalized = [c / closes[0] for c in closes]
+        fig.add_trace(go.Scatter(
+            x=dates,
+            y=normalized,
+            mode="lines",
+            name=sym,
+            line={"color": COLORS["assets"][i % len(COLORS["assets"])], "width": 1.5},
+            hovertemplate=f"<b>{sym}</b><br>%{{x}}<br>Value: %{{y:.3f}}x<extra></extra>",
+        ))
+
+    fig.add_hline(y=1.0, line_dash="dash", line_color="gray", opacity=0.4)
+    styled_layout(
+        fig,
+        title="Normalized Price Performance (rebased to 1.0)",
+        xaxis_title="Date",
+        yaxis_title="Relative Value",
+        hovermode="x unified",
+        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02},
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def render_rolling_avg_correlation(returns_data: dict[str, Any], window: int = 30) -> None:
+    """Rolling average pairwise correlation across all symbol pairs."""
+    symbols = returns_data.get("symbols", [])
+    dates = returns_data.get("dates", [])
+    values = returns_data.get("values", [])
+
+    if len(symbols) < 2 or not dates or not values:
+        st.info("Need at least 2 symbols for correlation chart")
+        return
+
+    rolling = _compute_rolling_avg_corr(values, window=window)
+    valid_pairs = [(dates[i], rolling[i]) for i in range(len(rolling)) if rolling[i] is not None]
+    if not valid_pairs:
+        return
+
+    valid_dates = [p[0] for p in valid_pairs]
+    valid_vals = [p[1] for p in valid_pairs]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=valid_dates,
+        y=valid_vals,
+        mode="lines",
+        name=f"Avg Correlation ({window}d)",
+        line={"color": COLORS["accent"], "width": 2},
+        fill="tozeroy",
+        fillcolor="rgba(148,103,189,0.1)",
+    ))
+    fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.4)
+    styled_layout(
+        fig,
+        title=f"Rolling {window}-Day Average Pairwise Correlation",
+        xaxis_title="Date",
+        yaxis_title="Avg Correlation",
+        yaxis={"range": [-1, 1], "gridcolor": "rgba(128,128,128,0.15)"},
+        hovermode="x unified",
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
 def page_dashboard() -> None:
     """Render the main Dashboard page."""
     st.title("Portfolio Optimization Dashboard")
@@ -293,19 +518,15 @@ def page_dashboard() -> None:
         )
         return
 
-    # Fetch backtest for Sortino + Max DD KPIs
     bt_data = fetch_api("/portfolio/backtest")
     bt_metrics = bt_data.get("metrics") if bt_data else None
 
-    # Row 1: KPIs
     render_kpi_cards(portfolio, bt_metrics)
     st.markdown("---")
 
-    # Row 2: Allocation donut + Risk-return scatter
     col1, col2 = st.columns(2)
     with col1:
         render_allocation_donut(portfolio.get("weights", {}))
-
     with col2:
         mean_ret = fetch_api("/metrics/mean_returns")
         vol = fetch_api("/metrics/volatility")
@@ -318,7 +539,13 @@ def page_dashboard() -> None:
 
     st.markdown("---")
 
-    # Row 3: Correlation + Covariance heatmaps
+    symbols_resp = fetch_api("/symbols")
+    symbols = symbols_resp.get("symbols", []) if symbols_resp else []
+    if symbols:
+        render_normalized_prices(symbols)
+
+    st.markdown("---")
+
     col1, col2 = st.columns(2)
     with col1:
         corr = fetch_api("/metrics/correlation")
@@ -345,10 +572,11 @@ def page_dashboard() -> None:
 
     st.markdown("---")
 
-    # Row 4: Monthly returns heatmap
     returns_resp = fetch_api("/metrics/returns")
     if returns_resp and returns_resp.get("data"):
         rd = returns_resp["data"]
+        render_rolling_avg_correlation(rd)
+        st.markdown("---")
         render_monthly_returns_heatmap(
             rd.get("dates", []),
             rd.get("values", []),
@@ -392,7 +620,6 @@ def _compute_rsi(closes: list[float], period: int = 14) -> list[float | None]:
     if len(closes) < period + 1:
         return result
 
-    # Initial average gain/loss
     gains = []
     losses = []
     for i in range(1, period + 1):
@@ -409,7 +636,6 @@ def _compute_rsi(closes: list[float], period: int = 14) -> list[float | None]:
         rs = avg_gain / avg_loss
         result[period] = 100.0 - (100.0 / (1.0 + rs))
 
-    # Smoothed RSI
     for i in range(period + 1, len(closes)):
         change = closes[i] - closes[i - 1]
         gain = max(change, 0.0)
@@ -442,7 +668,6 @@ def render_technical_chart(df: pd.DataFrame) -> None:
         subplot_titles=("Price + Indicators", "Volume", "RSI (14)"),
     )
 
-    # Price candlestick
     if all(c in df.columns for c in ["open", "high", "low"]):
         fig.add_trace(go.Candlestick(
             x=dates, open=df["open"], high=df["high"],
@@ -456,19 +681,14 @@ def render_technical_chart(df: pd.DataFrame) -> None:
             name="Close", line={"color": COLORS["equal"], "width": 1.5},
         ), row=1, col=1)
 
-    # SMA 20
     fig.add_trace(go.Scatter(
         x=dates, y=sma20, mode="lines", name="SMA 20",
         line={"color": "#e377c2", "width": 1, "dash": "dot"},
     ), row=1, col=1)
-
-    # SMA 50
     fig.add_trace(go.Scatter(
         x=dates, y=sma50, mode="lines", name="SMA 50",
         line={"color": "#17becf", "width": 1, "dash": "dot"},
     ), row=1, col=1)
-
-    # Bollinger Bands
     fig.add_trace(go.Scatter(
         x=dates, y=bb_upper, mode="lines", name="BB Upper",
         line={"color": "rgba(150,150,150,0.4)", "width": 1},
@@ -481,7 +701,6 @@ def render_technical_chart(df: pd.DataFrame) -> None:
         showlegend=False,
     ), row=1, col=1)
 
-    # Volume bars
     if "volume" in df.columns:
         vol_colors = [
             COLORS["strategy"] if c >= o else COLORS["danger"]
@@ -491,8 +710,6 @@ def render_technical_chart(df: pd.DataFrame) -> None:
             x=dates, y=df["volume"], name="Volume",
             marker_color=vol_colors, opacity=0.6, showlegend=False,
         ), row=2, col=1)
-
-        # Volume 20-day moving average
         vol_sma = _compute_sma(df["volume"].tolist(), 20)
         fig.add_trace(go.Scatter(
             x=dates, y=vol_sma, mode="lines", name="Vol SMA 20",
@@ -500,17 +717,13 @@ def render_technical_chart(df: pd.DataFrame) -> None:
             showlegend=False,
         ), row=2, col=1)
 
-    # RSI
     fig.add_trace(go.Scatter(
         x=dates, y=rsi, mode="lines", name="RSI",
         line={"color": COLORS["accent"], "width": 1.5},
     ), row=3, col=1)
-    fig.add_hline(y=70, line_dash="dash", line_color="rgba(214,39,40,0.5)",
-                  row=3, col=1)
-    fig.add_hline(y=30, line_dash="dash", line_color="rgba(44,160,44,0.5)",
-                  row=3, col=1)
-    fig.add_hrect(y0=30, y1=70, fillcolor="rgba(128,128,128,0.05)",
-                  line_width=0, row=3, col=1)
+    fig.add_hline(y=70, line_dash="dash", line_color="rgba(214,39,40,0.5)", row=3, col=1)
+    fig.add_hline(y=30, line_dash="dash", line_color="rgba(44,160,44,0.5)", row=3, col=1)
+    fig.add_hrect(y0=30, y1=70, fillcolor="rgba(128,128,128,0.05)", line_width=0, row=3, col=1)
 
     styled_layout(
         fig,
@@ -522,13 +735,12 @@ def render_technical_chart(df: pd.DataFrame) -> None:
     fig.update_yaxes(title_text="Price (USDT)", row=1, col=1)
     fig.update_yaxes(title_text="Volume", row=2, col=1)
     fig.update_yaxes(title_text="RSI", row=3, col=1, range=[0, 100])
-
     st.plotly_chart(fig, use_container_width=True)
 
 
 def render_symbol_stats(df: pd.DataFrame) -> None:
-    """Render 4 summary stat cards for a symbol."""
-    cols = st.columns(4)
+    """Render 5 summary stat cards for a symbol."""
+    cols = st.columns(5)
     closes = df["close"]
     with cols[0]:
         st.metric("Min Price", f"${closes.min():,.2f}")
@@ -542,6 +754,12 @@ def render_symbol_stats(df: pd.DataFrame) -> None:
             st.metric("Daily Vol", f"{daily_rets.std():.2%}")
         else:
             st.metric("Daily Vol", "N/A")
+    with cols[4]:
+        if len(closes) > 1:
+            total_return = (closes.iloc[-1] / closes.iloc[0]) - 1.0
+            st.metric("Total Return", fmt_pct(total_return))
+        else:
+            st.metric("Total Return", "N/A")
 
 
 def page_symbols() -> None:
@@ -555,11 +773,21 @@ def page_symbols() -> None:
 
     symbols = symbols_data["symbols"]
 
-    col_sym, col_chart = st.columns([2, 1])
+    col_sym, col_chart, col_compare = st.columns([2, 2, 1])
     with col_sym:
         selected_symbol = st.selectbox("Select Symbol", symbols)
     with col_chart:
-        chart_type = st.selectbox("Chart Type", ["technical", "candlestick", "line"])
+        chart_type = st.selectbox(
+            "Chart Type",
+            ["Full (SMA + Bollinger + RSI)", "Candlestick + Volume", "Line only"],
+        )
+    with col_compare:
+        compare_mode = st.checkbox("Compare", value=False)
+
+    compare_symbol = None
+    if compare_mode:
+        other_symbols = [s for s in symbols if s != selected_symbol]
+        compare_symbol = st.selectbox("Compare with", other_symbols)
 
     if not selected_symbol:
         return
@@ -581,10 +809,49 @@ def page_symbols() -> None:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Chart
-    if chart_type == "technical":
+    # Compare mode: normalized overlay
+    if compare_mode and compare_symbol:
+        klines_b = fetch_api(f"/klines/{compare_symbol}")
+        if klines_b and klines_b.get("data"):
+            df_b = pd.DataFrame(klines_b["data"])
+            if "timestamp" in df_b.columns:
+                df_b["date"] = pd.to_datetime(df_b["timestamp"])
+            elif "open_time" in df_b.columns:
+                df_b["date"] = pd.to_datetime(df_b["open_time"], unit="ms")
+            df_b["close"] = pd.to_numeric(df_b["close"], errors="coerce")
+
+            closes_a = df["close"].tolist()
+            closes_b = df_b["close"].tolist()
+            norm_a = [c / closes_a[0] for c in closes_a] if closes_a[0] else closes_a
+            norm_b = [c / closes_b[0] for c in closes_b] if closes_b[0] else closes_b
+
+            fig_cmp = go.Figure()
+            fig_cmp.add_trace(go.Scatter(
+                x=df["date"], y=norm_a, mode="lines",
+                name=selected_symbol,
+                line={"color": COLORS["strategy"], "width": 2},
+            ))
+            fig_cmp.add_trace(go.Scatter(
+                x=df_b["date"], y=norm_b, mode="lines",
+                name=compare_symbol,
+                line={"color": COLORS["btc"], "width": 2},
+            ))
+            fig_cmp.add_hline(y=1.0, line_dash="dash", line_color="gray", opacity=0.4)
+            styled_layout(
+                fig_cmp,
+                title=f"{selected_symbol} vs {compare_symbol} (normalized to 1.0)",
+                xaxis_title="Date",
+                yaxis_title="Relative Value",
+                hovermode="x unified",
+            )
+            st.plotly_chart(fig_cmp, use_container_width=True)
+
+    # Main chart
+    if chart_type.startswith("Full"):
         render_technical_chart(df)
-    elif chart_type == "candlestick" and all(c in df.columns for c in ["open", "high", "low", "close"]):
+    elif chart_type.startswith("Candlestick") and all(
+        c in df.columns for c in ["open", "high", "low", "close"]
+    ):
         fig = make_subplots(
             rows=2, cols=1, shared_xaxes=True,
             vertical_spacing=0.03, row_heights=[0.7, 0.3],
@@ -603,7 +870,7 @@ def page_symbols() -> None:
                 marker_color=colors, opacity=0.6,
             ), row=2, col=1)
         styled_layout(fig, title=f"{selected_symbol} OHLCV",
-                       xaxis_rangeslider_visible=False, hovermode="x unified")
+                      xaxis_rangeslider_visible=False, hovermode="x unified")
         fig.update_yaxes(title_text="Price (USDT)", row=1, col=1)
         fig.update_yaxes(title_text="Volume", row=2, col=1)
         st.plotly_chart(fig, use_container_width=True)
@@ -613,15 +880,13 @@ def page_symbols() -> None:
             name="Close Price", line={"color": COLORS["equal"]},
         ))
         styled_layout(fig, title=f"{selected_symbol} Price History",
-                       xaxis_title="Date", yaxis_title="Price (USDT)",
-                       hovermode="x unified")
+                      xaxis_title="Date", yaxis_title="Price (USDT)",
+                      hovermode="x unified")
         st.plotly_chart(fig, use_container_width=True)
 
-    # Stats cards
     st.markdown("---")
     render_symbol_stats(df)
 
-    # Raw data + CSV export
     st.markdown("---")
     st.subheader("Raw Data")
     st.dataframe(df.drop(columns=["date"], errors="ignore").head(20), use_container_width=True)
@@ -646,7 +911,6 @@ def render_cumulative_returns_chart(returns_data: dict[str, Any]) -> None:
     for i, sym in enumerate(symbols):
         if i >= len(values):
             break
-        # Cumulative return from log returns: exp(cumsum(r)) - 1
         cum = []
         running = 0.0
         for r in values[i]:
@@ -676,7 +940,6 @@ def render_sorted_bar(symbols: list[str], values: list[float], title: str, fmt: 
     if not symbols or not values:
         return
 
-    # Sort by value descending
     pairs = sorted(zip(symbols, values), key=lambda x: x[1], reverse=True)
     sorted_sym = [p[0] for p in pairs]
     sorted_val = [p[1] for p in pairs]
@@ -721,7 +984,6 @@ def _metric_to_dataframe(data: Any) -> pd.DataFrame:
             )
         return pd.DataFrame({"Symbol": symbols, "Value": values})
 
-    # Fallback: show each key as a row to avoid unhashable type errors
     rows = []
     for k, v in data.items():
         rows.append({"Key": k, "Value": str(v) if isinstance(v, list) else v})
@@ -777,7 +1039,6 @@ def page_metrics() -> None:
     data = metric_resp["data"]
     st.subheader(selected_metric.replace("_", " ").title())
 
-    # Metric-specific visualization
     if selected_metric == "returns":
         render_cumulative_returns_chart(data)
     elif selected_metric == "volatility":
@@ -801,7 +1062,6 @@ def page_metrics() -> None:
             "Covariance Matrix", color_scale="Viridis",
         )
 
-    # Risk-return summary table
     st.markdown("---")
     st.subheader("Risk-Return Summary")
     mean_ret = fetch_api("/metrics/mean_returns")
@@ -809,12 +1069,9 @@ def page_metrics() -> None:
     if mean_ret and vol and mean_ret.get("data") and vol.get("data"):
         render_risk_return_table(mean_ret["data"], vol["data"])
 
-    # Raw data table + CSV
     st.markdown("---")
     st.subheader("Raw Data")
     df = _metric_to_dataframe(data)
-
-
     st.dataframe(df, use_container_width=True)
     render_csv_export(df, f"{selected_metric}.csv")
 
@@ -846,7 +1103,6 @@ def page_frontier() -> None:
 
     fig = go.Figure()
 
-    # Iso-Sharpe curves (faint arcs)
     for sharpe_val in [0.5, 1.0, 1.5, 2.0]:
         iso_vol = [v / 100 for v in range(1, 101)]
         iso_ret = [rf + sharpe_val * v for v in iso_vol]
@@ -856,7 +1112,6 @@ def page_frontier() -> None:
             showlegend=False,
             hoverinfo="skip",
         ))
-        # Label at the end of the arc
         fig.add_annotation(
             x=iso_vol[-1], y=iso_ret[-1],
             text=f"S={sharpe_val}",
@@ -864,7 +1119,6 @@ def page_frontier() -> None:
             font={"size": 9, "color": "rgba(150,150,150,0.6)"},
         )
 
-    # Frontier curve
     if frontier:
         fig.add_trace(go.Scatter(
             x=[p["volatility"] for p in frontier],
@@ -874,7 +1128,6 @@ def page_frontier() -> None:
             line={"color": COLORS["equal"], "width": 3},
         ))
 
-    # Individual assets — text directly on markers
     if assets:
         asset_labels = [
             symbols[a["symbol_index"]] if a["symbol_index"] < len(symbols) else f"Asset {a['symbol_index']}"
@@ -891,7 +1144,6 @@ def page_frontier() -> None:
             textfont={"size": 10},
         ))
 
-    # Max Sharpe
     if max_sharpe:
         fig.add_trace(go.Scatter(
             x=[max_sharpe["volatility"]], y=[max_sharpe["return"]],
@@ -901,7 +1153,6 @@ def page_frontier() -> None:
                     "line": {"width": 1, "color": "white"}},
         ))
 
-    # Min Variance
     if min_var:
         fig.add_trace(go.Scatter(
             x=[min_var["volatility"]], y=[min_var["return"]],
@@ -911,7 +1162,6 @@ def page_frontier() -> None:
                     "line": {"width": 1, "color": "white"}},
         ))
 
-    # Current portfolio
     current = fetch_api("/portfolio")
     if current and current.get("volatility") and current.get("expected_return"):
         fig.add_trace(go.Scatter(
@@ -922,7 +1172,6 @@ def page_frontier() -> None:
                     "line": {"width": 2, "color": "white"}},
         ))
 
-    # Capital Market Line
     if cml and cml.get("x") and cml.get("y"):
         fig.add_trace(go.Scatter(
             x=cml["x"], y=cml["y"],
@@ -943,12 +1192,8 @@ def page_frontier() -> None:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    # Portfolio weights — horizontal bar chart
     st.markdown("---")
-    portfolio_type = st.selectbox(
-        "View portfolio weights",
-        ["Max Sharpe", "Min Variance"],
-    )
+    portfolio_type = st.selectbox("View portfolio weights", ["Max Sharpe", "Min Variance"])
     selected = max_sharpe if portfolio_type == "Max Sharpe" else min_var
     if selected and selected.get("weights"):
         weights_map = {
@@ -962,7 +1207,6 @@ def page_frontier() -> None:
         with col2:
             st.metric("Volatility", fmt_pct(selected.get("volatility")))
 
-        # Sorted horizontal bar
         sorted_weights = sorted(weights_map.items(), key=lambda x: x[1], reverse=True)
         w_symbols = [p[0] for p in sorted_weights]
         w_values = [p[1] for p in sorted_weights]
@@ -988,6 +1232,288 @@ def page_frontier() -> None:
 
 
 # =============================================================================
+# Risk Analysis Page
+# =============================================================================
+
+
+def render_rolling_vol_chart(returns_data: dict[str, Any], window: int = 30) -> None:
+    """Rolling annualized volatility per symbol."""
+    symbols = returns_data.get("symbols", [])
+    dates = returns_data.get("dates", [])
+    values = returns_data.get("values", [])
+
+    if not symbols or not dates or not values:
+        st.info("No returns data available")
+        return
+
+    fig = go.Figure()
+    for i, sym in enumerate(symbols):
+        if i >= len(values):
+            break
+        rolling = _compute_rolling_vol(values[i], window=window)
+        valid_pairs = [(dates[j], rolling[j]) for j in range(len(rolling)) if rolling[j] is not None]
+        if not valid_pairs:
+            continue
+        vd = [p[0] for p in valid_pairs]
+        vv = [p[1] for p in valid_pairs]
+        fig.add_trace(go.Scatter(
+            x=vd, y=vv, mode="lines", name=sym,
+            line={"color": COLORS["assets"][i % len(COLORS["assets"])], "width": 1.5},
+            hovertemplate=f"<b>{sym}</b><br>%{{x}}<br>Vol: %{{y:.2%}}<extra></extra>",
+        ))
+
+    styled_layout(
+        fig,
+        title=f"Rolling {window}-Day Annualized Volatility",
+        xaxis_title="Date",
+        yaxis_title="Ann. Volatility",
+        yaxis={"tickformat": ".0%", "gridcolor": "rgba(128,128,128,0.15)"},
+        hovermode="x unified",
+        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02},
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def render_skew_kurt_table(
+    returns_data: dict[str, Any],
+    mean_ret_data: dict[str, Any] | None = None,
+    vol_data: dict[str, Any] | None = None,
+) -> None:
+    """Skewness / Kurtosis / VaR table per symbol."""
+    symbols = returns_data.get("symbols", [])
+    values = returns_data.get("values", [])
+    if not symbols or not values:
+        return
+
+    mean_ret_map: dict[str, float] = {}
+    vol_map: dict[str, float] = {}
+    if mean_ret_data and mean_ret_data.get("symbols"):
+        for s, v in zip(mean_ret_data["symbols"], mean_ret_data.get("values", [])):
+            mean_ret_map[s] = v
+    if vol_data and vol_data.get("symbols"):
+        for s, v in zip(vol_data["symbols"], vol_data.get("values", [])):
+            vol_map[s] = v
+
+    rows = []
+    for i, sym in enumerate(symbols):
+        if i >= len(values):
+            break
+        rets = values[i]
+        skew = _compute_skewness(rets)
+        kurt = _compute_kurtosis(rets)
+        var_95, cvar_95 = _compute_var_cvar(rets, confidence=0.95)
+        rows.append({
+            "Symbol": sym,
+            "Ann. Return": fmt_pct(mean_ret_map.get(sym)),
+            "Ann. Volatility": fmt_pct(vol_map.get(sym)),
+            "Skewness": f"{skew:.3f}",
+            "Excess Kurtosis": f"{kurt:.3f}",
+            "VaR 95% (daily)": fmt_pct(var_95),
+            "CVaR 95% (daily)": fmt_pct(cvar_95),
+        })
+
+    df = pd.DataFrame(rows)
+    st.dataframe(df, use_container_width=True, hide_index=True)
+    render_csv_export(df, "tail_risk_stats.csv")
+
+
+def render_beta_chart(returns_data: dict[str, Any]) -> None:
+    """Beta vs BTC bar chart for each symbol."""
+    symbols = returns_data.get("symbols", [])
+    values = returns_data.get("values", [])
+    if not symbols or not values:
+        return
+
+    btc_idx = next((i for i, s in enumerate(symbols) if "BTC" in s.upper()), None)
+    if btc_idx is None:
+        st.info("BTC not in symbol list — cannot compute beta")
+        return
+
+    btc_returns = values[btc_idx]
+    betas = []
+    for i, sym in enumerate(symbols):
+        if i == btc_idx:
+            betas.append(1.0)
+        else:
+            betas.append(_compute_beta(values[i], btc_returns))
+
+    pairs = sorted(zip(symbols, betas), key=lambda x: x[1], reverse=True)
+    sorted_sym = [p[0] for p in pairs]
+    sorted_beta = [p[1] for p in pairs]
+    colors = [COLORS["danger"] if b > 1.0 else COLORS["strategy"] for b in sorted_beta]
+
+    fig = go.Figure(go.Bar(
+        x=sorted_beta, y=sorted_sym, orientation="h",
+        marker_color=colors,
+        text=[f"{b:.2f}" for b in sorted_beta],
+        textposition="auto",
+    ))
+    fig.add_vline(x=1.0, line_dash="dash", line_color="gray", opacity=0.6,
+                  annotation_text="β=1 (market)")
+    styled_layout(
+        fig,
+        title="Beta vs BTC (crypto market proxy)",
+        xaxis_title="Beta",
+        xaxis={"gridcolor": "rgba(128,128,128,0.15)"},
+        yaxis={"gridcolor": "rgba(128,128,128,0.15)"},
+        height=max(300, len(symbols) * 40 + 100),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def render_var_cvar_chart(returns_data: dict[str, Any]) -> None:
+    """VaR and CVaR 95% per symbol, horizontal bar chart."""
+    symbols = returns_data.get("symbols", [])
+    values = returns_data.get("values", [])
+    if not symbols or not values:
+        return
+
+    var_vals = []
+    cvar_vals = []
+    for i in range(len(symbols)):
+        if i >= len(values):
+            break
+        var, cvar = _compute_var_cvar(values[i], confidence=0.95)
+        var_vals.append(var)
+        cvar_vals.append(cvar)
+
+    pairs = sorted(zip(symbols, var_vals, cvar_vals), key=lambda x: x[1])
+    s_syms = [p[0] for p in pairs]
+    s_var = [p[1] for p in pairs]
+    s_cvar = [p[2] for p in pairs]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=s_var, y=s_syms, orientation="h",
+        name="VaR 95%", marker_color=COLORS["danger"], opacity=0.7,
+    ))
+    fig.add_trace(go.Bar(
+        x=s_cvar, y=s_syms, orientation="h",
+        name="CVaR 95%", marker_color="darkred", opacity=0.7,
+    ))
+    styled_layout(
+        fig,
+        title="Daily VaR & CVaR at 95% Confidence",
+        xaxis_title="Daily Return",
+        xaxis={"tickformat": ".2%", "gridcolor": "rgba(128,128,128,0.15)"},
+        yaxis={"gridcolor": "rgba(128,128,128,0.15)"},
+        barmode="overlay",
+        height=max(300, len(symbols) * 40 + 100),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def render_correlation_network(
+    symbols: list[str],
+    corr_matrix: list[list[float]],
+) -> None:
+    """Nodes = symbols in a circle, edges = correlation strength."""
+    n = len(symbols)
+    if n < 2:
+        return
+
+    angles = [2 * math.pi * i / n for i in range(n)]
+    x_nodes = [math.cos(a) for a in angles]
+    y_nodes = [math.sin(a) for a in angles]
+
+    fig = go.Figure()
+
+    threshold = 0.3
+    for i in range(n):
+        for j in range(i + 1, n):
+            if i >= len(corr_matrix) or j >= len(corr_matrix[i]):
+                continue
+            corr = corr_matrix[i][j]
+            if abs(corr) < threshold:
+                continue
+            opacity = min(abs(corr), 1.0)
+            width = abs(corr) * 6
+            color = (
+                f"rgba(31,119,180,{opacity:.2f})"
+                if corr > 0
+                else f"rgba(214,39,40,{opacity:.2f})"
+            )
+            fig.add_trace(go.Scatter(
+                x=[x_nodes[i], x_nodes[j], None],
+                y=[y_nodes[i], y_nodes[j], None],
+                mode="lines",
+                line={"width": width, "color": color},
+                showlegend=False,
+                hoverinfo="skip",
+            ))
+
+    fig.add_trace(go.Scatter(
+        x=x_nodes,
+        y=y_nodes,
+        mode="markers+text",
+        text=symbols,
+        textposition="top center",
+        marker={
+            "size": 20,
+            "color": [COLORS["assets"][i % len(COLORS["assets"])] for i in range(n)],
+            "line": {"width": 1.5, "color": "white"},
+        },
+        hovertemplate="%{text}<extra></extra>",
+        showlegend=False,
+    ))
+
+    styled_layout(
+        fig,
+        title="Correlation Network (blue = positive, red = negative, |ρ| > 0.3)",
+        xaxis={"showgrid": False, "zeroline": False, "showticklabels": False, "range": [-1.5, 1.5]},
+        yaxis={"showgrid": False, "zeroline": False, "showticklabels": False, "range": [-1.5, 1.5]},
+        height=520,
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def page_risk() -> None:
+    """Render the Risk Analysis page."""
+    st.title("Risk Analysis")
+    st.caption("Tail risk, volatility regimes, beta sensitivity, and correlation structure.")
+
+    returns_resp = fetch_api("/metrics/returns")
+    mean_ret_resp = fetch_api("/metrics/mean_returns")
+    vol_resp = fetch_api("/metrics/volatility")
+    corr_resp = fetch_api("/metrics/correlation")
+
+    returns_data = returns_resp.get("data") if returns_resp else None
+    mean_ret_data = mean_ret_resp.get("data") if mean_ret_resp else None
+    vol_data = vol_resp.get("data") if vol_resp else None
+    corr_data = corr_resp.get("data") if corr_resp else None
+
+    if not returns_data:
+        st.warning("No returns data. Run the pipeline first.")
+        return
+
+    st.subheader("Rolling Volatility")
+    render_rolling_vol_chart(returns_data)
+    st.markdown("---")
+
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        st.subheader("Beta vs BTC")
+        render_beta_chart(returns_data)
+    with col2:
+        st.subheader("Tail Risk Statistics")
+        render_skew_kurt_table(returns_data, mean_ret_data, vol_data)
+
+    st.markdown("---")
+    st.subheader("VaR & CVaR per Symbol (95%)")
+    render_var_cvar_chart(returns_data)
+    st.markdown("---")
+
+    st.subheader("Correlation Network")
+    if corr_data:
+        render_correlation_network(
+            corr_data.get("symbols", []),
+            corr_data.get("matrix", []),
+        )
+    else:
+        st.info("No correlation data available")
+
+
+# =============================================================================
 # Backtest Page
 # =============================================================================
 
@@ -1005,7 +1531,7 @@ def _compute_drawdown_series(values: list[float]) -> list[float]:
 
 
 def render_weights_evolution(windows: list[dict[str, Any]], symbols: list[str]) -> None:
-    """Render stacked area chart of portfolio weights across rolling windows."""
+    """Stacked area chart of portfolio weights across rolling windows."""
     if not windows:
         return
 
@@ -1039,13 +1565,14 @@ def render_weights_evolution(windows: list[dict[str, Any]], symbols: list[str]) 
 
 
 def render_return_distribution(cumulative_values: dict[str, Any]) -> None:
-    """Render histogram of daily returns with VaR and CVaR lines."""
+    """Histogram of daily simple returns with VaR and CVaR lines."""
     strategy_vals = cumulative_values.get("strategy", [])
     if len(strategy_vals) < 3:
         return
 
+    # Daily simple returns (not log returns)
     daily_returns = [
-        math.log(strategy_vals[i] / strategy_vals[i - 1])
+        (strategy_vals[i] / strategy_vals[i - 1]) - 1.0
         for i in range(1, len(strategy_vals))
         if strategy_vals[i - 1] > 0
     ]
@@ -1057,7 +1584,7 @@ def render_return_distribution(cumulative_values: dict[str, Any]) -> None:
     n = len(sorted_returns)
     var_idx = max(0, int(n * 0.05) - 1)
     var_95 = sorted_returns[var_idx]
-    tail = sorted_returns[: var_idx + 1]
+    tail = sorted_returns[:var_idx + 1]
     cvar_95 = sum(tail) / len(tail) if tail else var_95
 
     fig = go.Figure()
@@ -1074,7 +1601,7 @@ def render_return_distribution(cumulative_values: dict[str, Any]) -> None:
     styled_layout(
         fig,
         title="Strategy Daily Return Distribution",
-        xaxis_title="Daily Log Return",
+        xaxis_title="Daily Return",
         yaxis_title="Frequency",
         xaxis={"tickformat": ".1%", "gridcolor": "rgba(128,128,128,0.15)"},
         yaxis={"gridcolor": "rgba(128,128,128,0.15)"},
@@ -1088,7 +1615,7 @@ def render_rolling_sharpe(
     risk_free_rate: float = 0.05,
     window: int = 30,
 ) -> None:
-    """Render rolling Sharpe ratio chart for all strategies."""
+    """Rolling Sharpe ratio chart for all strategies."""
     daily_rf = risk_free_rate / 365
 
     fig = go.Figure()
@@ -1118,7 +1645,6 @@ def render_rolling_sharpe(
         ))
 
     fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
-
     styled_layout(
         fig,
         title=f"Rolling Sharpe Ratio ({window}-day window)",
@@ -1129,7 +1655,7 @@ def render_rolling_sharpe(
 
 
 def render_performance_comparison(metrics: dict[str, Any]) -> None:
-    """Render grouped bar chart comparing all strategies across metrics."""
+    """Grouped bar chart comparing all strategies across metrics."""
     metric_keys = ["cumulative_return", "annualized_return", "sharpe_ratio", "sortino_ratio", "calmar_ratio"]
     display_names = ["Cumulative", "Annualized", "Sharpe", "Sortino", "Calmar"]
 
@@ -1155,14 +1681,13 @@ def render_performance_comparison(metrics: dict[str, Any]) -> None:
 def render_backtest_monthly_heatmap(
     daily_returns: dict[str, Any], dates: list[str],
 ) -> None:
-    """Render monthly returns heatmap for backtest strategies."""
+    """Monthly returns heatmap for all backtest strategies."""
     if not dates or not daily_returns:
         return
 
     strategies = ["strategy", "equal_weight", "btc_only"]
     labels = [STRATEGY_LABELS[s] for s in strategies]
 
-    # Aggregate daily returns by month per strategy
     month_data: dict[str, dict[str, float]] = {}
     for day_idx, date_str in enumerate(dates):
         month_key = date_str[:7]
@@ -1185,7 +1710,106 @@ def render_backtest_monthly_heatmap(
         color_continuous_scale="RdYlGn",
     )
     styled_layout(fig, title="Monthly Returns by Strategy",
-                   height=max(300, len(months) * 28 + 100))
+                  height=max(300, len(months) * 28 + 100))
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def _fmt_metric(name: str, value: Any) -> str:
+    """Format a backtest metric as % or ratio based on its name."""
+    if value is None:
+        return "N/A"
+    pct_metrics = {"cumulative_return", "annualized_return", "max_drawdown"}
+    try:
+        v = float(value)
+        return f"{v:.2%}" if name in pct_metrics else f"{v:.2f}"
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def render_win_rate(windows: list[dict[str, Any]]) -> None:
+    """Win/loss bar per window + overall win rate KPI."""
+    if not windows:
+        return
+
+    labels = []
+    results = []
+    for w in windows:
+        wid = w.get("window_id", "?")
+        test_ret = w.get("test_return")
+        eq_ret = w.get("equal_weight_test_return")
+        if test_ret is not None and eq_ret is not None:
+            labels.append(f"W{wid}")
+            results.append(1 if test_ret > eq_ret else 0)
+
+    if not results:
+        st.info("Per-window equal weight returns not available in backtest data")
+        return
+
+    win_rate = sum(results) / len(results)
+    st.metric("Win Rate vs Equal Weight", f"{win_rate:.0%}",
+              help="% of rolling windows where optimized strategy beat equal weight")
+
+    colors = [COLORS["strategy"] if r == 1 else COLORS["danger"] for r in results]
+    fig = go.Figure(go.Bar(
+        x=labels, y=results,
+        marker_color=colors,
+        text=["Win" if r == 1 else "Loss" for r in results],
+        textposition="auto",
+    ))
+    styled_layout(
+        fig,
+        title="Strategy vs Equal Weight per Window",
+        yaxis={"tickvals": [0, 1], "ticktext": ["Loss", "Win"],
+               "gridcolor": "rgba(128,128,128,0.15)"},
+        xaxis={"gridcolor": "rgba(128,128,128,0.15)"},
+        height=300,
+        showlegend=False,
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def render_contribution_chart(
+    windows: list[dict[str, Any]], symbols: list[str],
+) -> None:
+    """Stacked bar chart: per-symbol return contribution per window."""
+    if not windows or not symbols:
+        return
+
+    window_labels = []
+    contributions: dict[str, list[float]] = {s: [] for s in symbols}
+
+    for w in windows:
+        weights = w.get("weights", {})
+        test_ret = w.get("test_return", 0.0) or 0.0
+        if not weights:
+            continue
+        window_labels.append(f"W{w.get('window_id', '?')}")
+        total_w = sum(weights.values()) or 1.0
+        for s in symbols:
+            w_s = weights.get(s, 0.0)
+            contributions[s].append((w_s / total_w) * test_ret)
+
+    if not window_labels:
+        return
+
+    fig = go.Figure()
+    for i, s in enumerate(symbols):
+        fig.add_trace(go.Bar(
+            name=s,
+            x=window_labels,
+            y=contributions[s],
+            marker_color=COLORS["assets"][i % len(COLORS["assets"])],
+        ))
+
+    styled_layout(
+        fig,
+        title="Per-Symbol Return Contribution by Window",
+        barmode="stack",
+        xaxis_title="Window",
+        yaxis_title="Contribution",
+        yaxis={"tickformat": ".2%", "gridcolor": "rgba(128,128,128,0.15)"},
+        hovermode="x unified",
+    )
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -1210,7 +1834,6 @@ def page_backtest() -> None:
     cum_dates = cum_vals.get("dates", [])
     rf = config.get("risk_free_rate", 0.05)
 
-    # Config banner
     st.info(
         f"Strategy: **{config.get('strategy', 'N/A')}** | "
         f"Train: **{config.get('train_window', 'N/A')}** days | "
@@ -1218,7 +1841,6 @@ def page_backtest() -> None:
         f"Risk-free: **{rf:.1%}**"
     )
 
-    # Cumulative return chart
     if cum_dates:
         fig_cum = go.Figure()
         for key, label in STRATEGY_LABELS.items():
@@ -1230,7 +1852,6 @@ def page_backtest() -> None:
                     mode="lines", name=label,
                     line={"color": STRATEGY_COLORS[key], "width": 2},
                 ))
-
         styled_layout(
             fig_cum,
             title="Cumulative Portfolio Value",
@@ -1240,7 +1861,6 @@ def page_backtest() -> None:
         )
         st.plotly_chart(fig_cum, use_container_width=True)
 
-    # Metrics comparison table
     st.markdown("---")
     st.subheader("Performance Metrics")
     metric_names = ["cumulative_return", "annualized_return", "max_drawdown",
@@ -1251,14 +1871,13 @@ def page_backtest() -> None:
     for mname, dname in zip(metric_names, display_names):
         rows.append({
             "Metric": dname,
-            "Optimized": metrics.get("strategy", {}).get(mname, "N/A"),
-            "Equal Weight": metrics.get("equal_weight", {}).get(mname, "N/A"),
-            "BTC Only": metrics.get("btc_only", {}).get(mname, "N/A"),
+            "Optimized": _fmt_metric(mname, metrics.get("strategy", {}).get(mname)),
+            "Equal Weight": _fmt_metric(mname, metrics.get("equal_weight", {}).get(mname)),
+            "BTC Only": _fmt_metric(mname, metrics.get("btc_only", {}).get(mname)),
         })
     df_metrics = pd.DataFrame(rows)
     st.dataframe(df_metrics, use_container_width=True, hide_index=True)
 
-    # Drawdown comparison — all 3 strategies overlaid
     st.markdown("---")
     st.subheader("Drawdown Comparison")
     if cum_dates:
@@ -1275,7 +1894,6 @@ def page_backtest() -> None:
                     fill="tozeroy" if key == "strategy" else None,
                     fillcolor="rgba(44,160,44,0.15)" if key == "strategy" else None,
                 ))
-
         styled_layout(
             fig_dd,
             title="Drawdown by Strategy",
@@ -1286,18 +1904,23 @@ def page_backtest() -> None:
         )
         st.plotly_chart(fig_dd, use_container_width=True)
 
-    # Monthly returns heatmap
     st.markdown("---")
     st.subheader("Monthly Returns")
     if daily_rets and cum_dates:
         render_backtest_monthly_heatmap(daily_rets, cum_dates)
 
-    # Weights evolution
+    st.markdown("---")
+    st.subheader("Win Rate vs Equal Weight")
+    render_win_rate(windows)
+
+    st.markdown("---")
+    st.subheader("Per-Symbol Return Contribution")
+    render_contribution_chart(windows, bt_symbols)
+
     st.markdown("---")
     st.subheader("Weights Evolution")
     render_weights_evolution(windows, bt_symbols)
 
-    # Rolling Sharpe
     st.markdown("---")
     st.subheader("Rolling Sharpe Ratio")
     if daily_rets:
@@ -1305,17 +1928,14 @@ def page_backtest() -> None:
     else:
         st.info("Daily returns not available. Re-run backtest to enable rolling Sharpe.")
 
-    # Performance comparison bar chart
     st.markdown("---")
     st.subheader("Strategy Comparison")
     render_performance_comparison(metrics)
 
-    # Return distribution with VaR/CVaR
     st.markdown("---")
     st.subheader("Return Distribution")
     render_return_distribution(cum_vals)
 
-    # Per-window details
     st.markdown("---")
     st.subheader("Window Details")
     if windows:
@@ -1332,7 +1952,6 @@ def page_backtest() -> None:
                 with col3:
                     test_ret = w.get("test_return")
                     st.markdown(f"**Test Return**: {fmt_pct(test_ret)}")
-
                 weights = w.get("weights", {})
                 if weights:
                     sorted_w = sorted(weights.items(), key=lambda x: x[1], reverse=True)
@@ -1340,7 +1959,6 @@ def page_backtest() -> None:
                     df_ww["Weight"] = df_ww["Weight"].apply(lambda x: f"{x:.2%}")
                     st.dataframe(df_ww, use_container_width=True, hide_index=True)
 
-    # CSV export
     st.markdown("---")
     render_csv_export(df_metrics, "backtest_metrics.csv", "Export metrics CSV")
 
@@ -1348,6 +1966,15 @@ def page_backtest() -> None:
 # =============================================================================
 # Main
 # =============================================================================
+
+
+def _render_sidebar_data_range() -> None:
+    """Show the date range of loaded data below API status."""
+    returns_resp = fetch_api("/metrics/returns")
+    if returns_resp and returns_resp.get("data"):
+        dates = returns_resp["data"].get("dates", [])
+        if dates:
+            st.sidebar.caption(f"Data: {dates[0]} → {dates[-1]}")
 
 
 def main() -> None:
@@ -1361,17 +1988,25 @@ def main() -> None:
     st.sidebar.title("Navigation")
     page = st.sidebar.radio(
         "Select Page",
-        ["Dashboard", "Symbols", "Metrics", "Frontier", "Backtest"],
+        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest"],
     )
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("**API Status**")
-
     health = fetch_api("/")
     if health and health.get("status") == "ok":
         st.sidebar.success("Connected")
     else:
         st.sidebar.error("Disconnected")
+
+    _render_sidebar_data_range()
+
+    st.sidebar.markdown("---")
+    if st.sidebar.button("🔄 Refresh data"):
+        st.cache_data.clear()
+        st.rerun()
+
+    auto_refresh = st.sidebar.toggle("Auto-refresh (30s)", value=False)
 
     if page == "Dashboard":
         page_dashboard()
@@ -1379,10 +2014,17 @@ def main() -> None:
         page_symbols()
     elif page == "Metrics":
         page_metrics()
+    elif page == "Risk Analysis":
+        page_risk()
     elif page == "Frontier":
         page_frontier()
     elif page == "Backtest":
         page_backtest()
+
+    if auto_refresh:
+        time.sleep(30)
+        st.cache_data.clear()
+        st.rerun()
 
 
 if __name__ == "__main__":

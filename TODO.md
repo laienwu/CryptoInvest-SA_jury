@@ -12,7 +12,7 @@ Remaining work is dashboard enhancements (Phases 4–6).
 
 ---
 
-## Dashboard — Phase 5 — UX / polish
+## Dashboard — Phase 5 — UX / polish ✅
 
 Quick wins. All computable client-side from existing API responses.
 
@@ -27,7 +27,7 @@ Quick wins. All computable client-side from existing API responses.
 
 ---
 
-## Dashboard — Phase 6 — New charts & Risk Analysis page
+## Dashboard — Phase 6 — New charts & Risk Analysis page ✅
 
 All computed client-side from existing endpoints. No new API endpoints needed.
 
