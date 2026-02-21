@@ -177,7 +177,7 @@ services:
     ports:
       - "5433:5432"
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "portfolio"]
+      test: ["CMD", "pg_isready", "-U", "portfolio", "-d", "portfolio_benchmarks"]
       interval: 5s
       retries: 5
     profiles:
