@@ -91,6 +91,12 @@ def load_config(config_path: Path | None = None) -> PipelineConfig:
         kwargs["interval"] = portfolio["interval"]
     if "period_days" in portfolio:
         kwargs["period_days"] = portfolio["period_days"]
+    if "risk_free_rate" in portfolio:
+        kwargs["risk_free_rate"] = portfolio["risk_free_rate"]
+    if "trading_days_per_year" in portfolio:
+        kwargs["trading_days_per_year"] = portfolio["trading_days_per_year"]
+    if "storage_backend" in portfolio:
+        kwargs["storage_backend"] = portfolio["storage_backend"]
 
     # Environment variable overrides
     env_symbols = os.environ.get("PORTFOLIO_SYMBOLS")
