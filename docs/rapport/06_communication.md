@@ -149,7 +149,7 @@ Conformément aux recommandations [RGAA](https://accessibilite.numerique.gouv.fr
 | README | Markdown | ✅ |
 | Documentation technique | Markdown | ✅ |
 | Rapport professionnel | Markdown/PDF | ✅ |
-| Slides soutenance | PDF | ⬜ À faire |
+| Slides soutenance | PDF/Markdown | ✅ |
 | Démo fonctionnelle | Docker | ✅ |
 
 ### 6.2 Arborescence finale
@@ -166,7 +166,11 @@ binance/
 │       ├── 04_veille.md
 │       ├── 05_planification.md
 │       ├── 06_communication.md
-│       └── 07_rgpd.md
+│       ├── 07_rgpd.md
+│       ├── 08_scd_dimensions.md
+│       ├── 09_catalogue_donnees.md
+│       ├── 10_merise.md
+│       └── slides_soutenance.md
 ├── Dockerfile
 ├── docker-compose.yml
 ├── pyproject.toml

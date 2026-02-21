@@ -188,9 +188,9 @@ Phase 2: Transformation  [████████████] 100%
 Phase 3: Analytics       [████████████] 100%
 Phase 4: Exposition      [████████████] 100%
 Phase 5: Optimisation    [████████████] 100%
-Phase 6: Finalisation    [████████░░░░]  70%
+Phase 6: Finalisation    [████████████] 100%
 ═══════════════════════════════════════════
-GLOBAL                   [██████████░░]  95%
+GLOBAL                   [████████████] 100%
 ```
 
 ### 5.3 Rituels de suivi
