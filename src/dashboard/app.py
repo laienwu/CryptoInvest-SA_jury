@@ -107,6 +107,49 @@ def _compute_hhi(weights: dict[str, float]) -> float:
     return sum(w ** 2 for w in weights.values())
 
 
+def _compute_risk_contribution(
+    weights: dict[str, float],
+    cov_matrix: list[list[float]],
+    symbols: list[str],
+) -> dict[str, float]:
+    """Percentage risk contribution per asset.
+
+    RC_i = w_i * (Σw)_i / σ²_p  (Euler decomposition, sums to 1.0).
+    """
+    n = len(symbols)
+    w = [weights.get(s, 0.0) for s in symbols]
+    # (Σw)_i = dot product of row i with weight vector
+    sigma_w = [
+        sum(cov_matrix[i][j] * w[j] for j in range(n))
+        for i in range(n)
+    ]
+    port_var = sum(w[i] * sigma_w[i] for i in range(n))
+    if port_var < 1e-12:
+        return {s: 1 / n for s in symbols}
+    return {symbols[i]: w[i] * sigma_w[i] / port_var for i in range(n)}
+
+
+def _compute_rolling_pair_corr(
+    returns_a: list[float],
+    returns_b: list[float],
+    window: int = 30,
+) -> list[float | None]:
+    """Rolling correlation between two return series."""
+    n = min(len(returns_a), len(returns_b))
+    result: list[float | None] = [None] * n
+    for t in range(window - 1, n):
+        xa = returns_a[t - window + 1:t + 1]
+        xb = returns_b[t - window + 1:t + 1]
+        mean_a = sum(xa) / window
+        mean_b = sum(xb) / window
+        cov = sum((xa[k] - mean_a) * (xb[k] - mean_b) for k in range(window)) / window
+        var_a = sum((x - mean_a) ** 2 for x in xa) / window
+        var_b = sum((x - mean_b) ** 2 for x in xb) / window
+        denom = (var_a * var_b) ** 0.5
+        result[t] = cov / denom if denom > 1e-10 else 0.0
+    return result
+
+
 def _compute_rolling_avg_corr(
     returns_matrix: list[list[float]],
     window: int = 30,
@@ -369,6 +412,48 @@ def render_allocation_donut(weights: dict[str, float]) -> None:
     st.plotly_chart(fig, use_container_width=True)
 
 
+def render_risk_contribution(
+    weights: dict[str, float],
+    cov_data: dict[str, Any],
+) -> None:
+    """Side-by-side pie: portfolio weight vs risk contribution per asset."""
+    symbols_cov = cov_data.get("symbols", [])
+    matrix = cov_data.get("matrix", [])
+    if not symbols_cov or not matrix or not weights:
+        st.info("No covariance data for risk contribution")
+        return
+
+    rc = _compute_risk_contribution(weights, matrix, symbols_cov)
+
+    # Align order with covariance symbols
+    syms = symbols_cov
+    w_vals = [weights.get(s, 0.0) for s in syms]
+    rc_vals = [rc.get(s, 0.0) for s in syms]
+    colors = [COLORS["assets"][i % len(COLORS["assets"])] for i in range(len(syms))]
+
+    fig = make_subplots(
+        rows=1, cols=2,
+        specs=[[{"type": "domain"}, {"type": "domain"}]],
+        subplot_titles=("Portfolio Weight", "Risk Contribution"),
+    )
+    fig.add_trace(go.Pie(
+        labels=syms, values=w_vals, hole=0.45,
+        marker={"colors": colors},
+        textinfo="percent+label", textposition="inside",
+        hovertemplate="%{label}: %{value:.4f} (%{percent})<extra></extra>",
+        showlegend=False,
+    ), row=1, col=1)
+    fig.add_trace(go.Pie(
+        labels=syms, values=rc_vals, hole=0.45,
+        marker={"colors": colors},
+        textinfo="percent+label", textposition="inside",
+        hovertemplate="%{label}: %{percent}<extra></extra>",
+        showlegend=False,
+    ), row=1, col=2)
+    styled_layout(fig, title="Weight vs Risk Contribution")
+    st.plotly_chart(fig, use_container_width=True)
+
+
 def render_risk_return_scatter(
     mean_ret_data: dict[str, Any],
     vol_data: dict[str, Any],
@@ -524,10 +609,16 @@ def page_dashboard() -> None:
     render_kpi_cards(portfolio, bt_metrics)
     st.markdown("---")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         render_allocation_donut(portfolio.get("weights", {}))
     with col2:
+        cov_resp = fetch_api("/metrics/covariance")
+        if cov_resp and cov_resp.get("data"):
+            render_risk_contribution(portfolio.get("weights", {}), cov_resp["data"])
+        else:
+            st.info("Run transform pipeline for risk contribution")
+    with col3:
         mean_ret = fetch_api("/metrics/mean_returns")
         vol = fetch_api("/metrics/volatility")
         if mean_ret and vol and mean_ret.get("data") and vol.get("data"):
@@ -1056,6 +1147,54 @@ def page_metrics() -> None:
             data.get("symbols", []), data.get("matrix", []),
             "Correlation Matrix", color_scale="RdBu_r", zmin=-1, zmax=1,
         )
+        # Rolling per-pair correlation
+        st.markdown("---")
+        st.subheader("Rolling Pair Correlation")
+        returns_resp2 = fetch_api("/metrics/returns")
+        if returns_resp2 and returns_resp2.get("data"):
+            rd2 = returns_resp2["data"]
+            pair_symbols = rd2.get("symbols", [])
+            pair_dates = rd2.get("dates", [])
+            pair_values = rd2.get("values", [])
+            if len(pair_symbols) >= 2:
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    sym_a = st.selectbox("Symbol A", pair_symbols, key="pair_a")
+                with col_b:
+                    default_b = pair_symbols[1] if pair_symbols[0] == sym_a else pair_symbols[0]
+                    sym_b = st.selectbox(
+                        "Symbol B",
+                        [s for s in pair_symbols if s != sym_a],
+                        key="pair_b",
+                    )
+                idx_a = pair_symbols.index(sym_a)
+                idx_b = pair_symbols.index(sym_b)
+                rolling_corr = _compute_rolling_pair_corr(
+                    pair_values[idx_a], pair_values[idx_b], window=30
+                )
+                valid = [(pair_dates[i], rolling_corr[i])
+                         for i in range(len(rolling_corr)) if rolling_corr[i] is not None]
+                if valid:
+                    fig_rc = go.Figure()
+                    fig_rc.add_trace(go.Scatter(
+                        x=[v[0] for v in valid],
+                        y=[v[1] for v in valid],
+                        mode="lines",
+                        name=f"{sym_a} / {sym_b}",
+                        line={"color": COLORS["accent"], "width": 2},
+                        fill="tozeroy",
+                        fillcolor="rgba(148,103,189,0.1)",
+                    ))
+                    fig_rc.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.4)
+                    styled_layout(
+                        fig_rc,
+                        title=f"Rolling 30-Day Correlation: {sym_a} / {sym_b}",
+                        xaxis_title="Date",
+                        yaxis_title="Correlation",
+                        yaxis={"range": [-1, 1], "gridcolor": "rgba(128,128,128,0.15)"},
+                        hovermode="x unified",
+                    )
+                    st.plotly_chart(fig_rc, use_container_width=True)
     elif selected_metric == "covariance":
         render_matrix_heatmap(
             data.get("symbols", []), data.get("matrix", []),
