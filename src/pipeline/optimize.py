@@ -310,27 +310,40 @@ def _grid_search_min_variance(
     cov_matrix: list[list[float]], grid_steps: int = 20
 ) -> list[float]:
     """
-    Find minimum variance portfolio using grid search.
+    Find minimum variance portfolio via grid search or Monte Carlo.
 
-    Generates weight combinations and finds the one with minimum variance.
+    For small portfolios (<=5 assets), uses exhaustive grid search.
+    For larger portfolios, uses Dirichlet-sampled Monte Carlo.
 
     Args:
         cov_matrix: Covariance matrix.
-        grid_steps: Number of discrete steps (resolution).
+        grid_steps: Number of discrete steps (resolution, grid mode only).
 
     Returns:
         Approximate minimum variance weights.
     """
+    import random
+
     n = len(cov_matrix)
     best_weights: list[float] = [1.0 / n] * n
     best_variance = calculate_portfolio_variance(best_weights, cov_matrix)
 
-    # Generate weight combinations
-    for weights in _generate_weight_combinations(n, grid_steps):
-        variance = calculate_portfolio_variance(weights, cov_matrix)
-        if variance < best_variance:
-            best_variance = variance
-            best_weights = weights
+    if n <= 5:
+        for weights in _generate_weight_combinations(n, grid_steps):
+            variance = calculate_portfolio_variance(weights, cov_matrix)
+            if variance < best_variance:
+                best_variance = variance
+                best_weights = weights
+    else:
+        n_samples = 10_000
+        for _ in range(n_samples):
+            raw = [random.expovariate(1.0) for _ in range(n)]
+            total = sum(raw)
+            weights = [w / total for w in raw]
+            variance = calculate_portfolio_variance(weights, cov_matrix)
+            if variance < best_variance:
+                best_variance = variance
+                best_weights = weights
 
     return best_weights
 
@@ -342,31 +355,52 @@ def _grid_search_max_sharpe(
     grid_steps: int = 20,
 ) -> list[float]:
     """
-    Find maximum Sharpe ratio portfolio using grid search.
+    Find maximum Sharpe ratio portfolio via grid search or Monte Carlo.
+
+    For small portfolios (<=5 assets), uses exhaustive grid search.
+    For larger portfolios, uses Dirichlet-sampled Monte Carlo (10,000 portfolios)
+    to avoid combinatorial explosion.
 
     Args:
         mean_returns: Annualized mean returns.
         cov_matrix: Annualized covariance matrix.
         risk_free_rate: Risk-free rate.
-        grid_steps: Number of discrete steps (resolution).
+        grid_steps: Number of discrete steps (resolution, grid mode only).
 
     Returns:
         Approximate optimal weights.
     """
+    import random
+
     n = len(mean_returns)
     best_weights: list[float] = [1.0 / n] * n
     best_sharpe = calculate_sharpe_ratio(
         best_weights, mean_returns, cov_matrix, risk_free_rate
     )
 
-    # Generate weight combinations
-    for weights in _generate_weight_combinations(n, grid_steps):
-        sharpe = calculate_sharpe_ratio(
-            weights, mean_returns, cov_matrix, risk_free_rate
-        )
-        if sharpe > best_sharpe:
-            best_sharpe = sharpe
-            best_weights = weights
+    if n <= 5:
+        # Exhaustive grid search (feasible for small portfolios)
+        for weights in _generate_weight_combinations(n, grid_steps):
+            sharpe = calculate_sharpe_ratio(
+                weights, mean_returns, cov_matrix, risk_free_rate
+            )
+            if sharpe > best_sharpe:
+                best_sharpe = sharpe
+                best_weights = weights
+    else:
+        # Monte Carlo with Dirichlet sampling (scales to any n_assets)
+        n_samples = 10_000
+        for _ in range(n_samples):
+            # Dirichlet(1,1,...,1) gives uniform distribution over simplex
+            raw = [random.expovariate(1.0) for _ in range(n)]
+            total = sum(raw)
+            weights = [w / total for w in raw]
+            sharpe = calculate_sharpe_ratio(
+                weights, mean_returns, cov_matrix, risk_free_rate
+            )
+            if sharpe > best_sharpe:
+                best_sharpe = sharpe
+                best_weights = weights
 
     return best_weights
 
@@ -475,17 +509,29 @@ def _grid_search_target_return(
     Returns:
         Best weights or None if no feasible combination found.
     """
+    import random
+
     n = len(mean_returns)
     best_weights: list[float] | None = None
     best_variance = float("inf")
 
-    for weights in _generate_weight_combinations(n, grid_steps):
+    def _check(weights: list[float]) -> None:
+        nonlocal best_weights, best_variance
         port_return = calculate_portfolio_return(weights, mean_returns)
         if abs(port_return - target_return) <= tolerance:
             variance = calculate_portfolio_variance(weights, cov_matrix)
             if variance < best_variance:
                 best_variance = variance
                 best_weights = weights
+
+    if n <= 5:
+        for weights in _generate_weight_combinations(n, grid_steps):
+            _check(weights)
+    else:
+        for _ in range(10_000):
+            raw = [random.expovariate(1.0) for _ in range(n)]
+            total = sum(raw)
+            _check([w / total for w in raw])
 
     return best_weights
 

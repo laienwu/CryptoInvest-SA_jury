@@ -2115,6 +2115,21 @@ def _render_sidebar_data_range() -> None:
             st.sidebar.caption(f"Data: {dates[0]} → {dates[-1]}")
 
 
+def _render_sidebar_last_updated() -> None:
+    """Show when portfolio data was last computed."""
+    try:
+        path = os.path.join("data", "output", "weights.json")
+        if os.path.exists(path):
+            import json
+            with open(path) as f:
+                data = json.load(f)
+            saved_at = data.get("_metadata", {}).get("saved_at", "")
+            if saved_at:
+                st.sidebar.caption(f"Last updated: {saved_at[:19]}")
+    except Exception:
+        pass
+
+
 def main() -> None:
     """Main dashboard entry point."""
     st.set_page_config(
@@ -2138,6 +2153,7 @@ def main() -> None:
         st.sidebar.error("Disconnected")
 
     _render_sidebar_data_range()
+    _render_sidebar_last_updated()
 
     st.sidebar.markdown("---")
     if st.sidebar.button("🔄 Refresh data"):

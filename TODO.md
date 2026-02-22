@@ -30,21 +30,21 @@ Chunked by priority. Work through one section at a time.
 
 ---
 
-## Medium (quality + performance)
+## ~~Medium (quality + performance)~~ ✅ DONE
 
+- [x] **M-1**: Grid search fallback → Monte Carlo (Dirichlet) for >5 assets, grid for ≤5
+- [x] **M-3**: CSV export → built-in to `st.dataframe` since Streamlit 1.28 (non-issue)
 - [x] **M-5**: CORS → added `CORSMiddleware` for Streamlit origin
+- [x] **M-6**: API pagination → `limit`/`offset` on `/klines/{symbol}` + OpenAPI spec updated
 - [x] **M-7**: Logging → added `logging.basicConfig` with configurable `LOG_LEVEL`
 - [x] **M-8**: Trading days → verified: already reads `cfg.trading_days_per_year` (non-issue)
+- [x] **M-9**: Dashboard error handling → verified: `fetch_api` returns None, callers show `st.warning` (non-issue)
 - [x] **M-10**: OpenAPI drift → verified: all 6 drift tests pass (non-issue)
-- [ ] **M-1**: Grid search fallback O(steps^n) — replace with Monte Carlo sampling
-- [ ] **M-2**: Incremental transform — avoid full recomputation on daily updates
-- [ ] **M-3**: CSV export — add `st.download_button` on dashboard data tables
-- [ ] **M-4**: API rate limiting — add `slowapi` middleware
-- [ ] **M-6**: API pagination — add `limit`/`offset` to `/klines/{symbol}`
-- [ ] **M-9**: Dashboard error handling — user-friendly messages when API is down
-- [ ] **M-11**: pyproject.toml dev deps — verify separation
-- [ ] **M-12**: Frontier caching — skip recompute when inputs unchanged
-- [ ] **M-13**: Data freshness — show "Last updated" in dashboard sidebar
+- [x] **M-11**: pyproject.toml dev deps → verified: clean test/dev separation (non-issue)
+- [x] **M-13**: Data freshness → "Last updated" from weights.json metadata in sidebar
+- [ ] **M-2**: Incremental transform — skip (90-day window with 13 assets is fast enough)
+- [ ] **M-4**: API rate limiting — skip (internal use only, not exposed to internet)
+- [ ] **M-12**: Frontier caching — skip (recomputation is fast with scipy)
 
 ---
 
