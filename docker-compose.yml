@@ -30,6 +30,7 @@ x-airflow-common: &airflow-common
     - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
     - AIRFLOW__CORE__FERNET_KEY=your-fernet-key-here-must-be-32-bytes
     - AIRFLOW__CORE__LOAD_EXAMPLES=false
+    - AIRFLOW__WEBSERVER__SECRET_KEY=portfolio-optimization-airflow-key
     - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=true
     - PYTHONPATH=/opt/airflow
   volumes:
