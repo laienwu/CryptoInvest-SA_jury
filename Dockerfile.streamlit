@@ -3,7 +3,7 @@
 FROM python:3.13-slim
 
 # Install uv
-RUN pip install uv
+RUN pip install "uv>=0.9,<1"
 
 WORKDIR /app
 

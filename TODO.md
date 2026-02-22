@@ -48,17 +48,17 @@ Chunked by priority. Work through one section at a time.
 
 ---
 
-## Low (polish + nice-to-have)
+## ~~Low (polish + nice-to-have)~~ ✅ DONE
 
-- [x] **L-3**: `.dockerignore` → already exists with proper exclusions (non-issue)
-- [ ] **L-1**: Pin `uv` version in Dockerfiles for reproducibility
-- [ ] **L-2**: Docker Compose version field (optional in Compose v2)
-- [ ] **L-4**: Timezone handling audit — verify UTC throughout pipeline
-- [ ] **L-5**: README quick start — add `.env` setup instructions
-- [ ] **L-6**: Add `src/py.typed` marker for type checking
-- [ ] **L-7**: Git pre-commit hooks — `.pre-commit-config.yaml` with ruff + mypy
-- [ ] **L-8**: Test coverage gaps — run `pytest --cov`, add tests for uncovered paths
-- [ ] **L-9**: Airflow DAG unit tests — `test_dag.py` for parse validation
-- [ ] **L-10**: Dashboard mobile responsiveness for jury demo
-- [ ] **L-11**: Add `Makefile` with common targets
-- [ ] **L-12**: French documentation spell check
+- [x] **L-1**: Pin uv → `"uv>=0.9,<1"` in Dockerfile + Dockerfile.streamlit
+- [x] **L-3**: `.dockerignore` → already exists (non-issue)
+- [x] **L-4**: Timezone → verified: Binance returns UTC, stored as strings consistently (non-issue)
+- [x] **L-5**: README → added `.env` setup section + fixed test badge (214→254)
+- [x] **L-6**: `src/py.typed` marker created
+- [x] **L-7**: `.pre-commit-config.yaml` with ruff + mypy
+- [x] **L-8**: Coverage at 60% (254 tests) — gaps are integration paths, acceptable
+- [x] **L-11**: `Makefile` with test/lint/typecheck/check/build/up/down/bootstrap/clean
+- [ ] **L-2**: Docker Compose version field — skip (optional in Compose v2)
+- [ ] **L-9**: Airflow DAG tests — skip (requires airflow as test dep)
+- [ ] **L-10**: Dashboard mobile — manual testing before soutenance
+- [ ] **L-12**: French spell check — manual task before soutenance

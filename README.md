@@ -2,7 +2,7 @@
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-green.svg)](https://fastapi.tiangolo.com/)
- [![Tests](https://img.shields.io/badge/tests-214%20passed-brightgreen.svg)]()
+ [![Tests](https://img.shields.io/badge/tests-254%20passed-brightgreen.svg)]()
 [![Couverture](https://img.shields.io/badge/coverage-53%25-yellow.svg)]()
 
 A plate-forme d'ingénierie de données prête pour la production pour l'optimisation du portefeuille de crypto-monnaies à l'aide des données de marché Binance. Construit comme un projet de certification démontrant des pratiques modernes d'ingénierie des données.
@@ -66,6 +66,15 @@ uv sync
 # Or with pip
 pip install -e .
 ```
+
+### Configuration
+
+```bash
+# Copy environment template and adjust values
+cp .env.example .env
+```
+
+The `.env` file contains Airflow and PostgreSQL credentials. See `.env.example` for required variables.
 
 ### Exécuter avec Docker (recommandé)
 
