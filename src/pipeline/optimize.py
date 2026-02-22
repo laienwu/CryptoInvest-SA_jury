@@ -4,13 +4,12 @@ Portfolio optimization module using Markowitz mean-variance optimization.
 This module implements portfolio optimization to find optimal asset weights
 that maximize the Sharpe ratio (risk-adjusted return) or minimize variance.
 
-Approaches:
-- If scipy is available: Use SLSQP constrained optimization
-- Fallback: Analytical minimum variance portfolio or grid search
+Uses the Markowitz closed-form solution (Σ⁻¹) for frontier, tangency,
+and minimum variance portfolios. No numerical optimizer needed for these —
+the covariance matrix is positive-definite symmetric.
 
-Constraints:
-- Weights sum to 1 (fully invested)
-- Weights >= 0 (long only, no short selling)
+Constraint:
+- Weights sum to 1 (fully invested, short selling allowed)
 
 Output:
 - weights.json with optimal portfolio allocation
@@ -76,24 +75,6 @@ def dot_product(v1: list[float], v2: list[float]) -> float:
     """Calculate dot product of two vectors."""
     return sum(a * b for a, b in zip(v1, v2))
 
-
-def matrix_inverse_2x2(matrix: list[list[float]]) -> list[list[float]]:
-    """
-    Invert a 2x2 matrix.
-
-    For the analytical solution with 2 assets.
-    """
-    a, b = matrix[0][0], matrix[0][1]
-    c, d = matrix[1][0], matrix[1][1]
-
-    det = a * d - b * c
-    if abs(det) < 1e-10:
-        raise OptimizeError("Matrix is singular", operation="invert")
-
-    return [
-        [d / det, -b / det],
-        [-c / det, a / det],
-    ]
 
 
 # =============================================================================
@@ -212,68 +193,76 @@ def calculate_sharpe_ratio(
 # =============================================================================
 
 
-def _try_scipy_optimization(
+def _frontier_scalars(
+    cov_matrix: list[list[float]],
+    mean_returns: list[float],
+) -> tuple[float, float, float, float, list[float], list[float]]:
+    """
+    Compute the Markowitz closed-form scalars and helper vectors.
+
+    Given Σ (positive-definite covariance) and μ (mean returns):
+        A = 1'Σ⁻¹1
+        B = 1'Σ⁻¹μ
+        C = μ'Σ⁻¹μ
+        D = AC - B²
+
+    Returns:
+        (A, B, C, D, Σ⁻¹·1, Σ⁻¹·μ)
+    """
+    from scipy.linalg import inv
+
+    n = len(mean_returns)
+    ones = [1.0] * n
+
+    # Σ⁻¹ via scipy (exact for symmetric positive-definite)
+    inv_cov = inv([[float(x) for x in row] for row in cov_matrix]).tolist()
+
+    inv_cov_ones = matrix_vector_multiply(inv_cov, ones)
+    inv_cov_mu = matrix_vector_multiply(inv_cov, mean_returns)
+
+    a = dot_product(ones, inv_cov_ones)       # 1'Σ⁻¹1
+    b = dot_product(ones, inv_cov_mu)          # 1'Σ⁻¹μ
+    c = dot_product(mean_returns, inv_cov_mu)  # μ'Σ⁻¹μ
+    d = a * c - b * b                           # AC - B²
+
+    return a, b, c, d, inv_cov_ones, inv_cov_mu
+
+
+def _scipy_max_sharpe(
     mean_returns: list[float],
     cov_matrix: list[list[float]],
     risk_free_rate: float = 0.05,
-) -> list[float] | None:
+) -> list[float]:
     """
-    Try to optimize using scipy if available.
+    Analytical tangency (max Sharpe) portfolio.
 
-    Uses SLSQP to maximize Sharpe ratio subject to:
-    - sum(weights) = 1
-    - weights >= 0
+    w = Σ⁻¹(μ - r_f·1) / 1'Σ⁻¹(μ - r_f·1)
 
-    Returns:
-        Optimal weights or None if scipy not available.
+    Unconstrained (short selling allowed).
     """
-    try:
-        from scipy.optimize import minimize
-    except ImportError:
-        return None
-
-    n_assets = len(mean_returns)
-
-    # Negative Sharpe (we minimize)
-    def neg_sharpe(weights: list[float]) -> float:
-        return -calculate_sharpe_ratio(
-            list(weights), mean_returns, cov_matrix, risk_free_rate
-        )
-
-    # Constraints
-    constraints = {"type": "eq", "fun": lambda w: sum(w) - 1}
-
-    # Bounds (long only)
-    bounds = [(0, 1) for _ in range(n_assets)]
-
-    # Initial guess (equal weights)
-    initial_weights = [1.0 / n_assets] * n_assets
-
-    # Optimize
-    result = minimize(
-        neg_sharpe,
-        initial_weights,
-        method="SLSQP",
-        bounds=bounds,
-        constraints=constraints,
-        options={"ftol": 1e-9, "maxiter": 1000},
+    a, b, _c, _d, inv_cov_ones, inv_cov_mu = _frontier_scalars(
+        cov_matrix, mean_returns
     )
 
-    if result.success:
-        return list(result.x)
-    else:
-        logger.warning(f"scipy optimization did not converge: {result.message}")
-        return None
+    # Σ⁻¹(μ - r_f·1) = Σ⁻¹μ - r_f·Σ⁻¹·1
+    n = len(mean_returns)
+    raw = [inv_cov_mu[i] - risk_free_rate * inv_cov_ones[i] for i in range(n)]
+    denom = b - risk_free_rate * a  # 1'Σ⁻¹(μ - r_f·1)
+
+    if abs(denom) < 1e-12:
+        logger.warning("Tangency portfolio degenerate (all excess returns ≈ 0)")
+        return [1.0 / n] * n
+
+    return [w / denom for w in raw]
 
 
 def optimize_minimum_variance(cov_matrix: list[list[float]]) -> list[float]:
     """
-    Calculate minimum variance portfolio weights (analytical solution).
+    Analytical global minimum variance portfolio.
 
-    For unconstrained case: w = (Cov^-1 * 1) / (1' * Cov^-1 * 1)
+    w = Σ⁻¹·1 / (1'·Σ⁻¹·1)
 
-    For long-only constraint with many assets, this is approximated
-    using iterative projection.
+    Unconstrained (short selling allowed).
 
     Args:
         cov_matrix: Annualized covariance matrix [n x n].
@@ -281,128 +270,18 @@ def optimize_minimum_variance(cov_matrix: list[list[float]]) -> list[float]:
     Returns:
         Minimum variance portfolio weights.
     """
-    n = len(cov_matrix)
-
-    # For 2 assets, use analytical solution
-    if n == 2:
-        var_1 = cov_matrix[0][0]
-        var_2 = cov_matrix[1][1]
-        cov_12 = cov_matrix[0][1]
-
-        denom = var_1 + var_2 - 2 * cov_12
-        if abs(denom) < 1e-10:
-            return [0.5, 0.5]
-
-        w1 = (var_2 - cov_12) / denom
-        w2 = 1 - w1
-
-        # Apply long-only constraint
-        w1 = max(0, min(1, w1))
-        w2 = 1 - w1
-
-        return [w1, w2]
-
-    # For more assets, use grid search as fallback
-    return _grid_search_min_variance(cov_matrix)
-
-
-def _grid_search_min_variance(
-    cov_matrix: list[list[float]], grid_steps: int = 20
-) -> list[float]:
-    """
-    Find minimum variance portfolio via grid search or Monte Carlo.
-
-    For small portfolios (<=5 assets), uses exhaustive grid search.
-    For larger portfolios, uses Dirichlet-sampled Monte Carlo.
-
-    Args:
-        cov_matrix: Covariance matrix.
-        grid_steps: Number of discrete steps (resolution, grid mode only).
-
-    Returns:
-        Approximate minimum variance weights.
-    """
-    import random
+    from scipy.linalg import inv
 
     n = len(cov_matrix)
-    best_weights: list[float] = [1.0 / n] * n
-    best_variance = calculate_portfolio_variance(best_weights, cov_matrix)
+    ones = [1.0] * n
 
-    if n <= 5:
-        for weights in _generate_weight_combinations(n, grid_steps):
-            variance = calculate_portfolio_variance(weights, cov_matrix)
-            if variance < best_variance:
-                best_variance = variance
-                best_weights = weights
-    else:
-        n_samples = 10_000
-        for _ in range(n_samples):
-            raw = [random.expovariate(1.0) for _ in range(n)]
-            total = sum(raw)
-            weights = [w / total for w in raw]
-            variance = calculate_portfolio_variance(weights, cov_matrix)
-            if variance < best_variance:
-                best_variance = variance
-                best_weights = weights
+    inv_cov = inv([[float(x) for x in row] for row in cov_matrix]).tolist()
+    inv_cov_ones = matrix_vector_multiply(inv_cov, ones)
+    a = dot_product(ones, inv_cov_ones)  # 1'Σ⁻¹1
 
-    return best_weights
+    return [w / a for w in inv_cov_ones]
 
 
-def _grid_search_max_sharpe(
-    mean_returns: list[float],
-    cov_matrix: list[list[float]],
-    risk_free_rate: float = 0.05,
-    grid_steps: int = 20,
-) -> list[float]:
-    """
-    Find maximum Sharpe ratio portfolio via grid search or Monte Carlo.
-
-    For small portfolios (<=5 assets), uses exhaustive grid search.
-    For larger portfolios, uses Dirichlet-sampled Monte Carlo (10,000 portfolios)
-    to avoid combinatorial explosion.
-
-    Args:
-        mean_returns: Annualized mean returns.
-        cov_matrix: Annualized covariance matrix.
-        risk_free_rate: Risk-free rate.
-        grid_steps: Number of discrete steps (resolution, grid mode only).
-
-    Returns:
-        Approximate optimal weights.
-    """
-    import random
-
-    n = len(mean_returns)
-    best_weights: list[float] = [1.0 / n] * n
-    best_sharpe = calculate_sharpe_ratio(
-        best_weights, mean_returns, cov_matrix, risk_free_rate
-    )
-
-    if n <= 5:
-        # Exhaustive grid search (feasible for small portfolios)
-        for weights in _generate_weight_combinations(n, grid_steps):
-            sharpe = calculate_sharpe_ratio(
-                weights, mean_returns, cov_matrix, risk_free_rate
-            )
-            if sharpe > best_sharpe:
-                best_sharpe = sharpe
-                best_weights = weights
-    else:
-        # Monte Carlo with Dirichlet sampling (scales to any n_assets)
-        n_samples = 10_000
-        for _ in range(n_samples):
-            # Dirichlet(1,1,...,1) gives uniform distribution over simplex
-            raw = [random.expovariate(1.0) for _ in range(n)]
-            total = sum(raw)
-            weights = [w / total for w in raw]
-            sharpe = calculate_sharpe_ratio(
-                weights, mean_returns, cov_matrix, risk_free_rate
-            )
-            if sharpe > best_sharpe:
-                best_sharpe = sharpe
-                best_weights = weights
-
-    return best_weights
 
 
 def _linspace(start: float, end: float, num: int) -> list[float]:
@@ -431,109 +310,51 @@ def _optimize_for_target_return(
     mean_returns: list[float],
     cov_matrix: list[list[float]],
     target_return: float,
-    tolerance: float = 0.01,
-    grid_steps: int = 20,
+    long_only: bool = False,
 ) -> list[float] | None:
     """
-    Find minimum variance portfolio for a given target return.
+    Find minimum variance portfolio for a given target return via scipy SLSQP.
 
     Minimizes w'*Cov*w subject to:
     - sum(w) = 1
-    - w >= 0
     - w'*mu = target_return
-
-    Falls back to grid search with tolerance matching if scipy is unavailable.
+    - (optional) w >= 0 when long_only=True
 
     Args:
         mean_returns: Annualized mean returns per asset.
         cov_matrix: Annualized covariance matrix.
         target_return: Target portfolio return.
-        tolerance: Return tolerance for grid search fallback.
+        long_only: If True, enforce non-negativity (w >= 0).
+            False (default) allows short selling for the full frontier parabola.
 
     Returns:
         Optimal weights or None if infeasible.
     """
-    try:
-        from scipy.optimize import minimize
-
-        n_assets = len(mean_returns)
-
-        def portfolio_variance(weights: list[float]) -> float:
-            return calculate_portfolio_variance(list(weights), cov_matrix)
-
-        constraints = [
-            {"type": "eq", "fun": lambda w: sum(w) - 1},
-            {"type": "eq", "fun": lambda w: dot_product(list(w), mean_returns) - target_return},
-        ]
-
-        bounds = [(0, 1) for _ in range(n_assets)]
-        initial_weights = [1.0 / n_assets] * n_assets
-
-        result = minimize(
-            portfolio_variance,
-            initial_weights,
-            method="SLSQP",
-            bounds=bounds,
-            constraints=constraints,
-            options={"ftol": 1e-12, "maxiter": 1000},
-        )
-
-        if result.success:
-            return list(result.x)
-        return None
-
-    except ImportError:
-        # Fallback: grid search with tolerance matching
-        return _grid_search_target_return(
-            mean_returns, cov_matrix, target_return, tolerance, grid_steps
-        )
-
-
-def _grid_search_target_return(
-    mean_returns: list[float],
-    cov_matrix: list[list[float]],
-    target_return: float,
-    tolerance: float = 0.01,
-    grid_steps: int = 20,
-) -> list[float] | None:
-    """
-    Find min variance portfolio near a target return using grid search.
-
-    Args:
-        mean_returns: Annualized mean returns per asset.
-        cov_matrix: Annualized covariance matrix.
-        target_return: Target portfolio return.
-        tolerance: Acceptable deviation from target.
-        grid_steps: Number of discrete steps (resolution).
-
-    Returns:
-        Best weights or None if no feasible combination found.
-    """
-    import random
+    from scipy.optimize import minimize
 
     n = len(mean_returns)
-    best_weights: list[float] | None = None
-    best_variance = float("inf")
 
-    def _check(weights: list[float]) -> None:
-        nonlocal best_weights, best_variance
-        port_return = calculate_portfolio_return(weights, mean_returns)
-        if abs(port_return - target_return) <= tolerance:
-            variance = calculate_portfolio_variance(weights, cov_matrix)
-            if variance < best_variance:
-                best_variance = variance
-                best_weights = weights
+    def portfolio_var(weights: list[float]) -> float:
+        return calculate_portfolio_variance(list(weights), cov_matrix)
 
-    if n <= 5:
-        for weights in _generate_weight_combinations(n, grid_steps):
-            _check(weights)
-    else:
-        for _ in range(10_000):
-            raw = [random.expovariate(1.0) for _ in range(n)]
-            total = sum(raw)
-            _check([w / total for w in raw])
+    constraints = [
+        {"type": "eq", "fun": lambda w: sum(w) - 1},
+        {"type": "eq", "fun": lambda w: dot_product(list(w), mean_returns) - target_return},
+    ]
+    bounds = [(0, 1)] * n if long_only else None
 
-    return best_weights
+    result = minimize(
+        portfolio_var,
+        [1.0 / n] * n,
+        method="SLSQP",
+        bounds=bounds,
+        constraints=constraints,
+        options={"ftol": 1e-12, "maxiter": 1000},
+    )
+
+    if result.success:
+        return list(result.x)
+    return None
 
 
 def compute_efficient_frontier(
@@ -541,17 +362,22 @@ def compute_efficient_frontier(
     cov_matrix: list[list[float]],
     n_points: int = 50,
     risk_free_rate: float = 0.05,
-    grid_steps: int = 20,
 ) -> dict[str, Any]:
     """
-    Compute the efficient frontier for a set of assets.
+    Compute the minimum variance frontier using the Markowitz closed-form.
 
-    Sweeps target returns from min to max of individual asset returns,
-    finding the minimum variance portfolio at each target level.
+    For Σ positive-definite, the frontier is a parabola in (σ², μ) space:
+        σ² = (A·μ² − 2B·μ + C) / D
+
+    with A = 1'Σ⁻¹1, B = 1'Σ⁻¹μ, C = μ'Σ⁻¹μ, D = AC − B².
+
+    For each target μ_p, the optimal weights are:
+        w(μ_p) = g + h·μ_p
+    where g = (C·Σ⁻¹1 − B·Σ⁻¹μ) / D,  h = (A·Σ⁻¹μ − B·Σ⁻¹1) / D.
 
     Args:
         mean_returns: Annualized mean returns per asset.
-        cov_matrix: Annualized covariance matrix.
+        cov_matrix: Annualized covariance matrix (positive-definite).
         n_points: Number of points on the frontier.
         risk_free_rate: Risk-free rate for CML calculation.
 
@@ -559,47 +385,70 @@ def compute_efficient_frontier(
         Dictionary with frontier points, special portfolios, asset positions,
         and capital market line data.
     """
-    min_ret = min(mean_returns)
-    max_ret = max(mean_returns)
-    target_returns = _linspace(min_ret, max_ret, n_points)
+    a, b, c, d, inv_cov_ones, inv_cov_mu = _frontier_scalars(
+        cov_matrix, mean_returns
+    )
+    n_assets = len(mean_returns)
 
-    # Build frontier points
+    # Closed-form weight vectors: w(μ_p) = g + h·μ_p
+    g = [(c * inv_cov_ones[i] - b * inv_cov_mu[i]) / d for i in range(n_assets)]
+    h = [(a * inv_cov_mu[i] - b * inv_cov_ones[i]) / d for i in range(n_assets)]
+
+    # Min variance portfolio: vertex of the parabola
+    mu_mv = b / a
+    sigma_mv = math.sqrt(1.0 / a)
+    min_var_weights = [inv_cov_ones[i] / a for i in range(n_assets)]
+
+    # Sweep target returns centered on the min-variance return.
+    # Extend 1.5× the asset return range on each side so both arms are visible.
+    ret_range = max(mean_returns) - min(mean_returns)
+    if ret_range < 1e-10:
+        ret_range = abs(mu_mv) + 0.1  # fallback for identical returns
+    sweep_lo = mu_mv - 1.5 * ret_range
+    sweep_hi = mu_mv + 1.5 * ret_range
+    target_returns = _linspace(sweep_lo, sweep_hi, n_points)
+
+    # Build frontier points from the analytical formula
     frontier: list[dict[str, Any]] = []
-    for target in target_returns:
-        weights = _optimize_for_target_return(mean_returns, cov_matrix, target, grid_steps=grid_steps)
-        if weights is not None:
-            vol = calculate_portfolio_volatility(weights, cov_matrix)
-            ret = calculate_portfolio_return(weights, mean_returns)
-            frontier.append({
-                "volatility": round(vol, 6),
-                "return": round(ret, 6),
-                "weights": [round(w, 6) for w in weights],
-            })
+    for mu_p in target_returns:
+        sigma_sq = (a * mu_p * mu_p - 2 * b * mu_p + c) / d
+        sigma = math.sqrt(max(sigma_sq, 0.0))
+        weights = [g[i] + h[i] * mu_p for i in range(n_assets)]
+        frontier.append({
+            "volatility": round(sigma, 6),
+            "return": round(mu_p, 6),
+            "weights": [round(w, 6) for w in weights],
+        })
 
-    # Max Sharpe portfolio
-    max_sharpe_weights = _try_scipy_optimization(mean_returns, cov_matrix, risk_free_rate)
-    if max_sharpe_weights is None:
-        max_sharpe_weights = _grid_search_max_sharpe(mean_returns, cov_matrix, risk_free_rate)
-    max_sharpe_vol = calculate_portfolio_volatility(max_sharpe_weights, cov_matrix)
-    max_sharpe_ret = calculate_portfolio_return(max_sharpe_weights, mean_returns)
+    # Max Sharpe portfolio — pick from efficient (upper) arm of frontier.
+    # The analytical tangency formula breaks when r_f > μ_mv (all excess
+    # returns negative): the tangent lands on the lower arm.  Instead,
+    # scan frontier points on the efficient arm (μ ≥ μ_mv) for the best
+    # Sharpe ratio.  This always gives a point ON the visible curve.
+    efficient_pts = [p for p in frontier if p["return"] >= round(mu_mv, 6)]
+    if efficient_pts:
+        best = max(
+            efficient_pts,
+            key=lambda p: (p["return"] - risk_free_rate) / p["volatility"]
+            if p["volatility"] > 1e-10
+            else 0.0,
+        )
+    else:
+        best = min(frontier, key=lambda p: p["volatility"])
     max_sharpe = {
-        "volatility": round(max_sharpe_vol, 6),
-        "return": round(max_sharpe_ret, 6),
-        "weights": [round(w, 6) for w in max_sharpe_weights],
+        "volatility": best["volatility"],
+        "return": best["return"],
+        "weights": best["weights"],
     }
 
     # Min variance portfolio
-    min_var_weights = optimize_minimum_variance(cov_matrix)
-    min_var_vol = calculate_portfolio_volatility(min_var_weights, cov_matrix)
-    min_var_ret = calculate_portfolio_return(min_var_weights, mean_returns)
     min_variance = {
-        "volatility": round(min_var_vol, 6),
-        "return": round(min_var_ret, 6),
+        "volatility": round(sigma_mv, 6),
+        "return": round(mu_mv, 6),
         "weights": [round(w, 6) for w in min_var_weights],
     }
 
     # Individual asset positions
-    n_assets = len(mean_returns)
     assets = []
     for i in range(n_assets):
         asset_vol = math.sqrt(cov_matrix[i][i])
@@ -609,13 +458,21 @@ def compute_efficient_frontier(
             "return": round(mean_returns[i], 6),
         })
 
-    # Capital Market Line: from (0, Rf) through tangency portfolio
-    tangency_sharpe = calculate_sharpe_ratio(
-        max_sharpe_weights, mean_returns, cov_matrix, risk_free_rate
-    )
-    max_x = max((p["volatility"] for p in frontier), default=max_sharpe_vol) * 1.2
+    # Capital Market Line: tangent to the frontier at the max-Sharpe point.
+    # Frontier slope at (σ₀, μ₀): dμ/dσ = σ₀·D / (A·μ₀ − B).
+    # The y-intercept is the implied risk-free rate.
+    ms_sigma = max_sharpe["volatility"]
+    ms_mu = max_sharpe["return"]
+    denom_slope = a * ms_mu - b
+    if abs(denom_slope) > 1e-12 and ms_sigma > 1e-10:
+        cml_slope = ms_sigma * d / denom_slope
+        cml_intercept = ms_mu - cml_slope * ms_sigma
+    else:
+        cml_slope = 0.0
+        cml_intercept = risk_free_rate
+    max_x = max((p["volatility"] for p in frontier), default=ms_sigma) * 1.2
     cml_x = [0.0, round(max_x, 6)]
-    cml_y = [risk_free_rate, round(risk_free_rate + tangency_sharpe * max_x, 6)]
+    cml_y = [round(cml_intercept, 6), round(cml_intercept + cml_slope * max_x, 6)]
 
     return {
         "frontier": frontier,
@@ -700,45 +557,6 @@ def compute_and_save_frontier(
     return result
 
 
-def _generate_weight_combinations(
-    n_assets: int, steps: int
-) -> list[list[float]]:
-    """
-    Generate all valid weight combinations that sum to 1.
-
-    Uses recursive generation with pruning for efficiency.
-
-    Args:
-        n_assets: Number of assets.
-        steps: Number of discrete steps (resolution).
-
-    Returns:
-        List of weight combinations.
-    """
-    combinations: list[list[float]] = []
-
-    def _generate(
-        current: list[float], remaining_sum: float, idx: int
-    ) -> None:
-        if idx == n_assets - 1:
-            # Last asset gets the remaining weight
-            current.append(remaining_sum)
-            combinations.append(current.copy())
-            current.pop()
-            return
-
-        # Try different weights for current asset
-        for i in range(steps + 1):
-            weight = i / steps
-            if weight <= remaining_sum + 1e-10:
-                current.append(weight)
-                _generate(current, remaining_sum - weight, idx + 1)
-                current.pop()
-
-    _generate([], 1.0, 0)
-    return combinations
-
-
 # =============================================================================
 # Public Optimization Façade
 # =============================================================================
@@ -749,21 +567,17 @@ def optimize_weights(
     mean_returns: list[float],
     cov_matrix: list[list[float]],
     risk_free_rate: float = 0.05,
-    grid_steps: int = 20,
 ) -> list[float]:
     """
     Compute optimal portfolio weights for a given strategy.
 
-    Encapsulates strategy dispatch (max_sharpe with scipy→grid fallback,
-    min_variance). This is the public API that other modules (e.g. backtest)
-    should call instead of private optimization functions.
+    This is the public API that other modules (e.g. backtest) should call.
 
     Args:
         strategy: "max_sharpe" or "min_variance".
         mean_returns: Annualized mean returns per asset.
         cov_matrix: Annualized covariance matrix.
         risk_free_rate: Risk-free rate for Sharpe calculation.
-        grid_steps: Grid resolution for fallback search.
 
     Returns:
         Optimal portfolio weights.
@@ -772,12 +586,7 @@ def optimize_weights(
         OptimizeError: If unknown strategy.
     """
     if strategy == "max_sharpe":
-        weights = _try_scipy_optimization(mean_returns, cov_matrix, risk_free_rate)
-        if weights is None:
-            weights = _grid_search_max_sharpe(
-                mean_returns, cov_matrix, risk_free_rate, grid_steps
-            )
-        return weights
+        return _scipy_max_sharpe(mean_returns, cov_matrix, risk_free_rate)
     elif strategy == "min_variance":
         return optimize_minimum_variance(cov_matrix)
     else:
@@ -805,9 +614,8 @@ def optimize_portfolio(
 
     Algorithm:
     1. Load covariance matrix and mean returns from storage
-    2. Try scipy optimization if available (maximize Sharpe ratio)
-    3. Fallback to grid search if scipy not available
-    4. Save results to storage
+    2. Maximize Sharpe ratio via scipy SLSQP
+    3. Save results to storage
 
     Args:
         storage: Storage instance. If None, resolves from config.
@@ -822,7 +630,7 @@ def optimize_portfolio(
             "expected_return": float,
             "volatility": float,
             "sharpe_ratio": float,
-            "method": str  # "scipy" or "grid_search"
+            "method": str  # "scipy"
         }
 
     Raises:
@@ -830,24 +638,12 @@ def optimize_portfolio(
     """
     logger.info("Starting portfolio optimization")
 
-    cfg = load_config()
     symbols, cov_matrix, mean_returns, storage = _load_optimization_inputs(storage)
 
     # Optimization
-    logger.info("Running optimization")
-    optimal_weights = _try_scipy_optimization(
-        mean_returns, cov_matrix, risk_free_rate
-    )
-
-    if optimal_weights is None:
-        logger.info("scipy not available, using grid search")
-        method = "grid_search"
-        optimal_weights = _grid_search_max_sharpe(
-            mean_returns, cov_matrix, risk_free_rate, cfg.grid_steps
-        )
-    else:
-        method = "scipy"
-        logger.info("Using scipy SLSQP optimization")
+    logger.info("Running scipy SLSQP optimization")
+    optimal_weights = _scipy_max_sharpe(mean_returns, cov_matrix, risk_free_rate)
+    method = "scipy"
 
     # Calculate portfolio metrics
     expected_return = calculate_portfolio_return(optimal_weights, mean_returns)

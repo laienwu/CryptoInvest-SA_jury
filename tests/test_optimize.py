@@ -15,13 +15,11 @@ import pytest
 
 from src.pipeline.optimize import (
     OptimizeError,
-    _generate_weight_combinations,
     calculate_portfolio_return,
     calculate_portfolio_variance,
     calculate_portfolio_volatility,
     calculate_sharpe_ratio,
     dot_product,
-    matrix_inverse_2x2,
     matrix_vector_multiply,
     optimize_minimum_variance,
 )
@@ -58,36 +56,6 @@ class TestMatrixOperations:
         expected = [1 * 5 + 2 * 6, 3 * 5 + 4 * 6]  # [17, 39]
         assert result[0] == pytest.approx(expected[0])
         assert result[1] == pytest.approx(expected[1])
-
-    def test_matrix_inverse_2x2(self):
-        """Test 2x2 matrix inversion."""
-        matrix = [
-            [4.0, 7.0],
-            [2.0, 6.0],
-        ]
-        inverse = matrix_inverse_2x2(matrix)
-
-        # A * A^-1 should be identity
-        # First row: [4*0.6 + 7*(-0.2), 4*(-0.7) + 7*0.4] = [1, 0]
-        det = 4 * 6 - 7 * 2  # 10
-        expected_inverse = [
-            [6 / det, -7 / det],
-            [-2 / det, 4 / det],
-        ]
-
-        assert inverse[0][0] == pytest.approx(expected_inverse[0][0])
-        assert inverse[0][1] == pytest.approx(expected_inverse[0][1])
-        assert inverse[1][0] == pytest.approx(expected_inverse[1][0])
-        assert inverse[1][1] == pytest.approx(expected_inverse[1][1])
-
-    def test_singular_matrix_raises_error(self):
-        """Test that singular matrix raises OptimizeError."""
-        matrix = [
-            [1.0, 2.0],
-            [2.0, 4.0],  # Row 2 is 2 * Row 1
-        ]
-        with pytest.raises(OptimizeError):
-            matrix_inverse_2x2(matrix)
 
 
 class TestPortfolioReturn:
@@ -249,57 +217,6 @@ class TestSharpeRatio:
         assert sharpe_high > sharpe_low
 
 
-class TestWeightGeneration:
-    """Tests for weight combination generation."""
-
-    def test_weights_sum_to_one(self):
-        """Test that all generated weights sum to 1."""
-        combinations = _generate_weight_combinations(n_assets=3, steps=10)
-
-        for weights in combinations:
-            assert sum(weights) == pytest.approx(1.0)
-
-    def test_weights_non_negative(self):
-        """Test that all weights are non-negative."""
-        combinations = _generate_weight_combinations(n_assets=3, steps=10)
-
-        for weights in combinations:
-            # Allow small floating point errors
-            assert all(w >= -1e-10 for w in weights)
-
-    def test_correct_number_of_assets(self):
-        """Test that weights have correct length."""
-        n_assets = 4
-        combinations = _generate_weight_combinations(n_assets=n_assets, steps=5)
-
-        for weights in combinations:
-            assert len(weights) == n_assets
-
-    def test_includes_corner_portfolios(self):
-        """Test that corner portfolios (100% in one asset) are included."""
-        combinations = _generate_weight_combinations(n_assets=3, steps=10)
-
-        # Check for [1, 0, 0]
-        has_corner_1 = any(
-            weights[0] == pytest.approx(1.0)
-            and weights[1] == pytest.approx(0.0)
-            and weights[2] == pytest.approx(0.0)
-            for weights in combinations
-        )
-        assert has_corner_1
-
-    def test_includes_equal_weight(self):
-        """Test that equal weight is included (or close to it)."""
-        combinations = _generate_weight_combinations(n_assets=3, steps=9)
-
-        # Check for approximately [1/3, 1/3, 1/3]
-        has_equal = any(
-            all(abs(w - 1 / 3) < 0.15 for w in weights)
-            for weights in combinations
-        )
-        assert has_equal
-
-
 class TestMinimumVariancePortfolio:
     """Tests for minimum variance portfolio optimization."""
 
@@ -327,10 +244,14 @@ class TestMinimumVariancePortfolio:
         weights = optimize_minimum_variance(sample_covariance_matrix)
         assert sum(weights) == pytest.approx(1.0, rel=0.01)
 
-    def test_weights_non_negative(self, sample_covariance_matrix):
-        """Test that weights are non-negative (long only)."""
+    def test_lower_variance_than_equal_weight(self, sample_covariance_matrix):
+        """Test min variance portfolio has lower variance than equal weight."""
         weights = optimize_minimum_variance(sample_covariance_matrix)
-        assert all(w >= -0.01 for w in weights)  # Allow small numerical errors
+        n = len(sample_covariance_matrix)
+        equal_w = [1.0 / n] * n
+        min_var = calculate_portfolio_variance(weights, sample_covariance_matrix)
+        eq_var = calculate_portfolio_variance(equal_w, sample_covariance_matrix)
+        assert min_var <= eq_var
 
 
 class TestOptimizeError:

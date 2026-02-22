@@ -47,7 +47,6 @@ class PipelineConfig:
 
     # Optimization
     risk_free_rate: float = 0.05
-    grid_steps: int = 20
     trading_days_per_year: int = 365
 
     # Storage

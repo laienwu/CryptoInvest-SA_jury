@@ -34,10 +34,6 @@ class TestDefaults:
         cfg = PipelineConfig()
         assert cfg.risk_free_rate == 0.05
 
-    def test_default_grid_steps(self):
-        cfg = PipelineConfig()
-        assert cfg.grid_steps == 20
-
     def test_default_storage_backend(self):
         cfg = PipelineConfig()
         assert cfg.storage_backend == "parquet"

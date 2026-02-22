@@ -218,15 +218,16 @@ class TestOptimizeOnWindow:
 
         assert len(weights) == len(sample_prices)
         assert sum(weights) == pytest.approx(1.0, abs=0.01)
-        assert all(w >= -1e-6 for w in weights)
+        # Unconstrained: weights can be negative (short selling)
+        assert abs(sum(weights) - 1.0) < 0.01
 
     def test_min_variance(self, sample_prices):
         """Test min variance optimization on a price window."""
         weights = _optimize_on_window(sample_prices, strategy="min_variance")
 
         assert len(weights) == len(sample_prices)
-        assert sum(weights) == pytest.approx(1.0, abs=0.01)
-        assert all(w >= -0.01 for w in weights)
+        # Unconstrained: weights can be negative (short selling)
+        assert abs(sum(weights) - 1.0) < 0.01
 
     def test_unknown_strategy_raises(self, sample_prices):
         """Test that unknown strategy raises OptimizeError."""

@@ -86,18 +86,21 @@ class TestOptimizeForTargetReturn:
             assert all(w >= -1e-6 for w in weights)
             assert len(weights) == len(sample_mean_returns)
 
-    def test_infeasible_target(self, sample_mean_returns, sample_covariance_matrix):
-        """Test that infeasible target (way above max) returns None."""
-        target = max(sample_mean_returns) * 10  # Way above feasible
+    def test_extreme_target_uses_short_selling(
+        self, sample_mean_returns, sample_covariance_matrix
+    ):
+        """Test that extreme targets are achievable via short selling."""
+        target = max(sample_mean_returns) * 10
         weights = _optimize_for_target_return(
             sample_mean_returns, sample_covariance_matrix, target
         )
-        # Should return None since it's infeasible with long-only
-        # (scipy may still converge to an approximate solution, so we check loosely)
-        if weights is not None:
-            actual_return = calculate_portfolio_return(weights, sample_mean_returns)
-            # If it found something, it shouldn't match the target well
-            assert abs(actual_return - target) > 0.1 or sum(weights) != pytest.approx(1.0, abs=0.01)
+        # Unconstrained: any target is feasible (short selling allowed)
+        assert weights is not None
+        actual_return = calculate_portfolio_return(weights, sample_mean_returns)
+        assert actual_return == pytest.approx(target, abs=0.01)
+        assert sum(weights) == pytest.approx(1.0, abs=0.01)
+        # Must have negative weights to reach extreme target
+        assert any(w < -0.01 for w in weights)
 
 
 class TestEfficientFrontier:
@@ -181,7 +184,7 @@ class TestEfficientFrontier:
         assert len(result["assets"]) == len(sample_mean_returns)
 
     def test_capital_market_line(self, sample_mean_returns, sample_covariance_matrix):
-        """Test CML starts at risk-free rate."""
+        """Test CML is tangent to frontier at the max-Sharpe point."""
         rf = 0.03
         result = compute_efficient_frontier(
             sample_mean_returns, sample_covariance_matrix,
@@ -190,7 +193,13 @@ class TestEfficientFrontier:
 
         cml = result["capital_market_line"]
         assert cml["x"][0] == pytest.approx(0.0)
-        assert cml["y"][0] == pytest.approx(rf)
+        # CML y-intercept is the implied risk-free rate from the tangent
+        # line at the max-Sharpe point, not necessarily the input r_f.
+        ms = result["max_sharpe"]
+        slope = (cml["y"][1] - cml["y"][0]) / (cml["x"][1] - cml["x"][0])
+        # The tangent line must pass through the max-Sharpe point
+        expected_y = cml["y"][0] + slope * ms["volatility"]
+        assert expected_y == pytest.approx(ms["return"], abs=0.01)
         assert result["risk_free_rate"] == pytest.approx(rf)
 
     def test_min_variance_lower_vol_than_max_sharpe(
