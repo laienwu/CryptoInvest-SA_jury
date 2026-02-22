@@ -289,9 +289,11 @@ def _compute_metrics(
     )
 
     # Sortino ratio (annualized, penalizes only downside volatility)
-    downside_returns = [r - daily_rf for r in returns if r < daily_rf]
-    if len(downside_returns) > 1:
-        downside_dev = math.sqrt(sum(r ** 2 for r in downside_returns) / len(downside_returns))
+    # Standard formula: downside deviation uses ALL observations in denominator,
+    # squaring only negative excess returns (others contribute 0).
+    downside_sq = [min(r - daily_rf, 0.0) ** 2 for r in returns]
+    if len(returns) > 1:
+        downside_dev = math.sqrt(sum(downside_sq) / len(returns))
         sortino = (
             (mean_daily - daily_rf) / downside_dev * math.sqrt(trading_days)
             if downside_dev > 1e-10

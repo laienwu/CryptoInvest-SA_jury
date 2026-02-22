@@ -7,9 +7,11 @@ Run with: uvicorn src.api.main:app --reload
 """
 
 import logging
+import os
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.schemas import (
     BacktestResponse,
@@ -25,12 +27,24 @@ from src.api.schemas import (
 from src.config import load_config
 from src.storage import Storage, get_storage
 
+logging.basicConfig(
+    level=getattr(logging, os.environ.get("LOG_LEVEL", "INFO")),
+    format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Portfolio Optimization API",
     description="Expose crypto portfolio data and optimization results",
     version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8501"],
+    allow_methods=["GET"],
+    allow_headers=["*"],
 )
 
 
@@ -55,13 +69,12 @@ def get_symbols(storage: Storage = Depends(get_storage_dep)) -> dict[str, Any]:
 @app.get("/klines/{symbol}", response_model=KlinesResponse)
 def get_klines(symbol: str, storage: Storage = Depends(get_storage_dep)) -> dict[str, Any]:
     """Get raw klines data for a symbol."""
+    available = storage.list_raw_symbols()
+    if symbol not in available:
+        raise HTTPException(404, f"Symbol {symbol} not found")
     try:
         data = storage.load_raw([symbol])
-        if symbol not in data:
-            raise HTTPException(404, f"Symbol {symbol} not found")
         return {"symbol": symbol, "count": len(data[symbol]), "data": data[symbol]}
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error("Failed to load klines for %s: %s", symbol, e)
         raise HTTPException(500, "Internal server error") from e

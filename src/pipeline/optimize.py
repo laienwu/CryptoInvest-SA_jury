@@ -581,6 +581,32 @@ def compute_efficient_frontier(
     }
 
 
+def _load_optimization_inputs(
+    storage: Storage | None = None,
+) -> tuple[list[str], list[list[float]], list[float], Storage]:
+    """Load covariance and mean returns from storage (shared setup)."""
+    if storage is None:
+        cfg = load_config()
+        storage = get_storage(cfg.storage_backend)
+
+    try:
+        covariance_data = storage.load_processed("covariance")
+        mean_returns_data = storage.load_processed("mean_returns")
+    except Exception as e:
+        raise OptimizeError(
+            f"Failed to load processed data: {e}. "
+            "Ensure transform_data() has been run first.",
+            operation="load",
+        ) from e
+
+    symbols: list[str] = covariance_data["symbols"]
+    cov_matrix: list[list[float]] = covariance_data["matrix"]
+    mean_returns: list[float] = mean_returns_data["values"]
+
+    logger.info(f"Loaded data for {len(symbols)} symbols: {symbols}")
+    return symbols, cov_matrix, mean_returns, storage
+
+
 def compute_and_save_frontier(
     storage: Storage | None = None,
     n_points: int = 50,
@@ -604,25 +630,7 @@ def compute_and_save_frontier(
     """
     logger.info("Computing efficient frontier")
 
-    if storage is None:
-        cfg = load_config()
-        storage = get_storage(cfg.storage_backend)
-
-    try:
-        covariance_data = storage.load_processed("covariance")
-        mean_returns_data = storage.load_processed("mean_returns")
-    except Exception as e:
-        raise OptimizeError(
-            f"Failed to load processed data: {e}. "
-            "Ensure transform_data() has been run first.",
-            operation="load",
-        ) from e
-
-    symbols = covariance_data["symbols"]
-    cov_matrix = covariance_data["matrix"]
-    mean_returns = mean_returns_data["values"]
-
-    logger.info(f"Loaded data for {len(symbols)} symbols: {symbols}")
+    symbols, cov_matrix, mean_returns, storage = _load_optimization_inputs(storage)
 
     result = compute_efficient_frontier(
         mean_returns, cov_matrix, n_points, risk_free_rate
@@ -777,26 +785,7 @@ def optimize_portfolio(
     logger.info("Starting portfolio optimization")
 
     cfg = load_config()
-    if storage is None:
-        storage = get_storage(cfg.storage_backend)
-
-    # Load required data
-    logger.info("Loading processed data")
-    try:
-        covariance_data = storage.load_processed("covariance")
-        mean_returns_data = storage.load_processed("mean_returns")
-    except Exception as e:
-        raise OptimizeError(
-            f"Failed to load processed data: {e}. "
-            "Ensure transform_data() has been run first.",
-            operation="load",
-        ) from e
-
-    symbols = covariance_data["symbols"]
-    cov_matrix = covariance_data["matrix"]
-    mean_returns = mean_returns_data["values"]
-
-    logger.info(f"Loaded data for {len(symbols)} symbols: {symbols}")
+    symbols, cov_matrix, mean_returns, storage = _load_optimization_inputs(storage)
 
     # Optimization
     logger.info("Running optimization")

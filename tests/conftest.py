@@ -8,6 +8,14 @@ from pathlib import Path
 
 import pytest
 
+from src.config import load_config
+
+
+@pytest.fixture(autouse=True)
+def _clear_config_cache() -> None:
+    """Clear load_config LRU cache between tests."""
+    load_config.cache_clear()
+
 
 @pytest.fixture
 def sample_prices() -> list[list[float]]:

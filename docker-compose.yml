@@ -25,12 +25,13 @@ x-airflow-common: &airflow-common
   build:
     context: .
     dockerfile: Dockerfile.airflow
+  env_file: .env
   environment:
     - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-    - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
-    - AIRFLOW__CORE__FERNET_KEY=your-fernet-key-here-must-be-32-bytes
+    - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@postgres/airflow
+    - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
     - AIRFLOW__CORE__LOAD_EXAMPLES=false
-    - AIRFLOW__WEBSERVER__SECRET_KEY=portfolio-optimization-airflow-key
+    - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_SECRET_KEY}
     - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=true
     - PYTHONPATH=/opt/airflow
   volumes:
@@ -56,7 +57,14 @@ services:
       - ./config.toml:/app/config.toml:ro
     environment:
       - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     restart: unless-stopped
+    profiles:
+      - full
 
   streamlit:
     build:
@@ -70,8 +78,16 @@ services:
       - STREAMLIT_LOGGER_LEVEL=warning
       - STREAMLIT_SERVER_HEADLESS=true
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     restart: unless-stopped
+    profiles:
+      - full
 
   # ===========================================================================
   # BOOTSTRAP (--profile pipeline)
@@ -84,19 +100,8 @@ services:
     volumes:
       - ./data:/app/data
       - ./config.toml:/app/config.toml:ro
-    command: >
-      python -c "from src.pipeline import ingest_data, transform_data, optimize_portfolio;
-      from src.pipeline.optimize import compute_and_save_frontier;
-      from src.pipeline.backtest import run_backtest;
-      from src.storage import get_storage;
-      storage = get_storage();
-      print('=== BOOTSTRAP: full ingest (all symbols, full history) ===');
-      data = ingest_data(); storage.save_raw(data);
-      print('=== TRANSFORM ==='); transform_data();
-      print('=== OPTIMIZE ==='); optimize_portfolio();
-      print('=== FRONTIER ==='); compute_and_save_frontier();
-      print('=== BACKTEST ==='); run_backtest();
-      print('=== BOOTSTRAP COMPLETE — Airflow will handle daily updates ===')"
+      - ./scripts:/app/scripts:ro
+    command: python scripts/bootstrap.py
     restart: "no"
     profiles:
       - pipeline
@@ -108,9 +113,10 @@ services:
 
   postgres:
     image: postgres:15
+    env_file: .env
     environment:
-      - POSTGRES_USER=airflow
-      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_USER=${AIRFLOW_DB_USER}
+      - POSTGRES_PASSWORD=${AIRFLOW_DB_PASSWORD}
       - POSTGRES_DB=airflow
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -131,7 +137,7 @@ services:
         airflow db init
         airflow users create \
           --username admin \
-          --password admin \
+          --password ${AIRFLOW_ADMIN_PASSWORD} \
           --firstname Admin \
           --lastname User \
           --role Admin \
@@ -168,9 +174,10 @@ services:
 
   postgres-benchmarks:
     image: postgres:15
+    env_file: .env
     environment:
-      - POSTGRES_USER=portfolio
-      - POSTGRES_PASSWORD=portfolio123
+      - POSTGRES_USER=${BENCHMARKS_DB_USER}
+      - POSTGRES_PASSWORD=${BENCHMARKS_DB_PASSWORD}
       - POSTGRES_DB=portfolio_benchmarks
     volumes:
       - benchmarks-data:/var/lib/postgresql/data

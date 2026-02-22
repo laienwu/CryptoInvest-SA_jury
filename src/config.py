@@ -12,6 +12,7 @@ Usage:
     ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'ADAUSDT']
 """
 
+import functools
 import os
 import tomllib
 from dataclasses import dataclass, field
@@ -61,6 +62,7 @@ def _read_toml(config_path: Path) -> dict[str, Any]:
         return tomllib.load(f)
 
 
+@functools.lru_cache(maxsize=4)
 def load_config(config_path: Path | None = None) -> PipelineConfig:
     """
     Load configuration from config.toml, overlaid with environment variables.

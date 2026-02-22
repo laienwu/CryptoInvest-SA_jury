@@ -58,6 +58,16 @@ class DuckDBStorage(Storage):
         self.conn = duckdb.connect(":memory:")
         self._setup_views()
 
+    def close(self) -> None:
+        """Close the DuckDB connection."""
+        self.conn.close()
+
+    def __enter__(self) -> DuckDBStorage:
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        self.close()
+
     def _ensure_directories(self) -> None:
         (self.data_dir / "raw" / "klines").mkdir(parents=True, exist_ok=True)
         (self.data_dir / "processed").mkdir(parents=True, exist_ok=True)
@@ -126,6 +136,15 @@ class DuckDBStorage(Storage):
         except Exception as e:
             raise StorageError(f"Query failed: {e}", operation="query") from e
 
+    def _query_params(self, sql: str, params: list[Any]) -> list[dict[str, Any]]:
+        """Execute parameterized SQL query (prevents SQL injection)."""
+        try:
+            result = self.conn.execute(sql, params).fetchall()
+            columns = [desc[0] for desc in self.conn.description]
+            return [dict(zip(columns, row)) for row in result]
+        except Exception as e:
+            raise StorageError(f"Query failed: {e}", operation="query") from e
+
     def query_df(self, sql: str) -> duckdb.DuckDBPyConnection:
         """Execute SQL and return DuckDB result (for chaining)."""
         return self.conn.execute(sql)
@@ -156,12 +175,11 @@ class DuckDBStorage(Storage):
     def load_raw(self, symbols: list[str] | None = None) -> dict[str, list[dict[str, Any]]]:
         """Load raw data via SQL query."""
         if symbols:
-            symbols_str = ", ".join(f"'{s}'" for s in symbols)
-            sql = f"SELECT * FROM fact_prices WHERE symbol IN ({symbols_str})"
+            placeholders = ", ".join("?" for _ in symbols)
+            sql = f"SELECT * FROM fact_prices WHERE symbol IN ({placeholders})"
+            rows = self._query_params(sql, symbols)
         else:
-            sql = "SELECT * FROM fact_prices"
-
-        rows = self.query(sql)
+            rows = self._query_params("SELECT * FROM fact_prices", [])
 
         # Group by symbol
         result: dict[str, list[dict[str, Any]]] = {}
@@ -296,13 +314,13 @@ class DuckDBStorage(Storage):
 
     def get_prices_by_symbol(self, symbol: str) -> list[dict[str, Any]]:
         """Get all prices for a symbol (fact query with dimension filter)."""
-        return self.query(f"""
+        return self._query_params("""
             SELECT f.*, d.year, d.month, d.day_of_week
             FROM fact_prices f
             JOIN dim_date d ON f.timestamp = d.date
-            WHERE f.symbol = '{symbol}'
+            WHERE f.symbol = ?
             ORDER BY f.timestamp
-        """)
+        """, [symbol])
 
     def get_daily_returns(self) -> list[dict[str, Any]]:
         """Calculate daily returns using SQL (C9 demo)."""

@@ -4,8 +4,8 @@ FROM apache/airflow:2.8.1-python3.11
 
 # Install project dependencies (tomli not needed — stdlib tomllib used)
 RUN pip install --no-cache-dir \
-    pyarrow \
-    "numpy<2" \
-    httpx \
-    duckdb \
-    scipy
+    "pyarrow>=15,<19" \
+    "numpy>=1.26,<2" \
+    "httpx>=0.27,<1" \
+    "duckdb>=1.0,<2" \
+    "scipy>=1.12,<2"
