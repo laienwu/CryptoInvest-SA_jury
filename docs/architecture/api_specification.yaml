@@ -95,20 +95,6 @@ paths:
           schema:
             type: string
             example: BTCUSDT
-        - name: limit
-          in: query
-          required: false
-          description: Maximum number of records to return
-          schema:
-            type: integer
-            default: 500
-        - name: offset
-          in: query
-          required: false
-          description: Number of records to skip
-          schema:
-            type: integer
-            default: 0
       responses:
         '200':
           description: Price history data

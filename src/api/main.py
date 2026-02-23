@@ -69,19 +69,16 @@ def get_symbols(storage: Storage = Depends(get_storage_dep)) -> dict[str, Any]:
 @app.get("/klines/{symbol}", response_model=KlinesResponse)
 def get_klines(
     symbol: str,
-    limit: int = 500,
-    offset: int = 0,
     storage: Storage = Depends(get_storage_dep),
 ) -> dict[str, Any]:
-    """Get raw klines data for a symbol (paginated)."""
+    """Get all raw klines data for a symbol."""
     available = storage.list_raw_symbols()
     if symbol not in available:
         raise HTTPException(404, f"Symbol {symbol} not found")
     try:
         data = storage.load_raw([symbol])
         records = data[symbol]
-        page = records[offset : offset + limit]
-        return {"symbol": symbol, "count": len(page), "data": page}
+        return {"symbol": symbol, "count": len(records), "data": records}
     except Exception as e:
         logger.error("Failed to load klines for %s: %s", symbol, e)
         raise HTTPException(500, "Internal server error") from e
