@@ -29,7 +29,6 @@ dag = DAG(
     tags=["portfolio", "etl", "binance"],
 )
 
-
 def run_ingest() -> str:
     from src.pipeline import ingest_incremental
     from src.storage import get_storage
