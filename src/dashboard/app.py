@@ -633,11 +633,12 @@ def page_dashboard() -> None:
     render_kpi_cards(portfolio, bt_metrics)
     st.markdown("---")
 
+    cov_resp = fetch_api("/metrics/covariance")
+
     col1, col2, col3 = st.columns(3)
     with col1:
         render_allocation_donut(portfolio.get("weights", {}))
     with col2:
-        cov_resp = fetch_api("/metrics/covariance")
         if cov_resp and cov_resp.get("data"):
             render_risk_contribution(portfolio.get("weights", {}), cov_resp["data"])
         else:
@@ -675,9 +676,8 @@ def page_dashboard() -> None:
                 zmax=1,
             )
     with col2:
-        cov = fetch_api("/metrics/covariance")
-        if cov and cov.get("data"):
-            cd = cov["data"]
+        if cov_resp and cov_resp.get("data"):
+            cd = cov_resp["data"]
             render_matrix_heatmap(
                 cd.get("symbols", []),
                 cd.get("matrix", []),
@@ -1265,8 +1265,13 @@ def page_frontier() -> None:
 
     fig = go.Figure()
 
+    # Determine vol range from frontier + assets for iso-Sharpe lines
+    all_vols = [p["volatility"] for p in frontier] + [a["volatility"] for a in assets]
+    max_vol = max(all_vols) * 1.15 if all_vols else 1.0
+
     for sharpe_val in [0.5, 1.0, 1.5, 2.0]:
-        iso_vol = [v / 100 for v in range(1, 101)]
+        n_pts = max(50, int(max_vol * 100))
+        iso_vol = [max_vol * i / n_pts for i in range(1, n_pts + 1)]
         iso_ret = [rf + sharpe_val * v for v in iso_vol]
         fig.add_trace(go.Scatter(
             x=iso_vol, y=iso_ret, mode="lines",
