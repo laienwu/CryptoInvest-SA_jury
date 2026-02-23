@@ -633,6 +633,25 @@ def page_dashboard() -> None:
     render_kpi_cards(portfolio, bt_metrics)
     st.markdown("---")
 
+    weights = portfolio.get("weights", {})
+    long_total = sum(w for w in weights.values() if w > 0)
+    short_total = sum(w for w in weights.values() if w < 0)
+    n_long = sum(1 for w in weights.values() if w > 0)
+    n_short = sum(1 for w in weights.values() if w < 0)
+    gross = long_total - short_total
+
+    st.markdown(
+        f"**Allocation Strategy** — The portfolio is optimized using the "
+        f"**unconstrained Markowitz mean-variance** framework (closed-form analytical "
+        f"solution). Weights are not bounded to \\[0, 1\\], allowing **short selling**: "
+        f"the optimizer can go short on assets it expects to underperform and use the "
+        f"proceeds to overweight assets with better risk-adjusted returns. "
+        f"The current allocation holds **{n_long} long** and **{n_short} short** "
+        f"positions, with a gross exposure of **{gross:.0%}** "
+        f"(+{long_total:.0%} long / {short_total:.0%} short). "
+        f"Net exposure is always 100% by construction (weights sum to 1)."
+    )
+
     cov_resp = fetch_api("/metrics/covariance")
 
     col1, col2, col3 = st.columns(3)
