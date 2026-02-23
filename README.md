@@ -2,8 +2,8 @@
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-green.svg)](https://fastapi.tiangolo.com/)
- [![Tests](https://img.shields.io/badge/tests-254%20passed-brightgreen.svg)]()
-[![Couverture](https://img.shields.io/badge/coverage-53%25-yellow.svg)]()
+[![Tests](https://img.shields.io/badge/tests-246%20passed-brightgreen.svg)]()
+[![Couverture](https://img.shields.io/badge/coverage-55%25-yellow.svg)]()
 
 A plate-forme d'ingénierie de données prête pour la production pour l'optimisation du portefeuille de crypto-monnaies à l'aide des données de marché Binance. Construit comme un projet de certification démontrant des pratiques modernes d'ingénierie des données.
 
@@ -142,7 +142,7 @@ uv run pytest tests/ -v
 # Run with coverage
 uv run pytest tests/ --cov=src --cov-report=term-missing
 
-# Results: 254 tests
+# Results: 246 tests (100% passing)
 ```
 
 ## Structure du projet
@@ -169,7 +169,7 @@ src/
 └── dashboard/               # Visualization
     └── app.py              # Streamlit app
 
-tests/                       # Test suite (254 tests)
+tests/                       # Test suite (246 tests)
 dags/                        # Airflow DAGs
 docs/                        # Documentation
 data/                        # Data zones (bronze/silver/gold)
@@ -183,7 +183,7 @@ Modifier `config.toml` :
 [portfolio]
 symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "ADAUSDT"]
 interval = "1d"
-period_days = 90
+period_days = 30
 ```
 
 ## Technologies clés
@@ -240,4 +240,4 @@ Ce projet fait partie d'une certification Data Engineer (RNCP Niveau 7).
 
 ## Auteur
 
-Projet de certification Data Engineer - 2025
+Laien WU

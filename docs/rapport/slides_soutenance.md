@@ -22,12 +22,12 @@ Projet de certification RNCP Niveau 7 — Bloc 1 à 4 (C1–C21)
 
 **Problème métier : comment allouer un portefeuille crypto de manière optimale ?**
 
-- Marché 24/7, haute volatilité, 13 actifs suivis (BTC, ETH, BNB, SOL…)
+- Marché 24/7, haute volatilité, 12 actifs suivis (BTC, ETH, BNB, SOL…)
 - Besoin : données fraîches, métriques fiables, décision fondée sur la théorie (Markowitz)
 - Parties prenantes : investisseur particulier (client simulé), jury certification
 
 **Objectifs SMART définis :**
-- Automatiser l'ingestion quotidienne de 13 symboles depuis l'API Binance
+- Automatiser l'ingestion quotidienne de 12 symboles depuis l'API Binance
 - Calculer rendements, volatilité, corrélation en < 60 secondes
 - Exposer un portefeuille optimisé via API REST et dashboard interactif
 
@@ -41,7 +41,7 @@ Projet de certification RNCP Niveau 7 — Bloc 1 à 4 (C1–C21)
 
 | Source | Type | Données |
 |--------|------|---------|
-| Binance API | REST/JSON | OHLCV klines (1j, 13 symboles) |
+| Binance API | REST/JSON | OHLCV klines (1j, 12 symboles) |
 | symbols_metadata.csv | CSV | Métadonnées actifs |
 | portfolio_config.json | JSON | Config allocation initiale |
 | CoinGecko | Web scraping | Benchmarks de marché |
@@ -101,7 +101,7 @@ Phase 6  Finalisation    S11–S12 ████████████ 100%
 GLOBAL                           ████████████ 100%
 ```
 
-**5 jalons validés** | **254 tests passants** | **0 dette technique**
+**5 jalons validés** | **246 tests passants** | **0 dette technique**
 
 > *Notes : Mentionner la méthode Planning Poker pour les estimations. 5 jalons tous respectés.*
 
@@ -157,7 +157,7 @@ GLOBAL                           ████████████ 100%
 |------|---------|--------|-----------|
 | Bronze (`data/raw/`) | Données brutes Binance | Parquet | 90 jours |
 | Silver (`data/processed/`) | Rendements, métriques | Parquet | 1 an |
-| Gold (`data/output/`) | Portefeuille optimisé, frontier | Parquet | 30 jours (écrasement) |
+| Gold (`data/output/`) | Portefeuille optimisé, frontier | JSON | 30 jours (écrasement) |
 
 - **Catalogue de données** complet : schéma, lignage, qualité, propriétaire (C20)
 - **RGPD** : données publiques, aucune PII, pas d'applicabilité directe (C21)
@@ -169,10 +169,10 @@ GLOBAL                           ████████████ 100%
 
 ## SLIDE 10 — Pipeline ETL & Orchestration (C8, C10, C15, C16)
 
-**Airflow DAG : 4 tâches séquentielles**
+**Airflow DAG : 5 tâches séquentielles**
 
 ```
-ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_backtest
+ingest ──▶ transform ──▶ optimize ──▶ frontier ──▶ backtest
 ```
 
 - **C8** — 5 sources via DataSource ABC + 5 implémentations
@@ -180,7 +180,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 - **C15** — DAG Airflow avec retry, timeout, SLA alerting
 - **C16** — Monitoring via Airflow UI + logs structurés
 
-**Scheduler** : `@daily` avec backfill automatique sur l'historique
+**Scheduler** : `@daily` avec catchup désactivé (backfill manuel si nécessaire)
 
 > *Notes : Ouvrir Airflow UI (:8081). Montrer le DAG et un run réussi. Cliquer sur une tâche pour montrer les logs.*
 
@@ -216,7 +216,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 | Endpoint | Description |
 |----------|-------------|
 | `GET /` | Health check |
-| `GET /symbols` | Liste des 13 symboles |
+| `GET /symbols` | Liste des symboles disponibles |
 | `GET /klines/{symbol}` | Historique OHLCV |
 | `GET /metrics` | Toutes les métriques |
 | `GET /metrics/{name}` | Métrique spécifique |
@@ -272,7 +272,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 
 ## SLIDE 15 — Qualité & Tests
 
-**254 tests — 100% passants — ruff + mypy strict clean**
+**246 tests — 100% passants — ruff + mypy strict clean**
 
 | Fichier de test | Tests | Couverture |
 |----------------|-------|------------|
@@ -288,7 +288,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 - **Zéro erreur mypy** (strict=true)
 - **CI-ready** : `uv run pytest tests/ -v`
 
-> *Notes : Lancer `uv run pytest tests/ -v` en live si le temps le permet. Montrer 254 passed.*
+> *Notes : Lancer `uv run pytest tests/ -v` en live si le temps le permet. Montrer 246 passed.*
 
 ---
 
@@ -315,7 +315,7 @@ ingest_data ──▶ transform_data ──▶ optimize_portfolio ──▶ run_
 - Données Binance = cours publics, aucune PII collectée
 - Registre des traitements : 1 traitement (analyse de marché), base légale = intérêt légitime
 - Mesures préventives documentées pour évolution (si données utilisateurs ajoutées)
-- Politique de rétention : Bronze 90j, Silver 1 an, Gold permanent
+- Politique de rétention : Bronze 90j, Silver 1 an, Gold = dernier run (écrasement)
 
 **Éco-conception :**
 - PyArrow : empreinte mémoire réduite vs Pandas

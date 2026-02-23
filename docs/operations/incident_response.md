@@ -248,8 +248,8 @@ docker compose exec airflow-webserver airflow dags backfill \
 # Verify data integrity
 docker compose exec api python -c "
 from src.storage.duckdb import DuckDBStorage
-db = DuckDBStorage()
-print(db.query('SELECT COUNT(*) FROM fact_prices'))
+with DuckDBStorage() as db:
+    print(db.query('SELECT COUNT(*) AS rows FROM fact_prices'))
 "
 ```
 
@@ -379,13 +379,20 @@ docker compose exec airflow-webserver airflow tasks list portfolio_optimization
 
 # 3. Clear and retry failed task
 docker compose exec airflow-webserver airflow tasks clear \
-  portfolio_optimization -t ingest_data -s 2025-01-15
+  portfolio_optimization -t ingest -s 2025-01-15
 
 # 4. If data source issue, check external APIs
 curl -s "https://api.binance.com/api/v3/ping"
 
 # 5. Manual run of failed step
-docker compose exec api python -c "from src.pipeline import ingest_all_sources; ingest_all_sources()"
+docker compose exec api python -c "
+from src.pipeline import ingest_incremental
+from src.storage import get_storage
+
+storage = get_storage()
+data = ingest_incremental()
+storage.save_raw(data)
+"
 ```
 
 **Agir si :** Erreurs d'API, corruption de données détectée
@@ -401,20 +408,21 @@ docker compose exec api python -c "from src.pipeline import ingest_all_sources; 
 
 # 2. Identify bad data
 docker compose exec api python -c "
-import duckdb
-conn = duckdb.connect('data/warehouse.duckdb')
-print(conn.execute('''
-  SELECT symbol, MIN(close), MAX(close), COUNT(*)
-  FROM fact_prices
-  GROUP BY symbol
-''').fetchall())
+from src.storage.duckdb import DuckDBStorage
+with DuckDBStorage() as db:
+    print(db.query('''
+      SELECT symbol, MIN(close), MAX(close), COUNT(*) AS rows
+      FROM fact_prices
+      GROUP BY symbol
+    '''))
 "
 
 # 3. Check source data
 docker compose exec api python -c "
 import pyarrow.parquet as pq
 table = pq.read_table('data/raw/klines/BTCUSDT.parquet')
-print(table.to_pandas().describe())
+print(table.num_rows)
+print(table.column_names)
 "
 
 # 4. If bad data found, quarantine
@@ -423,7 +431,11 @@ mv data/raw/klines/BTCUSDT.parquet data/quarantine/
 # 5. Re-ingest from source
 docker compose exec api python -c "
 from src.pipeline.ingest import fetch_klines
-fetch_klines('BTCUSDT', days=7)
+from src.storage import get_storage
+
+storage = get_storage()
+records = fetch_klines('BTCUSDT', period_days=7)
+storage.save_raw({'BTCUSDT': records})
 "
 ```
 

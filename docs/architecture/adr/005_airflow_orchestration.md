@@ -111,12 +111,12 @@ Options considérées :
 ### Structure du DAG
 
 ```
-portfolio_dag
-├── ingest_data          # Extract from all sources
-│   └── transform_data   # Calculate metrics
-│       └── optimize_portfolio  # Markowitz optimization
-└── (parallel branch)
-    └── update_warehouse  # Refresh DuckDB tables
+portfolio_optimization
+└── ingest              # Incremental ingest + save_raw
+    └── transform       # Calculate metrics
+        └── optimize    # Markowitz optimization
+            └── frontier    # Efficient frontier
+                └── backtest    # Walk-forward validation
 ```
 
 ### Code DAG
@@ -129,38 +129,28 @@ from datetime import datetime, timedelta
 default_args = {
     "owner": "data-engineer",
     "depends_on_past": False,
-    "email_on_failure": True,
-    "email": ["alerts@company.com"],
-    "retries": 3,
+    "email_on_failure": False,
+    "retries": 1,
     "retry_delay": timedelta(minutes=5),
 }
 
-with DAG(
+dag = DAG(
     "portfolio_optimization",
     default_args=default_args,
-    description="Daily crypto portfolio optimization",
-    schedule_interval="0 0 * * *",  # Daily at midnight UTC
+    description="ETL pipeline for portfolio optimization",
+    schedule_interval="@daily",  # Daily at midnight UTC
     start_date=datetime(2025, 1, 1),
     catchup=False,
-    tags=["portfolio", "crypto"],
-) as dag:
+    tags=["portfolio", "etl", "binance"],
+)
 
-    ingest = PythonOperator(
-        task_id="ingest_data",
-        python_callable=ingest_all_sources,
-    )
+ingest = PythonOperator(task_id="ingest", python_callable=run_ingest, dag=dag)
+transform = PythonOperator(task_id="transform", python_callable=run_transform, dag=dag)
+optimize = PythonOperator(task_id="optimize", python_callable=run_optimize, dag=dag)
+frontier = PythonOperator(task_id="frontier", python_callable=run_frontier, dag=dag)
+backtest = PythonOperator(task_id="backtest", python_callable=run_backtest, dag=dag)
 
-    transform = PythonOperator(
-        task_id="transform_data",
-        python_callable=transform_data,
-    )
-
-    optimize = PythonOperator(
-        task_id="optimize_portfolio",
-        python_callable=optimize_portfolio,
-    )
-
-    ingest >> transform >> optimize
+ingest >> transform >> optimize >> frontier >> backtest
 ```
 
 ### Configuration de Docker Compose

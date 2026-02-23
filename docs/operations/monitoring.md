@@ -78,9 +78,8 @@ Ce document décrit la stratégie de surveillance de la plateforme d'optimisatio
 @app.get("/")
 def health_check():
     return {
-        "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
-        "version": "1.0.0"
+        "status": "ok",
+        "message": "Portfolio API"
     }
 ```
 

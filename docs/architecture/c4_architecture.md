@@ -116,7 +116,7 @@ Ce document présente l'architecture du système à l'aide du modèle C4 (Contex
 │  │  │                           DATA LAKE (File System)                            │  │  │
 │  │  │  ┌───────────┐     ┌───────────┐     ┌───────────┐     ┌───────────┐        │  │  │
 │  │  │  │  BRONZE   │────▶│  SILVER   │────▶│   GOLD    │     │ REFERENCE │        │  │  │
-│  │  │  │ data/raw/ │     │data/proc/ │     │data/output│     │data/ref/  │        │  │  │
+│  │  │  │ data/raw/ │     │data/processed/│  │data/output/│    │data/reference/│    │  │  │
 │  │  │  │ .parquet  │     │ .parquet  │     │  .json    │     │ .csv/.json│        │  │  │
 │  │  │  └───────────┘     └───────────┘     └───────────┘     └───────────┘        │  │  │
 │  │  └─────────────────────────────────────────────────────────────────────────────┘  │  │
@@ -127,7 +127,7 @@ Ce document présente l'architecture du système à l'aide du modèle C4 (Contex
 │  │  │  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐                     │  │  │
 │  │  │  │ fact_prices  │   │  dim_symbol  │   │   dim_date   │                     │  │  │
 │  │  │  └──────────────┘   └──────────────┘   └──────────────┘                     │  │  │
-│  │  │                      data/warehouse.duckdb                                   │  │  │
+│  │  │                vues :memory: sur data/raw/klines/*.parquet                   │  │  │
 │  │  └─────────────────────────────────────────────────────────────────────────────┘  │  │
 │  │                                                                                    │  │
 │  └────────────────────────────────────────────────────────────────────────────────────┘ │
@@ -180,9 +180,9 @@ Ce document présente l'architecture du système à l'aide du modèle C4 (Contex
 │  │  │  ingest.py       │  │ ingest_scraping  │  │ ingest_postgres  │                 │ │
 │  │  │                  │  │      .py         │  │      .py         │                 │ │
 │  │  │ • fetch_klines() │  │                  │  │                  │                 │ │
-│  │  │ • load_csv()     │  │ • scrape_market  │  │ • load_benchmarks│                 │ │
-│  │  │ • load_json()    │  │   _rankings()    │  │ • get_connection │                 │ │
-│  │  │ • save_raw()     │  │                  │  │                  │                 │ │
+│  │  │ • ingest_*()     │  │ • scrape_market  │  │ • load_benchmarks│                 │ │
+│  │  │ • incremental    │  │   _rankings()    │  │ • get_connection │                 │ │
+│  │  │ • current prices │  │                  │  │                  │                 │ │
 │  │  └────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘                 │ │
 │  │           │                     │                     │                            │ │
 │  │           └─────────────────────┼─────────────────────┘                            │ │
@@ -313,7 +313,7 @@ Ce document présente l'architecture du système à l'aide du modèle C4 (Contex
 │  │  │  RAW_DIR = DATA_DIR / "raw"          # Bronze zone                          │  │ │
 │  │  │  PROCESSED_DIR = DATA_DIR / "processed"  # Silver zone                      │  │ │
 │  │  │  OUTPUT_DIR = DATA_DIR / "output"    # Gold zone                            │  │ │
-│  │  │  WAREHOUSE_PATH = DATA_DIR / "warehouse.duckdb"                             │  │ │
+│  │  │  DUCKDB_CONN = ":memory:"    # vues SQL sur fichiers Parquet                 │  │ │
 │  │  │                                                                              │  │ │
 │  │  └─────────────────────────────────────────────────────────────────────────────┘  │ │
 │  │                                                                                     │ │
@@ -394,13 +394,13 @@ Ce document présente l'architecture du système à l'aide du modèle C4 (Contex
 | Couche | Technologie | Objectif |
 |-------|------------|---------|
 | Orchestration | Apache Airflow 2.7 | Planification et surveillance DAG |
-| Traitement | Python3.11 | Logique ETL, optimisation |
+| Traitement | Python3.13 | Logique ETL, optimisation |
 | Calculer | PyArrow, SciPy (facultatif) | Opérations matricielles, SLSQP (repli de recherche dans la grille) |
 | Stockage (Lac) | Parquet Apache | Stockage de fichiers en colonnes |
-| Stockage (ECS) | CanardDB | Base de données OLAP intégrée |
+| Stockage (ECS) | DuckDB | Base de données OLAP intégrée |
 | Sérialisation | PyArrow | Gestion des données sans copie |
 | API | FastAPI + Uvicorne | Points de terminaison REST |
-| Conteneur | Docker, Composer | Déploiement |
+| Conteneur | Docker, Docker Compose | Déploiement |
 
 ---
 

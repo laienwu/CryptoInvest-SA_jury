@@ -15,11 +15,7 @@ docker compose up -d streamlit
 docker compose ps
 
 # Pré-exécuter le pipeline pour avoir des données fraîches
-python -c "from src.pipeline import ingest_all_sources; ingest_all_sources()"
-python -c "from src.pipeline import transform_data; transform_data()"
-python -c "from src.pipeline import optimize_portfolio; optimize_portfolio()"
-python -c "from src.pipeline.optimize import compute_and_save_frontier; compute_and_save_frontier()"
-python -c "from src.pipeline.backtest import run_backtest; run_backtest()"
+python scripts/bootstrap.py
 ```
 
 ---
@@ -66,18 +62,19 @@ python -c "from src.pipeline import transform_data; transform_data()"
 
 **Commande :**
 ```python
-import duckdb
-conn = duckdb.connect('data/warehouse.duckdb')
-print(conn.execute('SELECT * FROM fact_prices LIMIT 5').fetchdf())
-print(conn.execute("""
-    SELECT symbol,
-           COUNT(*) as nb_jours,
-           AVG(close) as prix_moyen,
-           MAX(high) as plus_haut
-    FROM fact_prices
-    GROUP BY symbol
-    ORDER BY prix_moyen DESC
-""").fetchdf())
+from src.storage.duckdb import DuckDBStorage
+
+with DuckDBStorage() as db:
+    print(db.query('SELECT * FROM fact_prices LIMIT 5'))
+    print(db.query("""
+        SELECT symbol,
+               COUNT(*) as nb_jours,
+               AVG(close) as prix_moyen,
+               MAX(high) as plus_haut
+        FROM fact_prices
+        GROUP BY symbol
+        ORDER BY prix_moyen DESC
+    """))
 ```
 
 **Dire :** « C9 : requêtes SQL d'extraction sur le DWH en étoile — fact_prices, dim_symbol, dim_date. DuckDB lit directement les Parquet sans serveur — c'est l'ADR-002. »
@@ -114,7 +111,7 @@ curl -s http://localhost:8000/portfolio | python -m json.tool
 
 **Ouvrir :** `http://localhost:8081`
 
-**Montrer :** Le DAG `portfolio_dag` avec ses 4 tâches, un run réussi (vert).
+**Montrer :** Le DAG `portfolio_optimization` avec ses 5 tâches, un run réussi (vert).
 
 **Dire :** « C15 et C16 : Airflow est le seul orchestrateur. DAG quotidien avec retry automatique, timeout configurable, et SLA alerting. Le service pipeline dans docker-compose est uniquement le bootstrap initial. »
 
@@ -127,7 +124,7 @@ curl -s http://localhost:8000/portfolio | python -m json.tool
 uv run pytest tests/ -v --tb=no -q 2>&1 | tail -5
 ```
 
-**Dire :** « 254 tests passants, zéro failure. ruff et mypy strict avec zéro erreur. Test anti-drift entre le spec OpenAPI YAML et le code. »
+**Dire :** « 246 tests passants, zéro failure. ruff et mypy strict avec zéro erreur. Test anti-drift entre la spec OpenAPI YAML et le code. »
 
 ---
 

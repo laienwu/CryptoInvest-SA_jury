@@ -43,10 +43,13 @@ Ce runbook fournit des procédures opérationnelles pour la plateforme d'optimis
 # Start API only (minimal)
 docker compose up -d api
 
-# Start full stack (API + Airflow)
+# Start API + Streamlit app runtime
+docker compose --profile api up -d
+
+# Start Airflow stack only
 docker compose --profile airflow up -d
 
-# Start with benchmarks database
+# Start full stack (API + Streamlit + Airflow + benchmarks)
 docker compose --profile full up -d
 
 # Check all services
@@ -105,11 +108,14 @@ docker compose --profile pipeline up pipeline
 
 # Or run from inside container
 docker compose exec api python -c "
-from src.pipeline import ingest_all_sources, transform_data, optimize_portfolio
+from src.pipeline import ingest_data, transform_data, optimize_portfolio
 from src.pipeline.optimize import compute_and_save_frontier
 from src.pipeline.backtest import run_backtest
+from src.storage import get_storage
 
-ingest_all_sources()
+storage = get_storage()
+data = ingest_data()
+storage.save_raw(data)
 transform_data()
 optimize_portfolio()
 compute_and_save_frontier()
@@ -130,7 +136,7 @@ docker compose logs -f api
 docker compose logs --tail=100 api
 
 # Airflow task logs
-docker compose exec airflow-webserver cat /opt/airflow/logs/dag_id=portfolio_optimization/run_id=*/task_id=ingest_data/*.log
+docker compose exec airflow-webserver cat /opt/airflow/logs/dag_id=portfolio_optimization/run_id=*/task_id=ingest/*.log
 ```
 
 ### 3.3 Accéder au shell du conteneur
@@ -149,18 +155,18 @@ docker compose exec api python
 ### 3.4 Opérations de base de données
 
 ```bash
-# DuckDB CLI (read-only)
+# DuckDB analytical query (views over Parquet files)
 docker compose exec api python -c "
-import duckdb
-conn = duckdb.connect('data/warehouse.duckdb')
-print(conn.execute('SELECT COUNT(*) FROM fact_prices').fetchone())
+from src.storage.duckdb import DuckDBStorage
+with DuckDBStorage() as db:
+    print(db.query('SELECT COUNT(*) AS rows FROM fact_prices'))
 "
 
 # PostgreSQL (benchmarks)
 docker compose exec postgres-benchmarks psql -U portfolio -d portfolio_benchmarks
 
-# Backup DuckDB
-cp data/warehouse.duckdb data/warehouse.duckdb.backup
+# Backup data lake + outputs
+tar -czf backup-data-$(date +%Y%m%d).tar.gz data/raw data/processed data/output
 ```
 
 ---
@@ -244,9 +250,9 @@ print(table.schema)
 
 # Check DuckDB tables
 docker compose exec api python -c "
-import duckdb
-conn = duckdb.connect('data/warehouse.duckdb')
-print(conn.execute('SELECT symbol, COUNT(*) FROM fact_prices GROUP BY symbol').fetchall())
+from src.storage.duckdb import DuckDBStorage
+with DuckDBStorage() as db:
+    print(db.query('SELECT symbol, COUNT(*) AS rows FROM fact_prices GROUP BY symbol'))
 "
 ```
 
@@ -263,9 +269,12 @@ compute_and_save_frontier()
 run_backtest()
 "
 
-# Clear and rebuild warehouse
-rm data/warehouse.duckdb
-docker compose exec api python -c "from src.storage.duckdb import DuckDBStorage; DuckDBStorage().initialize()"
+# Refresh DuckDB views (generated from Parquet; no warehouse file to delete)
+docker compose exec api python -c "
+from src.storage.duckdb import DuckDBStorage
+with DuckDBStorage() as db:
+    print(db.query('SELECT COUNT(*) AS rows FROM fact_prices'))
+"
 ```
 
 ### 4.4 Espace disque insuffisant
@@ -292,12 +301,8 @@ docker system prune -a
 # Remove old data (keep last 30 days)
 find data/raw/klines/ -mtime +30 -delete
 
-# Compact DuckDB
-docker compose exec api python -c "
-import duckdb
-conn = duckdb.connect('data/warehouse.duckdb')
-conn.execute('VACUUM')
-"
+# DuckDB runs in-memory over Parquet views: no VACUUM file compaction step
+# Compact by archiving/deleting old Parquet partitions
 ```
 
 ### Erreurs de l'API Binance 4.5
@@ -371,13 +376,19 @@ docker compose up -d
 
 ```bash
 # 1. Deploy fresh infrastructure
-docker compose up -d
+docker compose --profile full up -d
 
 # 2. Re-fetch all data from APIs (90-day window)
 docker compose exec api python -c "
-from src.pipeline.ingest import fetch_klines
-for symbol in ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'ADAUSDT']:
-    fetch_klines(symbol, days=90)
+from src.pipeline import ingest_data
+from src.storage import get_storage
+
+storage = get_storage()
+data = ingest_data(
+    symbols=['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'ADAUSDT'],
+    period_days=90,
+)
+storage.save_raw(data)
 "
 
 # 3. Run full pipeline

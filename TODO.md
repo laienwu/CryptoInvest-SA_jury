@@ -53,10 +53,10 @@ Chunked by priority. Work through one section at a time.
 - [x] **L-1**: Pin uv → `"uv>=0.9,<1"` in Dockerfile + Dockerfile.streamlit
 - [x] **L-3**: `.dockerignore` → already exists (non-issue)
 - [x] **L-4**: Timezone → verified: Binance returns UTC, stored as strings consistently (non-issue)
-- [x] **L-5**: README → added `.env` setup section + fixed test badge (214→254)
+- [x] **L-5**: README → added `.env` setup section + fixed test badge (214→246 current suite)
 - [x] **L-6**: `src/py.typed` marker created
 - [x] **L-7**: `.pre-commit-config.yaml` with ruff + mypy
-- [x] **L-8**: Coverage at 60% (254 tests) — gaps are integration paths, acceptable
+- [x] **L-8**: Coverage at 55% (246 tests) — gaps are integration paths, acceptable
 - [x] **L-11**: `Makefile` with test/lint/typecheck/check/build/up/down/bootstrap/clean
 - [ ] **L-2**: Docker Compose version field — skip (optional in Compose v2)
 - [ ] **L-9**: Airflow DAG tests — skip (requires airflow as test dep)

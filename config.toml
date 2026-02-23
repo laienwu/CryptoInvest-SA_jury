@@ -1,7 +1,7 @@
 [portfolio]
-symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "ADAUSDT", "LINKUSDT", "DOTUSDT", "AVAXUSDT", "MATICUSDT", "ATOMUSDT", "XRPUSDT", "DOGEUSDT", "FILUSDT"]
+symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "ADAUSDT", "LINKUSDT", "DOTUSDT", "AVAXUSDT", "ATOMUSDT", "XRPUSDT", "DOGEUSDT", "FILUSDT"]
 interval = "1d"
-period_days = 365
+period_days = 30
 risk_free_rate = 0.05
 trading_days_per_year = 365
 storage_backend = "parquet"

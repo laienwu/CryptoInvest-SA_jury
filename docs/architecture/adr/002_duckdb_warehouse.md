@@ -80,7 +80,7 @@ Options considérées :
 - Aucune surcharge opérationnelle
 - Interroger Parquet directement (pas d'ETL)
 - Analyse rapide requêtes (exécution vectorisée)
-- Base de données à fichier unique (portable)
+- Connexion en mémoire (aucun fichier d'entrepôt à maintenir)
 - Excellente intégration Python/PyArrow
 
 ### Négatif
@@ -102,7 +102,7 @@ Options considérées :
 | C9 - Requêtes d'extraction SQL | Prise en charge complète de SQL |
 | C13 - Modélisation faits/dimensions | Schéma en étoile implémenté |
 | C14 - Créer un entrepôt | DuckDB = entrepôt analytique |
-| C15 - Intégration ETL | Lire depuis Parquet, écrire dans DuckDB |
+| C15 - Intégration ETL | Lire depuis Parquet via vues DuckDB |
 
 ---
 
@@ -150,30 +150,20 @@ Options considérées :
 ### Exemple de code
 
 ```python
-import duckdb
+from src.storage.duckdb import DuckDBStorage
 
-# Query Parquet files directly
-conn = duckdb.connect("data/warehouse.duckdb")
-
-# Create star schema
-conn.execute("""
-    CREATE TABLE IF NOT EXISTS fact_prices AS
-    SELECT * FROM 'data/processed/klines/*.parquet'
-""")
-
-# Analytical query
-result = conn.execute("""
-    SELECT
-        d.month,
-        s.sector,
-        AVG(f.close) as avg_price,
-        SUM(f.volume) as total_volume
-    FROM fact_prices f
-    JOIN dim_date d ON f.date_key = d.date_key
-    JOIN dim_symbol s ON f.symbol = s.symbol
-    GROUP BY d.month, s.sector
-    ORDER BY d.month
-""").fetchall()
+# Query star-schema views built on Parquet files
+with DuckDBStorage() as db:
+    result = db.query("""
+        SELECT
+            symbol,
+            COUNT(*) as num_records,
+            AVG(close) as avg_close
+        FROM fact_prices
+        GROUP BY symbol
+        ORDER BY num_records DESC
+    """)
+    print(result[:5])
 ```
 
 ---
