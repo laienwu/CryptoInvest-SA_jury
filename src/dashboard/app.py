@@ -391,24 +391,34 @@ def render_kpi_cards(
 
 
 def render_allocation_donut(weights: dict[str, float]) -> None:
-    """Render portfolio allocation donut chart."""
+    """Render portfolio allocation as a horizontal bar chart (handles short positions)."""
     if not weights:
         st.warning("No allocation data available")
         return
 
-    symbols = list(weights.keys())
-    values = list(weights.values())
+    sorted_w = sorted(weights.items(), key=lambda x: x[1], reverse=True)
+    syms = [p[0] for p in sorted_w]
+    vals = [p[1] for p in sorted_w]
+    colors = [
+        COLORS["strategy"] if v >= 0 else COLORS["danger"]
+        for v in vals
+    ]
 
-    fig = go.Figure(go.Pie(
-        labels=symbols,
-        values=values,
-        hole=0.5,
-        marker={"colors": COLORS["assets"][:len(symbols)]},
-        textposition="inside",
-        textinfo="percent+label",
-        hovertemplate="%{label}: %{value:.4f} (%{percent})<extra></extra>",
+    fig = go.Figure(go.Bar(
+        x=vals, y=syms, orientation="h",
+        marker_color=colors,
+        text=[f"{v:.1%}" for v in vals],
+        textposition="auto",
+        hovertemplate="%{y}: %{x:.4f} (%{x:.2%})<extra></extra>",
     ))
-    styled_layout(fig, title="Portfolio Allocation", showlegend=False)
+    fig.add_vline(x=0, line_color="gray", line_width=1, opacity=0.5)
+    styled_layout(
+        fig,
+        title="Portfolio Allocation",
+        xaxis={"tickformat": ".0%", "gridcolor": "rgba(128,128,128,0.15)"},
+        yaxis={"gridcolor": "rgba(128,128,128,0.15)"},
+        height=max(250, len(syms) * 35 + 100),
+    )
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -416,7 +426,7 @@ def render_risk_contribution(
     weights: dict[str, float],
     cov_data: dict[str, Any],
 ) -> None:
-    """Side-by-side pie: portfolio weight vs risk contribution per asset."""
+    """Side-by-side bars: portfolio weight vs risk contribution (handles short positions)."""
     symbols_cov = cov_data.get("symbols", [])
     matrix = cov_data.get("matrix", [])
     if not symbols_cov or not matrix or not weights:
@@ -425,32 +435,46 @@ def render_risk_contribution(
 
     rc = _compute_risk_contribution(weights, matrix, symbols_cov)
 
-    # Align order with covariance symbols
     syms = symbols_cov
     w_vals = [weights.get(s, 0.0) for s in syms]
     rc_vals = [rc.get(s, 0.0) for s in syms]
-    colors = [COLORS["assets"][i % len(COLORS["assets"])] for i in range(len(syms))]
+
+    # Sort by risk contribution descending
+    order = sorted(range(len(syms)), key=lambda i: rc_vals[i], reverse=True)
+    sorted_syms = [syms[i] for i in order]
+    sorted_w = [w_vals[i] for i in order]
+    sorted_rc = [rc_vals[i] for i in order]
 
     fig = make_subplots(
-        rows=1, cols=2,
-        specs=[[{"type": "domain"}, {"type": "domain"}]],
+        rows=1, cols=2, shared_yaxes=True,
         subplot_titles=("Portfolio Weight", "Risk Contribution"),
+        horizontal_spacing=0.08,
     )
-    fig.add_trace(go.Pie(
-        labels=syms, values=w_vals, hole=0.45,
-        marker={"colors": colors},
-        textinfo="percent+label", textposition="inside",
-        hovertemplate="%{label}: %{value:.4f} (%{percent})<extra></extra>",
+    fig.add_trace(go.Bar(
+        x=sorted_w, y=sorted_syms, orientation="h",
+        marker_color=[COLORS["strategy"] if v >= 0 else COLORS["danger"] for v in sorted_w],
+        text=[f"{v:.1%}" for v in sorted_w],
+        textposition="auto",
+        hovertemplate="%{y}: %{x:.2%}<extra></extra>",
         showlegend=False,
     ), row=1, col=1)
-    fig.add_trace(go.Pie(
-        labels=syms, values=rc_vals, hole=0.45,
-        marker={"colors": colors},
-        textinfo="percent+label", textposition="inside",
-        hovertemplate="%{label}: %{percent}<extra></extra>",
+    fig.add_trace(go.Bar(
+        x=sorted_rc, y=sorted_syms, orientation="h",
+        marker_color=[COLORS["equal"] if v >= 0 else COLORS["danger"] for v in sorted_rc],
+        text=[f"{v:.1%}" for v in sorted_rc],
+        textposition="auto",
+        hovertemplate="%{y}: %{x:.2%}<extra></extra>",
         showlegend=False,
     ), row=1, col=2)
-    styled_layout(fig, title="Weight vs Risk Contribution")
+    fig.add_vline(x=0, line_color="gray", line_width=1, opacity=0.5, row=1, col=1)
+    fig.add_vline(x=0, line_color="gray", line_width=1, opacity=0.5, row=1, col=2)
+    styled_layout(
+        fig,
+        title="Weight vs Risk Contribution",
+        height=max(300, len(syms) * 30 + 120),
+    )
+    fig.update_xaxes(tickformat=".0%", row=1, col=1)
+    fig.update_xaxes(tickformat=".0%", row=1, col=2)
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -1283,10 +1307,13 @@ def page_frontier() -> None:
         ))
 
     if max_sharpe:
+        ms_ret = max_sharpe.get("return", 0)
+        ms_vol = max_sharpe.get("volatility", 0)
+        ms_sharpe = (ms_ret - rf) / ms_vol if ms_vol > 1e-10 else 0.0
         fig.add_trace(go.Scatter(
-            x=[max_sharpe["volatility"]], y=[max_sharpe["return"]],
+            x=[ms_vol], y=[ms_ret],
             mode="markers",
-            name=f"Max Sharpe ({max_sharpe.get('sharpe_ratio', 0):.2f})",
+            name=f"Max Sharpe ({ms_sharpe:.2f})",
             marker={"symbol": "star", "size": 18, "color": COLORS["strategy"],
                     "line": {"width": 1, "color": "white"}},
         ))
@@ -1695,7 +1722,7 @@ def render_weights_evolution(windows: list[dict[str, Any]], symbols: list[str]) 
         title="Portfolio Weights Evolution",
         xaxis_title="Window Start",
         yaxis_title="Weight",
-        yaxis={"tickformat": ".0%", "range": [0, 1], "gridcolor": "rgba(128,128,128,0.15)"},
+        yaxis={"tickformat": ".0%", "gridcolor": "rgba(128,128,128,0.15)"},
         xaxis={"gridcolor": "rgba(128,128,128,0.15)"},
         hovermode="x unified",
     )
