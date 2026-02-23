@@ -24,6 +24,7 @@
 x-airflow-common: &airflow-common
   build:
     context: .
+    dockerfile: Dockerfile.airflow
   env_file: .env
   environment:
     - AIRFLOW__CORE__EXECUTOR=LocalExecutor
@@ -140,10 +141,10 @@ services:
           --firstname Admin \
           --lastname User \
           --role Admin \
-          --email admin@example.com
+          --email admin@example.com || true
+    restart: "no"
     profiles:
       - airflow
-      - full
 
   airflow-webserver:
     <<: *airflow-common
