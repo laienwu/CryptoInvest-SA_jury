@@ -785,7 +785,7 @@ def _compute_rsi(closes: list[float], period: int = 14) -> list[float | None]:
     return result
 
 
-def render_technical_chart(df: pd.DataFrame) -> None:
+def render_technical_chart(df: pd.DataFrame, x_range: list[str] | None = None) -> None:
     """Render price chart with SMA, Bollinger Bands, Volume, and RSI subplots."""
     closes = df["close"].tolist()
     dates = df["date"].tolist()
@@ -859,13 +859,21 @@ def render_technical_chart(df: pd.DataFrame) -> None:
     fig.add_hline(y=30, line_dash="dash", line_color="rgba(44,160,44,0.5)", row=3, col=1)
     fig.add_hrect(y0=30, y1=70, fillcolor="rgba(128,128,128,0.05)", line_width=0, row=3, col=1)
 
+    xaxis_opts: dict[str, Any] = {}
+    if x_range:
+        xaxis_opts["range"] = x_range
+
     styled_layout(
         fig,
         height=700,
         xaxis_rangeslider_visible=False,
         hovermode="x unified",
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02},
+        xaxis3=xaxis_opts,  # shared x-axis on bottom subplot controls all
     )
+    # Apply range to the first xaxis too (Plotly shared_xaxes links zoom but not initial range)
+    if x_range:
+        fig.update_xaxes(range=x_range, row=3, col=1)
     fig.update_yaxes(title_text="Price (USDT)", row=1, col=1)
     fig.update_yaxes(title_text="Volume", row=2, col=1)
     fig.update_yaxes(title_text="RSI", row=3, col=1, range=[0, 100])
@@ -943,6 +951,13 @@ def page_symbols() -> None:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
+    # Default x-axis range: last 30 days (user can zoom out to see full history)
+    default_x_range: list[str] | None = None
+    if hasattr(df["date"].iloc[0], "strftime") and len(df) > 30:
+        end_date = df["date"].iloc[-1]
+        start_date = end_date - pd.Timedelta(days=30)
+        default_x_range = [start_date.isoformat(), end_date.isoformat()]
+
     # Compare mode: normalized overlay
     if compare_mode and compare_symbol:
         klines_b = fetch_api(f"/klines/{compare_symbol}")
@@ -982,7 +997,7 @@ def page_symbols() -> None:
 
     # Main chart
     if chart_type.startswith("Full"):
-        render_technical_chart(df)
+        render_technical_chart(df, x_range=default_x_range)
     elif chart_type.startswith("Candlestick") and all(
         c in df.columns for c in ["open", "high", "low", "close"]
     ):
@@ -1003,8 +1018,14 @@ def page_symbols() -> None:
                 x=df["date"], y=df["volume"], name="Volume",
                 marker_color=colors, opacity=0.6,
             ), row=2, col=1)
+        xaxis_kw: dict[str, Any] = {}
+        if default_x_range:
+            xaxis_kw["range"] = default_x_range
         styled_layout(fig, title=f"{selected_symbol} OHLCV",
-                      xaxis_rangeslider_visible=False, hovermode="x unified")
+                      xaxis_rangeslider_visible=False, hovermode="x unified",
+                      xaxis2=xaxis_kw)
+        if default_x_range:
+            fig.update_xaxes(range=default_x_range, row=2, col=1)
         fig.update_yaxes(title_text="Price (USDT)", row=1, col=1)
         fig.update_yaxes(title_text="Volume", row=2, col=1)
         st.plotly_chart(fig, use_container_width=True)
@@ -1013,9 +1034,12 @@ def page_symbols() -> None:
             x=df["date"], y=df["close"], mode="lines",
             name="Close Price", line={"color": COLORS["equal"]},
         ))
+        xaxis_line: dict[str, Any] = {"gridcolor": "rgba(128,128,128,0.15)"}
+        if default_x_range:
+            xaxis_line["range"] = default_x_range
         styled_layout(fig, title=f"{selected_symbol} Price History",
                       xaxis_title="Date", yaxis_title="Price (USDT)",
-                      hovermode="x unified")
+                      hovermode="x unified", xaxis=xaxis_line)
         st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("---")
