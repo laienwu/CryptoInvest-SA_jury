@@ -26,6 +26,7 @@ from src.api.schemas import (
 )
 from src.config import load_config
 from src.storage import Storage, get_storage
+from src.storage.base import StorageError
 
 logging.basicConfig(
     level=getattr(logging, os.environ.get("LOG_LEVEL", "INFO")),
@@ -96,9 +97,11 @@ def get_metric(name: str, storage: Storage = Depends(get_storage_dep)) -> dict[s
     try:
         data = storage.load_processed(name)
         return {"name": name, "data": data}
+    except (StorageError, FileNotFoundError) as e:
+        raise HTTPException(404, f"Metric '{name}' not found") from e
     except Exception as e:
-        logger.warning("Metric %s not found: %s", name, e)
-        raise HTTPException(404, "Metric not found") from e
+        logger.error("Failed to load metric %s: %s", name, e)
+        raise HTTPException(500, "Internal server error") from e
 
 
 @app.get("/portfolio", response_model=PortfolioResponse)
@@ -107,9 +110,11 @@ def get_portfolio(storage: Storage = Depends(get_storage_dep)) -> dict[str, Any]
     try:
         data = storage.load_output("weights")
         return data
-    except Exception as e:
-        logger.warning("Portfolio not found: %s", e)
+    except (StorageError, FileNotFoundError) as e:
         raise HTTPException(404, "Portfolio not found") from e
+    except Exception as e:
+        logger.error("Failed to load portfolio: %s", e)
+        raise HTTPException(500, "Internal server error") from e
 
 
 @app.get("/portfolio/summary", response_model=PortfolioSummaryResponse)
@@ -123,9 +128,11 @@ def get_portfolio_summary(storage: Storage = Depends(get_storage_dep)) -> dict[s
             "volatility": data.get("volatility"),
             "sharpe_ratio": data.get("sharpe_ratio"),
         }
-    except Exception as e:
-        logger.warning("Portfolio not found: %s", e)
+    except (StorageError, FileNotFoundError) as e:
         raise HTTPException(404, "Portfolio not found") from e
+    except Exception as e:
+        logger.error("Failed to load portfolio summary: %s", e)
+        raise HTTPException(500, "Internal server error") from e
 
 
 @app.get("/portfolio/frontier", response_model=FrontierResponse)
@@ -134,9 +141,11 @@ def get_frontier(storage: Storage = Depends(get_storage_dep)) -> dict[str, Any]:
     try:
         data = storage.load_output("frontier")
         return data
-    except Exception as e:
-        logger.warning("Frontier not found: %s", e)
+    except (StorageError, FileNotFoundError) as e:
         raise HTTPException(404, "Frontier not found") from e
+    except Exception as e:
+        logger.error("Failed to load frontier: %s", e)
+        raise HTTPException(500, "Internal server error") from e
 
 
 @app.get("/portfolio/backtest", response_model=BacktestResponse)
@@ -145,9 +154,11 @@ def get_backtest(storage: Storage = Depends(get_storage_dep)) -> dict[str, Any]:
     try:
         data = storage.load_output("backtest")
         return data
-    except Exception as e:
-        logger.warning("Backtest not found: %s", e)
+    except (StorageError, FileNotFoundError) as e:
         raise HTTPException(404, "Backtest not found") from e
+    except Exception as e:
+        logger.error("Failed to load backtest: %s", e)
+        raise HTTPException(500, "Internal server error") from e
 
 
 if __name__ == "__main__":

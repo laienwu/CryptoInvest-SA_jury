@@ -142,10 +142,10 @@ class DatabaseConfig:
 def load_db_config(config_path: Path | None = None) -> DatabaseConfig:
     """
     Load database configuration from config.toml ``[database]`` section,
-    overlaid with ``POSTGRES_*`` environment variables.
+    overlaid with ``BENCHMARKS_DB_*`` environment variables.
 
     Precedence (highest wins):
-        1. Environment variables (POSTGRES_HOST, POSTGRES_PORT, etc.)
+        1. Environment variables (BENCHMARKS_DB_HOST, BENCHMARKS_DB_PORT, etc.)
         2. config.toml ``[database]`` values
         3. DatabaseConfig defaults
 
@@ -174,23 +174,23 @@ def load_db_config(config_path: Path | None = None) -> DatabaseConfig:
     if "password" in database:
         kwargs["password"] = database["password"]
 
-    env_host = os.environ.get("POSTGRES_HOST")
+    env_host = os.environ.get("BENCHMARKS_DB_HOST")
     if env_host:
         kwargs["host"] = env_host
 
-    env_port = os.environ.get("POSTGRES_PORT")
+    env_port = os.environ.get("BENCHMARKS_DB_PORT")
     if env_port:
         kwargs["port"] = int(env_port)
 
-    env_db = os.environ.get("POSTGRES_DB")
+    env_db = os.environ.get("BENCHMARKS_DB_NAME")
     if env_db:
         kwargs["database"] = env_db
 
-    env_user = os.environ.get("POSTGRES_USER")
+    env_user = os.environ.get("BENCHMARKS_DB_USER")
     if env_user:
         kwargs["user"] = env_user
 
-    env_password = os.environ.get("POSTGRES_PASSWORD")
+    env_password = os.environ.get("BENCHMARKS_DB_PASSWORD")
     if env_password:
         kwargs["password"] = env_password
 

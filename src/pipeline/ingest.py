@@ -24,7 +24,7 @@ Example usage:
 
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import requests
@@ -93,7 +93,10 @@ def _make_request(
 
             # Check for other errors
             if response.status_code != 200:
-                error_msg = response.json().get("msg", "Unknown error")
+                try:
+                    error_msg = response.json().get("msg", "Unknown error")
+                except (ValueError, KeyError):
+                    error_msg = response.text[:200]
                 raise BinanceAPIError(
                     f"API error: {error_msg}", status_code=response.status_code
                 )
@@ -159,7 +162,7 @@ def fetch_klines(
     """
     # Set default time range
     if end_time is None:
-        end_time = datetime.now()
+        end_time = datetime.now(UTC)
     if start_time is None:
         start_time = end_time - timedelta(days=period_days)
 
@@ -189,7 +192,7 @@ def fetch_klines(
     klines: list[dict[str, Any]] = []
     for kline in raw_klines:
         # Convert timestamp to readable date string (YYYY-MM-DD)
-        timestamp_dt = datetime.fromtimestamp(kline[0] / 1000)
+        timestamp_dt = datetime.fromtimestamp(kline[0] / 1000, tz=UTC)
         klines.append(
             {
                 "timestamp": timestamp_dt.strftime("%Y-%m-%d"),
@@ -242,7 +245,7 @@ def fetch_all_symbols(
     if period_days is None:
         period_days = cfg.period_days
 
-    end_time = datetime.now()
+    end_time = datetime.now(UTC)
     start_time = end_time - timedelta(days=period_days)
 
     result: dict[str, list[dict[str, Any]]] = {}
@@ -359,16 +362,16 @@ def ingest_incremental(
         if existing_records:
             # Find last date
             last_date_str = max(r["timestamp"] for r in existing_records)
-            last_date = datetime.strptime(last_date_str, "%Y-%m-%d")
+            last_date = datetime.strptime(last_date_str, "%Y-%m-%d").replace(tzinfo=UTC)
             start_time = last_date + timedelta(days=1)  # Start from next day
             logger.info(f"{symbol}: Last data {last_date_str}, fetching from {start_time.date()}")
         else:
             # No existing data, fetch full period
-            start_time = datetime.now() - timedelta(days=cfg.period_days)
+            start_time = datetime.now(UTC) - timedelta(days=cfg.period_days)
             logger.info(f"{symbol}: No existing data, fetching {cfg.period_days} days")
 
         # Fetch new data
-        end_time = datetime.now()
+        end_time = datetime.now(UTC)
         if start_time >= end_time:
             logger.info(f"{symbol}: Already up to date")
             result[symbol] = existing_records
