@@ -62,3 +62,32 @@ Chunked by priority. Work through one section at a time.
 - [ ] **L-9**: Airflow DAG tests — skip (requires airflow as test dep)
 - [ ] **L-10**: Dashboard mobile — manual testing before soutenance
 - [ ] **L-12**: French spell check — manual task before soutenance
+
+---
+
+## Kafka Streaming Ingestion (new feature)
+
+Real-time ingestion path alongside existing batch pipeline.
+Architecture: `Binance WebSocket → Kafka → Consumer → Bronze Parquet`
+Airflow stays as orchestrator for downstream (transform → optimize → frontier → backtest).
+
+### Infrastructure
+- [x] **K-1**: Add Redpanda (Kafka-compatible) + console services to docker-compose
+- [x] **K-2**: Add `KAFKA_*` env vars to `.env.example`
+- [x] **K-3**: Kafka topic creation (`klines-raw`) via redpanda-init container
+
+### Producer
+- [x] **K-4**: `src/pipeline/stream_producer.py` — Binance WebSocket → Kafka topic
+- [x] **K-5**: Serialize kline messages as JSON with symbol, timestamp, OHLCV fields
+- [x] **K-6**: Reconnection logic + graceful shutdown (SIGINT/SIGTERM)
+
+### Consumer
+- [x] **K-7**: `src/pipeline/stream_consumer.py` — Kafka topic → micro-batch Parquet
+- [x] **K-8**: Buffer 100 records or 60s, flush to `data/raw/klines/` as Parquet
+- [x] **K-9**: Deduplicate with existing batch data (same timestamp = skip)
+
+### Integration
+- [ ] **K-10**: Dockerfile.kafka for producer/consumer
+- [ ] **K-11**: docker-compose profile `--profile streaming`
+- [ ] **K-12**: Update architecture docs (C4, CLAUDE.md, README)
+- [ ] **K-13**: Tests for producer/consumer (mock WebSocket + mock Kafka)

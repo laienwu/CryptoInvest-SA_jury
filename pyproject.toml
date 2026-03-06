@@ -35,6 +35,10 @@ dashboard = [
     "plotly>=5.0.0",
     "pandas>=2.0.0",
 ]
+streaming = [
+    "kafka-python-ng>=2.2.0",
+    "websocket-client>=1.7.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

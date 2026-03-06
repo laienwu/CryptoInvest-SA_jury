@@ -18,6 +18,7 @@
 #   --profile pipeline  one-shot bootstrap (full ingest → transform → optimize → frontier → backtest)
 #   --profile airflow   Airflow scheduler + webserver + postgres metadata DB
 #   --profile benchmarks postgres-benchmarks only
+#   --profile streaming  Redpanda (Kafka-compatible) + producer + consumer
 #   --profile full      all of the above
 # =============================================================================
 
@@ -196,6 +197,62 @@ services:
       - benchmarks
       - full
 
+  # ===========================================================================
+  # STREAMING — Redpanda (Kafka-compatible) for real-time ingestion
+  # Binance WebSocket → Producer → Redpanda → Consumer → Bronze Parquet
+  # ===========================================================================
+
+  redpanda:
+    image: redpandadata/redpanda:v24.1.1
+    command:
+      - redpanda start
+      - --smp 1
+      - --memory 256M
+      - --overprovisioned
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
+    ports:
+      - "19092:19092"
+    volumes:
+      - redpanda-data:/var/redpanda/data
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - streaming
+
+  redpanda-init:
+    image: redpandadata/redpanda:v24.1.1
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        rpk topic create klines-raw \
+          --brokers redpanda:9092 \
+          --partitions 3 \
+          --replicas 1 || true
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    restart: "no"
+    profiles:
+      - streaming
+
+  redpanda-console:
+    image: redpandadata/console:v2.6.0
+    ports:
+      - "8080:8080"
+    environment:
+      - KAFKA_BROKERS=redpanda:9092
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    profiles:
+      - streaming
+
 volumes:
   postgres-data:
   benchmarks-data:
+  redpanda-data:
