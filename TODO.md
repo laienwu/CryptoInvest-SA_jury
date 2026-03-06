@@ -89,5 +89,5 @@ Airflow stays as orchestrator for downstream (transform → optimize → frontie
 ### Integration
 - [x] **K-10**: Dockerfile.streaming for producer/consumer
 - [x] **K-11**: docker-compose `--profile streaming` with producer + consumer services
-- [ ] **K-12**: Update architecture docs (C4, CLAUDE.md, README)
+- [x] **K-12**: Update architecture docs (C4, CLAUDE.md, README)
 - [x] **K-13**: Tests for producer/consumer (10 tests, 256 total)

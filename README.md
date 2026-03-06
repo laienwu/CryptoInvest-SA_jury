@@ -2,20 +2,23 @@
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-green.svg)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/tests-246%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-256%20passed-brightgreen.svg)]()
+[![CI](https://github.com/yourusername/binance-portfolio/actions/workflows/ci.yml/badge.svg)]()
 [![Couverture](https://img.shields.io/badge/coverage-55%25-yellow.svg)]()
 
-A plate-forme d'ingénierie de données prête pour la production pour l'optimisation du portefeuille de crypto-monnaies à l'aide des données de marché Binance. Construit comme un projet de certification démontrant des pratiques modernes d'ingénierie des données.
+Plate-forme d'ingénierie de données prête pour la production pour l'optimisation du portefeuille de crypto-monnaies à l'aide des données de marché Binance. Construit comme un projet de certification démontrant des pratiques modernes d'ingénierie des données.
 
 ## Caractéristiques
 
-- **Ingestion de données multi-sources** - 5 types de sources : API REST, CSV, JSON, Web Scraping, PostgreSQL
+- **Ingestion de données multi-sources** - 5 types de sources : API REST, CSV, JSON, Web Scraping, PostgreSQL
+- **Streaming temps réel** - Ingestion Kafka (Redpanda) via WebSocket Binance
 - **Architecture médaillon** - Zones de données Bronze/Argent/Or avec Parquet stockage
 - **Star Schema Warehouse** - Requêtes analytiques basées sur DuckDB
 - **Optimisation de Markowitz** - Optimisation du portefeuille à variance moyenne maximisant le ratio de Sharpe
 - **API REST** - FastAPI avec documentation OpenAPI automatique
 - **Tableau de bord interactif** - Visualisation rationalisée avec Plotly charts
-- **Orchestration** – DAG Airflow pour l'exécution planifiée du pipeline
+- **Orchestration** - DAG Airflow pour l'exécution planifiée du pipeline
+- **CI/CD** - GitHub Actions (ruff, mypy, pytest, coverage)
 
 ## Architecture
 
@@ -23,22 +26,29 @@ A plate-forme d'ingénierie de données prête pour la production pour l'optimis
 ┌─────────────────────────────────────────────────────────────┐
 │                      DATA SOURCES                           │
 │   [Binance API] [CSV] [JSON] [Web Scraping] [PostgreSQL]   │
-└───────────────────────────┬─────────────────────────────────┘
-                            ▼
+└──────────┬──────────────────────────────────────────────────┘
+           │
+           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  STREAMING (optional)                        │
+│   Binance WebSocket → Kafka (Redpanda) → Consumer           │
+└──────────┬──────────────────────────────────────────────────┘
+           │
+           ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                       DATA LAKE                             │
 │   ┌─────────┐    ┌─────────┐    ┌─────────┐                │
 │   │ BRONZE  │───▶│ SILVER  │───▶│  GOLD   │                │
 │   │  (raw)  │    │(metrics)│    │(weights)│                │
 │   └─────────┘    └─────────┘    └─────────┘                │
-└───────────────────────────┬─────────────────────────────────┘
-                            ▼
+└──────────┬──────────────────────────────────────────────────┘
+           ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    DATA WAREHOUSE                           │
 │        fact_prices │ dim_symbol │ dim_date                  │
 │                    DuckDB + Star Schema                     │
-└───────────────────────────┬─────────────────────────────────┘
-                            ▼
+└──────────┬──────────────────────────────────────────────────┘
+           ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                       EXPOSURE                              │
 │          FastAPI (:8000)  │  Streamlit (:8501)             │
@@ -74,17 +84,21 @@ pip install -e .
 cp .env.example .env
 ```
 
-The `.env` file contains Airflow and PostgreSQL credentials. See `.env.example` for required variables.
+The `.env` file contains Airflow, PostgreSQL, and Kafka credentials. See `.env.example` for required variables.
 
 ### Exécuter avec Docker (recommandé)
 
 ```bash
 # Start API + Dashboard
-docker compose up api streamlit
+docker compose --profile api up
 
 # Access:
 # - API: http://localhost:8000/docs
 # - Dashboard: http://localhost:8501
+
+# Start streaming ingestion (Kafka)
+docker compose --profile streaming up -d
+# - Redpanda Console: http://localhost:8080
 ```
 
 ### Exécuter localement
@@ -125,7 +139,7 @@ uv run streamlit run src/dashboard/app.py
 
 ## Tableau de bord
 
-Le tableau de bord Streamlit fournit :
+Le tableau de bord Streamlit fournit :
 
 - **Cartes KPI** - Rendement attendu, volatilité, ratio de Sharpe
 - **Tableau d'allocation** - Graphique des pondérations du portefeuille chart
@@ -142,7 +156,7 @@ uv run pytest tests/ -v
 # Run with coverage
 uv run pytest tests/ --cov=src --cov-report=term-missing
 
-# Results: 246 tests (100% passing)
+# Results: 256 tests (100% passing)
 ```
 
 ## Structure du projet
@@ -157,7 +171,9 @@ src/
 │   ├── ingest_postgres.py  # PostgreSQL benchmarks
 │   ├── transform.py        # Financial metrics calculation
 │   ├── optimize.py         # Markowitz optimization + efficient frontier
-│   └── backtest.py         # Walk-forward backtesting engine
+│   ├── backtest.py         # Walk-forward backtesting engine
+│   ├── stream_producer.py  # Binance WebSocket → Kafka producer
+│   └── stream_consumer.py  # Kafka → micro-batch Parquet consumer
 ├── storage/                 # Data layer
 │   ├── base.py             # Abstract interface
 │   ├── _utils.py           # Shared storage utilities
@@ -169,7 +185,7 @@ src/
 └── dashboard/               # Visualization
     └── app.py              # Streamlit app
 
-tests/                       # Test suite (246 tests)
+tests/                       # Test suite (256 tests)
 dags/                        # Airflow DAGs
 docs/                        # Documentation
 data/                        # Data zones (bronze/silver/gold)
@@ -177,7 +193,7 @@ data/                        # Data zones (bronze/silver/gold)
 
 ## Configuration
 
-Modifier `config.toml` :
+Modifier `config.toml` :
 
 ```toml
 [portfolio]
@@ -193,9 +209,22 @@ period_days = 30
 | Stockage | Parquet Apache, DuckDB |
 | API | FastAPI, Uvicorn |
 | Tableau de bord | Streamlit, Plotly |
-| Orchestration | Apache Airflow |
+| Orchestration | Apache Airflow |
+| Streaming | Kafka (Redpanda), WebSocket |
 | Traitement des données | PyArrow (pas de pandas) |
+| CI/CD | GitHub Actions (ruff, mypy, pytest) |
 | Conteneurisation | Docker, Docker Compose |
+
+## Docker Compose Profiles
+
+| Profil | Services | Usage |
+|--------|----------|-------|
+| `api` | api, streamlit | Runtime par défaut |
+| `pipeline` | pipeline | Bootstrap one-shot (ingestion initiale) |
+| `airflow` | postgres, airflow-init, webserver, scheduler | Orchestration planifiée |
+| `streaming` | redpanda, redpanda-init, producer, consumer, console | Ingestion temps réel |
+| `benchmarks` | postgres-benchmarks | Base de données benchmarks |
+| `full` | Tous les services ci-dessus | Stack complète |
 
 ## Documentation
 
@@ -207,29 +236,29 @@ period_days = 30
 ### Enregistrements de décisions d'architecture
 
 - [ADR-001 : Stockage Parquet](docs/architecture/adr/001_storage_parquet.md)
-- [ADR-002 : DuckDB Warehouse](docs/architecture/adr/002_duckdb_warehouse.md)
-- [ADR-003 : PyArrow sur Pandas](docs/architecture/adr/003_no_pandas.md)
-- [ADR-004 : FastAPI](docs/architecture/adr/004_fastapi_exposure.md)
-- [ADR-005 : Flux d'air Orchestration](docs/architecture/adr/005_airflow_orchestration.md)
+- [ADR-002 : DuckDB Warehouse](docs/architecture/adr/002_duckdb_warehouse.md)
+- [ADR-003 : PyArrow sur Pandas](docs/architecture/adr/003_no_pandas.md)
+- [ADR-004 : FastAPI](docs/architecture/adr/004_fastapi_exposure.md)
+- [ADR-005 : Flux d'air Orchestration](docs/architecture/adr/005_airflow_orchestration.md)
 
 ## Formules financières
 
-**Renvois de journaux :**
+**Renvois de journaux :**
 ```
 r_t = ln(P_t / P_{t-1})
 ```
 
-**Volatilité annualisée :**
+**Volatilité annualisée :**
 ```
 σ = std(r) × √365
 ```
 
-**Rapport de netteté :**
+**Rapport de netteté :**
 ```
 S = (E[R] - Rf) / σ
 ```
 
-**Écart de portefeuille :**
+**Écart de portefeuille :**
 ```
 σ²_p = w' × Cov × w
 ```
