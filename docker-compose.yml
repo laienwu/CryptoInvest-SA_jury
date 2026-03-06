@@ -240,6 +240,42 @@ services:
     profiles:
       - streaming
 
+  stream-producer:
+    build:
+      context: .
+      dockerfile: Dockerfile.streaming
+    command: python -m src.pipeline.stream_producer
+    env_file: .env
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=redpanda:9092
+    volumes:
+      - ./config.toml:/app/config.toml:ro
+    depends_on:
+      redpanda-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    profiles:
+      - streaming
+
+  stream-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile.streaming
+    command: python -m src.pipeline.stream_consumer
+    user: "50000:0"
+    env_file: .env
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=redpanda:9092
+    volumes:
+      - ./data:/app/data
+      - ./config.toml:/app/config.toml:ro
+    depends_on:
+      redpanda-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    profiles:
+      - streaming
+
   redpanda-console:
     image: redpandadata/console:v2.6.0
     ports:

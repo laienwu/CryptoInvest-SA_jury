@@ -87,7 +87,7 @@ Airflow stays as orchestrator for downstream (transform → optimize → frontie
 - [x] **K-9**: Deduplicate with existing batch data (same timestamp = skip)
 
 ### Integration
-- [ ] **K-10**: Dockerfile.kafka for producer/consumer
-- [ ] **K-11**: docker-compose profile `--profile streaming`
+- [x] **K-10**: Dockerfile.streaming for producer/consumer
+- [x] **K-11**: docker-compose `--profile streaming` with producer + consumer services
 - [ ] **K-12**: Update architecture docs (C4, CLAUDE.md, README)
-- [ ] **K-13**: Tests for producer/consumer (mock WebSocket + mock Kafka)
+- [x] **K-13**: Tests for producer/consumer (10 tests, 256 total)
