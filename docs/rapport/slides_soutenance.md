@@ -11,7 +11,7 @@ Projet de certification RNCP Niveau 7 — Bloc 1 à 4 (C1–C21)
 
 - Candidat : Laien Wu
 - Rôle : Data Engineer
-- Stack : Python · PyArrow · DuckDB · FastAPI · Streamlit · Airflow · Docker
+- Stack : Python · PyArrow · DuckDB · FastAPI · Streamlit · Airflow · Kafka · Redis · MinIO · Prometheus · Docker
 - Date : 2026
 
 > *Notes présentateur : Se présenter brièvement. Annoncer le plan : contexte → architecture → démonstration → choix techniques → conformité → conclusion.*
@@ -101,7 +101,7 @@ Phase 6  Finalisation    S11–S12 ████████████ 100%
 GLOBAL                           ████████████ 100%
 ```
 
-**5 jalons validés** | **246 tests passants** | **0 dette technique**
+**5 jalons validés** | **342 tests passants** | **0 dette technique**
 
 > *Notes : Mentionner la méthode Planning Poker pour les estimations. 5 jalons tous respectés.*
 
@@ -134,16 +134,18 @@ GLOBAL                           ████████████ 100%
 ┌─────────────────────────────────────────────────────────┐
 │  SOURCES           PIPELINE           EXPOSITION        │
 │                                                         │
-│  Binance API ──▶  BRONZE (raw/)  ──▶  FastAPI :8000    │
-│  CSV/JSON    ──▶  SILVER (proc/) ──▶  Streamlit :8501  │
-│  Scraping    ──▶  GOLD (output/) ──▶  OpenAPI /docs    │
-│  PostgreSQL  ──▶  DuckDB DWH     ──▶  Airflow :8081    │
+│  Binance API ──▶  Kafka (stream) ──▶  FastAPI :8000    │
+│  CSV/JSON    ──▶  BRONZE → SILVER ──▶  Streamlit :8501  │
+│  Scraping    ──▶  GOLD → DuckDB  ──▶  OpenAPI /docs    │
+│  PostgreSQL  ──▶  MinIO (S3)     ──▶  Airflow :8081    │
+│               ──▶  Redis (cache)  ──▶  Grafana :3000    │
 └─────────────────────────────────────────────────────────┘
 ```
 
-- **7 services Docker** orchestrés via docker-compose (API, Streamlit, Pipeline, PostgreSQL, Airflow ×3)
+- **15+ services Docker** orchestrés via docker-compose (8 profiles : api, pipeline, airflow, streaming, storage, cache, monitoring, full)
 - **Airflow** = orchestrateur unique (DAG journalier automatique)
-- **pipeline service** = bootstrap initial seulement
+- **Kafka (Redpanda)** = ingestion streaming temps réel
+- **MinIO** = stockage S3-compatible | **Redis** = cache API | **Prometheus + Grafana** = monitoring
 
 > *Notes : Montrer le docker-compose.yml. Expliquer la séparation bootstrap vs orchestration récurrente.*
 
@@ -272,23 +274,26 @@ ingest ──▶ transform ──▶ optimize ──▶ frontier ──▶ backt
 
 ## SLIDE 15 — Qualité & Tests
 
-**246 tests — 100% passants — ruff + mypy strict clean**
+**342 tests — 100% passants — ruff + mypy strict — GitHub Actions CI**
 
 | Fichier de test | Tests | Couverture |
 |----------------|-------|------------|
 | test_transform.py | 37 | Calculs financiers |
 | test_optimize.py | 53 | Markowitz, frontier, contraintes |
+| test_validation.py | 40 | Data quality bronze/silver/gold |
 | test_ingest_sources.py | 40 | 5 sources DataSource ABC |
-| test_api.py | 23 | 9 endpoints (mock storage) |
+| test_api.py | 22 | 9 endpoints (mock storage via DI) |
+| test_minio_storage.py | 22 | MinIO S3 backend (mocked) |
 | test_backtest.py | 18 | Walk-forward, métriques |
-| test_openapi_drift.py | 6 | Spec YAML vs code (anti-drift) |
-| + 5 autres fichiers | 77 | Config, storage, ingest, scraping |
+| test_redis_cache.py | 17 | Cache hit/miss/fallback |
+| test_streaming.py | 10 | Kafka producer/consumer |
+| + 6 autres fichiers | 83 | Config, storage, monitoring, drift |
 
 - **Zéro violation ruff** (E/F/W/I/UP/B/SIM)
 - **Zéro erreur mypy** (strict=true)
-- **CI-ready** : `uv run pytest tests/ -v`
+- **CI/CD** : GitHub Actions (ruff → mypy → pytest → coverage)
 
-> *Notes : Lancer `uv run pytest tests/ -v` en live si le temps le permet. Montrer 246 passed.*
+> *Notes : Lancer `uv run pytest tests/ -v` en live si le temps le permet. Montrer 342 passed.*
 
 ---
 
@@ -302,7 +307,8 @@ ingest ──▶ transform ──▶ optimize ──▶ frontier ──▶ backt
 | Pourquoi DuckDB et pas PostgreSQL ? | OLAP embarqué, SQL sur Parquet sans serveur, ADR-002 |
 | Pourquoi Airflow et pas Cron ? | Retry, DAG visualisation, alerting SLA, ADR-005 |
 | Pourquoi FastAPI et pas Flask ? | Async natif, OpenAPI auto, Depends() injection, ADR-004 |
-| Comment scale si 100 symboles ? | Storage ABC pluggable (S3/MinIO), Airflow parallélisme |
+| Pourquoi Kafka et pas polling ? | Streaming temps réel, découplage producteur/consommateur |
+| Comment scale si 100 symboles ? | Storage ABC pluggable (MinIO déjà implémenté), Airflow parallélisme |
 
 > *Notes : Avoir les ADR ouverts en backup. Chaque décision a une alternative rejetée documentée.*
 
@@ -339,10 +345,13 @@ ingest ──▶ transform ──▶ optimize ──▶ frontier ──▶ backt
 | Bloc 4 — Data Lake | C18–C21 | ✅ 4/4 |
 
 **Livrables :**
-- 5 000+ lignes de code Python production-ready
+- 8 000+ lignes de code Python production-ready
+- 342 tests (100% passants) + CI/CD GitHub Actions
 - 10 documents de rapport certification
-- 7 services Docker orchestrés
-- API REST + dashboard interactif déployés
+- 15+ services Docker (8 profiles) orchestrés
+- API REST + Redis cache + Prometheus monitoring
+- Dashboard interactif (6 pages Plotly)
+- Kafka streaming + MinIO S3 + data quality validation
 
 > *Notes : Conclure sur la cohérence bout-en-bout : du besoin métier jusqu'au dashboard live.*
 
@@ -353,15 +362,15 @@ ingest ──▶ transform ──▶ optimize ──▶ frontier ──▶ backt
 **Ce qui a été fait — ce qui pourrait évoluer**
 
 **Limites actuelles (honnêteté technique) :**
-- Pas de streaming temps-réel (données journalières uniquement)
 - Pas de ML prédictif (Markowitz = théorie classique)
 - Grid search fallback limité à ~15 actifs (scipy recommandé)
+- Monitoring métriques métier = déclaratif (pas encore alimenté automatiquement)
 
 **Évolutions naturelles :**
-- Kafka / Flink pour streaming intraday
 - Modèles ML (LSTM, transformer) pour prédiction de rendements
-- S3/MinIO pour scaling du Data Lake en production cloud
 - SCD Type 2 pour l'historisation des métadonnées symboles
+- Terraform/IaC pour déploiement cloud
+- Schema Registry (Avro) pour gouvernance des messages Kafka
 
 > *Notes : Montrer la maturité d'ingénieur : on sait ce qu'on a fait ET ce qu'on n'a pas fait, et pourquoi.*
 
@@ -392,18 +401,25 @@ Besoin métier → 5 sources → Data Lake → DWH → API → Dashboard
 *[Slide de fond pendant les questions]*
 
 **Points chauds préparés :**
-- Architecture Storage ABC → swappabilité backend
+- Architecture Storage ABC → swappabilité backend (Parquet, DuckDB, MinIO)
 - PyArrow matrice de covariance → preuve calcul
 - Walk-forward backtest → pas de data leakage
+- Kafka streaming → temps réel vs batch Airflow
+- Redis cache → TTL + fallback gracieux
+- Data quality → validation contracts bronze/silver/gold
 - RGPD → registre des traitements
-- Scale → pluggabilité + orchestration Airflow
+- Scale → MinIO S3 + Airflow parallélisme
 
 **Liens utiles pendant Q&A :**
 - `http://localhost:8000/docs` — API live
 - `http://localhost:8501` — Dashboard live
 - `http://localhost:8081` — Airflow DAG live
+- `http://localhost:9001` — MinIO Console
+- `http://localhost:8080` — Redpanda Console
+- `http://localhost:3000` — Grafana Dashboard
+- `http://localhost:9090` — Prometheus
 
 ---
 
-*Document généré le 2026-02-21 — Version 1.0*
+*Document généré le 2026-03-17 — Version 2.0*
 *Candidat : Laien Wu — RNCP Niveau 7 — Expert en Infrastructures de Données Massives*
