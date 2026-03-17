@@ -13,7 +13,7 @@ Usage:
 Available backends:
 - parquet: File-based storage using Apache Parquet (default)
 - duckdb: SQL on files using DuckDB (star schema warehouse)
-- (Future) postgres: Full RDBMS for production
+- minio: S3-compatible object storage via MinIO
 
 Factory function:
     get_storage(name) -> Returns the appropriate Storage implementation
@@ -38,6 +38,7 @@ from typing import Any
 
 from .base import Storage, StorageError
 from .duckdb import DuckDBStorage
+from .minio import MinIOStorage
 from .parquet import ParquetStorage
 
 # Type alias for storage names
@@ -50,6 +51,7 @@ StorageName = str
 _mutable_registry: dict[str, type[Storage]] = {
     "parquet": ParquetStorage,
     "duckdb": DuckDBStorage,
+    "minio": MinIOStorage,
 }
 _STORAGE_REGISTRY: MappingProxyType[str, type[Storage]] = MappingProxyType(_mutable_registry)
 
@@ -69,7 +71,7 @@ def get_storage(name: str | None = None, **kwargs: Any) -> Storage:
         name: Name of the storage backend to use. Options:
               - "parquet" (default): File-based Parquet storage
               - "duckdb": SQL on files (star schema warehouse)
-              - (Future) "postgres": PostgreSQL database
+              - "minio": S3-compatible object storage
         **kwargs: Additional arguments passed to the storage constructor.
                   For ParquetStorage: data_dir (str | Path) - custom data directory
 
@@ -152,6 +154,7 @@ __all__ = [
     # Implementations
     "ParquetStorage",
     "DuckDBStorage",
+    "MinIOStorage",
     # Utilities
     "register_storage",
     "list_available_backends",

@@ -2,7 +2,7 @@
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-green.svg)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/tests-256%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-342%20passed-brightgreen.svg)]()
 [![CI](https://github.com/yourusername/binance-portfolio/actions/workflows/ci.yml/badge.svg)]()
 [![Couverture](https://img.shields.io/badge/coverage-55%25-yellow.svg)]()
 
@@ -18,6 +18,10 @@ Plate-forme d'ingénierie de données prête pour la production pour l'optimisat
 - **API REST** - FastAPI avec documentation OpenAPI automatique
 - **Tableau de bord interactif** - Visualisation rationalisée avec Plotly charts
 - **Orchestration** - DAG Airflow pour l'exécution planifiée du pipeline
+- **Stockage S3** - MinIO (S3-compatible) via Storage ABC
+- **Cache API** - Redis avec TTL et fallback gracieux
+- **Monitoring** - Prometheus + Grafana (métriques, alertes)
+- **Qualité des données** - Validation bronze/silver/gold (contrats de données)
 - **CI/CD** - GitHub Actions (ruff, mypy, pytest, coverage)
 
 ## Architecture
@@ -156,7 +160,7 @@ uv run pytest tests/ -v
 # Run with coverage
 uv run pytest tests/ --cov=src --cov-report=term-missing
 
-# Results: 256 tests (100% passing)
+# Results: 342 tests (100% passing)
 ```
 
 ## Structure du projet
@@ -173,19 +177,23 @@ src/
 │   ├── optimize.py         # Markowitz optimization + efficient frontier
 │   ├── backtest.py         # Walk-forward backtesting engine
 │   ├── stream_producer.py  # Binance WebSocket → Kafka producer
-│   └── stream_consumer.py  # Kafka → micro-batch Parquet consumer
+│   ├── stream_consumer.py  # Kafka → micro-batch Parquet consumer
+│   └── validation.py       # Data quality validation (bronze/silver/gold)
 ├── storage/                 # Data layer
 │   ├── base.py             # Abstract interface
 │   ├── _utils.py           # Shared storage utilities
 │   ├── parquet.py          # Data lake storage
-│   └── duckdb.py           # Data warehouse
+│   ├── duckdb.py           # Data warehouse
+│   └── minio.py            # MinIO (S3-compatible) storage
 ├── api/                     # REST API
 │   ├── main.py             # FastAPI endpoints
+│   ├── cache.py            # Redis cache (TTL, fallback)
+│   ├── metrics.py          # Prometheus business metrics
 │   └── schemas.py          # Pydantic response models
 └── dashboard/               # Visualization
     └── app.py              # Streamlit app
 
-tests/                       # Test suite (256 tests)
+tests/                       # Test suite (342 tests)
 dags/                        # Airflow DAGs
 docs/                        # Documentation
 data/                        # Data zones (bronze/silver/gold)
@@ -211,6 +219,10 @@ period_days = 30
 | Tableau de bord | Streamlit, Plotly |
 | Orchestration | Apache Airflow |
 | Streaming | Kafka (Redpanda), WebSocket |
+| Stockage objet | MinIO (S3-compatible) |
+| Cache | Redis (TTL, fallback gracieux) |
+| Monitoring | Prometheus, Grafana |
+| Qualité données | Validation custom (bronze/silver/gold) |
 | Traitement des données | PyArrow (pas de pandas) |
 | CI/CD | GitHub Actions (ruff, mypy, pytest) |
 | Conteneurisation | Docker, Docker Compose |
@@ -223,6 +235,9 @@ period_days = 30
 | `pipeline` | pipeline | Bootstrap one-shot (ingestion initiale) |
 | `airflow` | postgres, airflow-init, webserver, scheduler | Orchestration planifiée |
 | `streaming` | redpanda, redpanda-init, producer, consumer, console | Ingestion temps réel |
+| `storage` | minio | Stockage objet S3-compatible |
+| `cache` | redis | Cache API (TTL 300s) |
+| `monitoring` | prometheus, grafana | Observabilité (métriques, alertes) |
 | `benchmarks` | postgres-benchmarks | Base de données benchmarks |
 | `full` | Tous les services ci-dessus | Stack complète |
 

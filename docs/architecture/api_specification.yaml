@@ -37,6 +37,8 @@ tags:
     description: Price data endpoints
   - name: Analytics
     description: Financial metrics and portfolio optimization
+  - name: Monitoring
+    description: Prometheus metrics endpoint
 
 paths:
   /:
@@ -248,6 +250,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+
+  /prom/metrics:
+    get:
+      tags:
+        - Monitoring
+      summary: Metrics
+      description: Endpoint that serves Prometheus metrics.
+      operationId: metrics_prom_metrics_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: Prometheus exposition format text
 
   /portfolio/backtest:
     get:

@@ -12,7 +12,10 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
+from src.api.cache import _CACHE_TTL_SECONDS, RedisCache, cached_response, get_cache
+from src.api.metrics import pipeline_last_run, portfolio_sharpe, records_ingested  # noqa: F401
 from src.api.schemas import (
     BacktestResponse,
     FrontierResponse,
@@ -47,6 +50,10 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+# Prometheus instrumentation — exposed at /prom/metrics to avoid
+# colliding with the existing /metrics endpoint (processed financial metrics).
+Instrumentator().instrument(app).expose(app, endpoint="/prom/metrics")
 
 
 def get_storage_dep() -> Storage:
@@ -92,11 +99,19 @@ def get_metrics(storage: Storage = Depends(get_storage_dep)) -> dict[str, list[s
 
 
 @app.get("/metrics/{name}", response_model=MetricResponse)
-def get_metric(name: str, storage: Storage = Depends(get_storage_dep)) -> dict[str, Any]:
+def get_metric(
+    name: str,
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
     """Get a specific processed metric (returns, volatility, correlation, covariance)."""
     try:
-        data = storage.load_processed(name)
-        return {"name": name, "data": data}
+        return cached_response(
+            cache,
+            f"portfolio:metrics:{name}",
+            _CACHE_TTL_SECONDS,
+            lambda: {"name": name, "data": storage.load_processed(name)},
+        )
     except (StorageError, FileNotFoundError) as e:
         raise HTTPException(404, f"Metric '{name}' not found") from e
     except Exception as e:
@@ -105,11 +120,18 @@ def get_metric(name: str, storage: Storage = Depends(get_storage_dep)) -> dict[s
 
 
 @app.get("/portfolio", response_model=PortfolioResponse)
-def get_portfolio(storage: Storage = Depends(get_storage_dep)) -> dict[str, Any]:
+def get_portfolio(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
     """Get optimal portfolio weights."""
     try:
-        data = storage.load_output("weights")
-        return data
+        return cached_response(
+            cache,
+            "portfolio:weights",
+            _CACHE_TTL_SECONDS,
+            lambda: storage.load_output("weights"),
+        )
     except (StorageError, FileNotFoundError) as e:
         raise HTTPException(404, "Portfolio not found") from e
     except Exception as e:
@@ -136,11 +158,18 @@ def get_portfolio_summary(storage: Storage = Depends(get_storage_dep)) -> dict[s
 
 
 @app.get("/portfolio/frontier", response_model=FrontierResponse)
-def get_frontier(storage: Storage = Depends(get_storage_dep)) -> dict[str, Any]:
+def get_frontier(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
     """Get efficient frontier data."""
     try:
-        data = storage.load_output("frontier")
-        return data
+        return cached_response(
+            cache,
+            "portfolio:frontier",
+            _CACHE_TTL_SECONDS,
+            lambda: storage.load_output("frontier"),
+        )
     except (StorageError, FileNotFoundError) as e:
         raise HTTPException(404, "Frontier not found") from e
     except Exception as e:
@@ -149,11 +178,18 @@ def get_frontier(storage: Storage = Depends(get_storage_dep)) -> dict[str, Any]:
 
 
 @app.get("/portfolio/backtest", response_model=BacktestResponse)
-def get_backtest(storage: Storage = Depends(get_storage_dep)) -> dict[str, Any]:
+def get_backtest(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
     """Get backtest results."""
     try:
-        data = storage.load_output("backtest")
-        return data
+        return cached_response(
+            cache,
+            "portfolio:backtest",
+            _CACHE_TTL_SECONDS,
+            lambda: storage.load_output("backtest"),
+        )
     except (StorageError, FileNotFoundError) as e:
         raise HTTPException(404, "Backtest not found") from e
     except Exception as e:

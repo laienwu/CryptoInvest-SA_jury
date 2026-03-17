@@ -52,6 +52,12 @@ class PipelineConfig:
     # Storage
     storage_backend: str = "parquet"
 
+    # MinIO (S3-compatible)
+    minio_endpoint: str = "localhost:9000"
+    minio_access_key: str = "minioadmin"
+    minio_secret_key: str = "minioadmin"
+    minio_bucket: str = "portfolio-data"
+
 
 def _read_toml(config_path: Path) -> dict[str, Any]:
     """Read a TOML file and return its contents as a dict."""
@@ -115,6 +121,22 @@ def load_config(config_path: Path | None = None) -> PipelineConfig:
     env_backend = os.environ.get("STORAGE_BACKEND")
     if env_backend:
         kwargs["storage_backend"] = env_backend
+
+    env_minio_endpoint = os.environ.get("MINIO_ENDPOINT")
+    if env_minio_endpoint:
+        kwargs["minio_endpoint"] = env_minio_endpoint
+
+    env_minio_access = os.environ.get("MINIO_ACCESS_KEY")
+    if env_minio_access:
+        kwargs["minio_access_key"] = env_minio_access
+
+    env_minio_secret = os.environ.get("MINIO_SECRET_KEY")
+    if env_minio_secret:
+        kwargs["minio_secret_key"] = env_minio_secret
+
+    env_minio_bucket = os.environ.get("MINIO_BUCKET")
+    if env_minio_bucket:
+        kwargs["minio_bucket"] = env_minio_bucket
 
     env_risk_free = os.environ.get("RISK_FREE_RATE")
     if env_risk_free:

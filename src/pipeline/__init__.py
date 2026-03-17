@@ -13,6 +13,7 @@ Modules:
 - transform: Data transformation and metrics calculation
 - optimize: Portfolio optimization (Markowitz mean-variance)
 - backtest: Walk-forward backtesting
+- validation: Data quality checks at each pipeline stage
 
 Error handling pattern:
     Each module defines a custom exception with ``message`` plus a
@@ -57,6 +58,15 @@ from .transform import (
     load_processed_metrics,
     transform_data,
 )
+from .validation import (
+    ValidationError,
+    ValidationReport,
+    ValidationResult,
+    validate_bronze,
+    validate_gold,
+    validate_silver,
+    validate_stage,
+)
 
 __all__ = [
     # Pipeline stages
@@ -78,6 +88,13 @@ __all__ = [
     "load_benchmarks_fallback",
     # Repository
     "BenchmarkRepository",
+    # Validation
+    "validate_stage",
+    "validate_bronze",
+    "validate_silver",
+    "validate_gold",
+    "ValidationReport",
+    "ValidationResult",
     # Exceptions
     "BacktestError",
     "DatabaseError",
@@ -85,4 +102,5 @@ __all__ = [
     "ScrapingError",
     "SourceError",
     "TransformError",
+    "ValidationError",
 ]

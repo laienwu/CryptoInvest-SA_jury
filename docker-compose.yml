@@ -19,6 +19,9 @@
 #   --profile airflow   Airflow scheduler + webserver + postgres metadata DB
 #   --profile benchmarks postgres-benchmarks only
 #   --profile streaming  Redpanda (Kafka-compatible) + producer + consumer
+#   --profile storage    MinIO (S3-compatible object storage)
+#   --profile cache      Redis API cache
+#   --profile monitoring Prometheus + Grafana observability
 #   --profile full      all of the above
 # =============================================================================
 
@@ -198,6 +201,31 @@ services:
       - full
 
   # ===========================================================================
+  # OBJECT STORAGE — MinIO (S3-compatible) for cloud-native data lake
+  # Use STORAGE_BACKEND=minio to route pipeline data through S3 API
+  # ===========================================================================
+
+  minio:
+    image: minio/minio:RELEASE.2024-06-13T22-53-53Z
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - storage
+      - full
+
+  # ===========================================================================
   # STREAMING — Redpanda (Kafka-compatible) for real-time ingestion
   # Binance WebSocket → Producer → Redpanda → Consumer → Bronze Parquet
   # ===========================================================================
@@ -288,7 +316,65 @@ services:
     profiles:
       - streaming
 
+  # ===========================================================================
+  # REDIS — API response cache (--profile cache)
+  # ===========================================================================
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - cache
+      - full
+
+  # ===========================================================================
+  # MONITORING — Prometheus + Grafana (--profile monitoring)
+  # Scrapes FastAPI /prom/metrics, dashboards at Grafana :3000
+  # ===========================================================================
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    profiles:
+      - monitoring
+      - full
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    profiles:
+      - monitoring
+      - full
+
 volumes:
   postgres-data:
   benchmarks-data:
   redpanda-data:
+  minio-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:

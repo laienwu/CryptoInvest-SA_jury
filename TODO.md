@@ -91,3 +91,84 @@ Airflow stays as orchestrator for downstream (transform → optimize → frontie
 - [x] **K-11**: docker-compose `--profile streaming` with producer + consumer services
 - [x] **K-12**: Update architecture docs (C4, CLAUDE.md, README)
 - [x] **K-13**: Tests for producer/consumer (10 tests, 256 total)
+
+---
+
+## Data Quality — Custom Validation Framework (new feature)
+
+Lightweight validation contracts on pipeline data. No external deps — pure Python/PyArrow.
+
+### Validation Rules
+- [x] **DQ-3**: `src/pipeline/validation.py` — ValidationResult/ValidationReport dataclasses
+- [x] **DQ-4**: Bronze: ohlcv_schema, no_null_ohlcv, positive_close, non_negative_volume, high_gte_low, timestamp_not_empty, min_records
+- [x] **DQ-5**: Silver: returns_in_range, volatility_positive, correlation (symmetric/diagonal/range), covariance_symmetric
+- [x] **DQ-6**: Gold: weights_sum_to_one, weights_non_negative, weights_bounded, has_expected_return, has_volatility, has_sharpe_ratio
+
+### Integration
+- [x] **DQ-7**: `validate_stage()` dispatcher for bronze/silver/gold
+- [ ] **DQ-8**: Airflow DAG tasks — skip (requires DAG refactor)
+- [x] **DQ-9**: Tests for validation suites (40 tests)
+- [x] **DQ-10**: Update docs (CLAUDE.md, pipeline __init__.py)
+
+---
+
+## MinIO Object Storage (new feature)
+
+Replace local `data/` with S3-compatible object storage. Proves cloud-native data lake pattern.
+
+### Infrastructure
+- [x] **S3-1**: Add MinIO service to docker-compose (`--profile storage`)
+- [x] **S3-2**: Add `MINIO_*` env vars to `.env.example` and `config.py`
+- [x] **S3-3**: Add `minio` to pyproject.toml optional deps
+
+### Storage Backend
+- [x] **S3-4**: `src/storage/minio.py` — new Storage ABC implementation (S3 API)
+- [x] **S3-5**: Register in `_STORAGE_REGISTRY` with `STORAGE_BACKEND=minio` selector
+- [x] **S3-6**: Bronze/Silver/Gold zone mapping to S3 prefixes (raw/, processed/, output/)
+
+### Integration
+- [x] **S3-7**: All pipeline stages work transparently via Storage ABC (no code changes needed)
+- [x] **S3-8**: Tests for MinIO storage backend (22 tests, mocked client)
+- [x] **S3-9**: Update docs (CLAUDE.md, README, architecture)
+
+---
+
+## Redis API Caching (new feature)
+
+Cache FastAPI responses with TTL. Demonstrates caching patterns and performance optimization.
+
+### Infrastructure
+- [x] **R-1**: Add Redis service to docker-compose (`--profile cache`)
+- [x] **R-2**: Add `REDIS_URL` env var to `.env.example`
+- [x] **R-3**: Add `redis` to pyproject.toml optional deps
+
+### Implementation
+- [x] **R-4**: `src/api/cache.py` — RedisCache class + cached_response helper
+- [x] **R-5**: Apply caching to `/portfolio`, `/portfolio/frontier`, `/portfolio/backtest`, `/metrics/{name}`
+- [x] **R-6**: Cache invalidation via TTL expiry (300s)
+
+### Integration
+- [x] **R-7**: Graceful fallback when Redis is unavailable (get_cache returns None)
+- [x] **R-8**: Tests for cache hit/miss/invalidation (17 tests)
+- [x] **R-9**: Update docs (CLAUDE.md)
+
+---
+
+## Prometheus + Grafana Monitoring (new feature)
+
+Production observability: metrics endpoint, dashboards, alerting rules.
+
+### Infrastructure
+- [x] **MON-1**: Add Prometheus + Grafana services to docker-compose (`--profile monitoring`)
+- [x] **MON-2**: Prometheus scrape config (`monitoring/prometheus.yml`)
+- [x] **MON-3**: Grafana provisioned dashboard (`monitoring/grafana/`)
+
+### Metrics
+- [x] **MON-4**: FastAPI `/prom/metrics` endpoint (prometheus-fastapi-instrumentator)
+- [x] **MON-5**: Custom business metrics: pipeline_last_run, records_ingested, portfolio_sharpe
+- [ ] **MON-6**: Kafka consumer lag metric — skip (requires Kafka running)
+
+### Integration
+- [x] **MON-7**: Alerting rules (`monitoring/alerts.yml` — latency, error rate)
+- [x] **MON-8**: Tests for metrics endpoint (7 tests)
+- [x] **MON-9**: Update docs (CLAUDE.md, OpenAPI spec)
