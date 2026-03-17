@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimisation de Portefeuille Crypto — Soutenance RNCP Niveau 7</title>
+
+    <!-- Fonts: Cormorant (elegant serif) + Space Grotesk (modern body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (THEME)
+           Bold Signal cards + Dark Botanical elegance
+           =========================================== */
+        :root {
+            /* Colors — Dark Botanical base + Bold Signal accents */
+            --bg-primary: #0f0f0f;
+            --bg-card: #1a1a1a;
+            --bg-card-accent: #d4a574;
+            --text-primary: #e8e4df;
+            --text-secondary: #9a9590;
+            --text-on-accent: #0f0f0f;
+            --accent-gold: #d4a574;
+            --accent-pink: #e8b4b8;
+            --accent-warm: #c9b896;
+            --accent-orange: #e07a4f;
+            --accent-teal: #6bbfab;
+            --border-subtle: rgba(212, 165, 116, 0.15);
+
+            /* Typography — MUST use clamp() */
+            --font-display: 'Cormorant', Georgia, serif;
+            --font-body: 'Space Grotesk', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --title-size: clamp(2rem, 5.5vw, 4.5rem);
+            --h2-size: clamp(1.4rem, 3.5vw, 2.5rem);
+            --h3-size: clamp(1rem, 2vw, 1.5rem);
+            --body-size: clamp(0.7rem, 1.3vw, 1rem);
+            --small-size: clamp(0.6rem, 0.9vw, 0.8rem);
+            --number-size: clamp(3rem, 8vw, 7rem);
+
+            /* Spacing — MUST use clamp() */
+            --slide-padding: clamp(1.5rem, 4vw, 4rem);
+            --content-gap: clamp(0.75rem, 2vw, 1.5rem);
+            --element-gap: clamp(0.25rem, 1vw, 0.75rem);
+
+            /* Animation */
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.7s;
+        }
+
+        /* ===========================================
+           BASE RESET
+           =========================================== */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* ===========================================
+           VIEWPORT FITTING: MANDATORY BASE STYLES
+           =========================================== */
+        html, body {
+            height: 100%;
+            overflow-x: hidden;
+        }
+
+        html {
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: var(--body-size);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .slide-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-height: 100%;
+            overflow: hidden;
+            padding: var(--slide-padding);
+        }
+
+        .card, .container, .content-box {
+            max-width: min(90vw, 1000px);
+            max-height: min(80vh, 700px);
+        }
+
+        .feature-list, .bullet-list {
+            gap: clamp(0.4rem, 1vh, 1rem);
+        }
+
+        .feature-list li, .bullet-list li {
+            font-size: var(--body-size);
+            line-height: 1.4;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1rem);
+        }
+
+        /* Short viewports (< 700px height) */
+        @media (max-height: 700px) {
+            :root {
+                --slide-padding: clamp(0.75rem, 3vw, 2rem);
+                --content-gap: clamp(0.4rem, 1.5vw, 1rem);
+                --title-size: clamp(1.25rem, 4.5vw, 2.5rem);
+                --h2-size: clamp(1rem, 3vw, 1.75rem);
+            }
+        }
+
+        /* Very short viewports (< 600px height) */
+        @media (max-height: 600px) {
+            :root {
+                --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem);
+                --content-gap: clamp(0.3rem, 1vw, 0.75rem);
+                --title-size: clamp(1.1rem, 4vw, 2rem);
+                --body-size: clamp(0.7rem, 1.2vw, 0.95rem);
+            }
+            .nav-dots, .keyboard-hint, .decorative {
+                display: none;
+            }
+        }
+
+        /* Extremely short (landscape phones) */
+        @media (max-height: 500px) {
+            :root {
+                --slide-padding: clamp(0.4rem, 2vw, 1rem);
+                --title-size: clamp(1rem, 3.5vw, 1.5rem);
+                --h2-size: clamp(0.9rem, 2.5vw, 1.25rem);
+                --body-size: clamp(0.65rem, 1vw, 0.85rem);
+            }
+        }
+
+        /* Narrow viewports */
+        @media (max-width: 600px) {
+            :root {
+                --title-size: clamp(1.25rem, 7vw, 2.5rem);
+            }
+            .grid { grid-template-columns: 1fr; }
+            .two-col { grid-template-columns: 1fr !important; }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+            html { scroll-behavior: auto; }
+        }
+
+        /* ===========================================
+           DARK BOTANICAL — Abstract gradient circles
+           =========================================== */
+        .botanical-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.15;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .orb-gold {
+            background: var(--accent-gold);
+            width: clamp(150px, 30vw, 400px);
+            height: clamp(150px, 30vw, 400px);
+        }
+
+        .orb-pink {
+            background: var(--accent-pink);
+            width: clamp(120px, 25vw, 350px);
+            height: clamp(120px, 25vw, 350px);
+        }
+
+        .orb-teal {
+            background: var(--accent-teal);
+            width: clamp(100px, 20vw, 300px);
+            height: clamp(100px, 20vw, 300px);
+        }
+
+        /* ===========================================
+           BOLD SIGNAL — Section numbers
+           =========================================== */
+        .slide-number {
+            font-family: var(--font-display);
+            font-size: var(--number-size);
+            font-weight: 700;
+            color: var(--accent-gold);
+            opacity: 0.12;
+            position: absolute;
+            top: clamp(0.5rem, 2vw, 1.5rem);
+            right: clamp(1rem, 3vw, 3rem);
+            line-height: 1;
+            z-index: 0;
+            user-select: none;
+        }
+
+        /* ===========================================
+           TYPOGRAPHY
+           =========================================== */
+        h1 {
+            font-family: var(--font-display);
+            font-size: var(--title-size);
+            font-weight: 600;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        h2 {
+            font-family: var(--font-display);
+            font-size: var(--h2-size);
+            font-weight: 600;
+            line-height: 1.15;
+            color: var(--text-primary);
+            margin-bottom: var(--content-gap);
+        }
+
+        h2::after {
+            content: '';
+            display: block;
+            width: clamp(30px, 5vw, 60px);
+            height: 2px;
+            background: var(--accent-gold);
+            margin-top: clamp(0.3rem, 0.8vw, 0.6rem);
+        }
+
+        h3 {
+            font-family: var(--font-body);
+            font-size: var(--h3-size);
+            font-weight: 600;
+            color: var(--accent-gold);
+        }
+
+        p, li {
+            font-family: var(--font-body);
+            font-size: var(--body-size);
+            line-height: 1.55;
+            color: var(--text-secondary);
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        code {
+            font-family: var(--font-mono);
+            font-size: clamp(0.6rem, 1vw, 0.85rem);
+            background: rgba(212, 165, 116, 0.1);
+            color: var(--accent-gold);
+            padding: 0.1em 0.4em;
+            border-radius: 3px;
+        }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(25px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+
+        .slide.visible .reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .reveal:nth-child(1) { transition-delay: 0.05s; }
+        .reveal:nth-child(2) { transition-delay: 0.15s; }
+        .reveal:nth-child(3) { transition-delay: 0.25s; }
+        .reveal:nth-child(4) { transition-delay: 0.35s; }
+        .reveal:nth-child(5) { transition-delay: 0.45s; }
+        .reveal:nth-child(6) { transition-delay: 0.55s; }
+
+        .reveal-scale {
+            opacity: 0;
+            transform: scale(0.92);
+            transition: opacity 0.6s var(--ease-out-expo),
+                        transform 0.6s var(--ease-out-expo);
+        }
+
+        .slide.visible .reveal-scale {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* ===========================================
+           LAYOUT COMPONENTS
+           =========================================== */
+
+        /* --- Accent card (Bold Signal style) --- */
+        .accent-card {
+            background: var(--accent-gold);
+            color: var(--text-on-accent);
+            padding: clamp(1rem, 2.5vw, 2rem);
+            border-radius: clamp(8px, 1vw, 16px);
+            max-width: min(85vw, 700px);
+        }
+
+        .accent-card h3 {
+            color: var(--text-on-accent);
+            font-family: var(--font-display);
+            font-weight: 700;
+        }
+
+        .accent-card p, .accent-card li {
+            color: rgba(15, 15, 15, 0.8);
+        }
+
+        /* --- Tables --- */
+        .data-table {
+            width: 100%;
+            max-width: min(85vw, 800px);
+            border-collapse: collapse;
+            font-size: var(--small-size);
+        }
+
+        .data-table th {
+            font-family: var(--font-body);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: clamp(0.55rem, 0.8vw, 0.7rem);
+            color: var(--accent-gold);
+            text-align: left;
+            padding: clamp(0.3rem, 0.6vw, 0.5rem) clamp(0.4rem, 1vw, 0.8rem);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .data-table td {
+            padding: clamp(0.25rem, 0.5vw, 0.4rem) clamp(0.4rem, 1vw, 0.8rem);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            color: var(--text-secondary);
+            font-size: var(--small-size);
+        }
+
+        .data-table tr:hover td {
+            background: rgba(212, 165, 116, 0.04);
+        }
+
+        /* --- Two column layout --- */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: clamp(1rem, 3vw, 2.5rem);
+            align-items: start;
+        }
+
+        /* --- Tag / badge --- */
+        .tag {
+            display: inline-block;
+            font-family: var(--font-body);
+            font-size: clamp(0.55rem, 0.8vw, 0.7rem);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: clamp(0.15rem, 0.3vw, 0.25rem) clamp(0.4rem, 0.8vw, 0.6rem);
+            border-radius: 3px;
+            background: rgba(212, 165, 116, 0.12);
+            color: var(--accent-gold);
+        }
+
+        .tag-pink {
+            background: rgba(232, 180, 184, 0.12);
+            color: var(--accent-pink);
+        }
+
+        .tag-teal {
+            background: rgba(107, 191, 171, 0.12);
+            color: var(--accent-teal);
+        }
+
+        /* --- Bullet list --- */
+        .bullets {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: clamp(0.3rem, 0.8vw, 0.6rem);
+        }
+
+        .bullets li {
+            padding-left: clamp(0.8rem, 1.5vw, 1.2rem);
+            position: relative;
+        }
+
+        .bullets li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: clamp(0.4rem, 0.7vw, 0.55rem);
+            width: clamp(4px, 0.4vw, 6px);
+            height: clamp(4px, 0.4vw, 6px);
+            background: var(--accent-gold);
+            border-radius: 50%;
+        }
+
+        /* --- Pre / code block --- */
+        .code-block {
+            font-family: var(--font-mono);
+            font-size: clamp(0.55rem, 0.9vw, 0.8rem);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: clamp(0.6rem, 1.5vw, 1.2rem);
+            line-height: 1.6;
+            color: var(--text-secondary);
+            white-space: pre;
+            overflow: hidden;
+        }
+
+        .code-block .hl {
+            color: var(--accent-gold);
+        }
+
+        /* --- Gantt-like bars --- */
+        .gantt-bar {
+            display: flex;
+            align-items: center;
+            gap: clamp(0.4rem, 1vw, 0.8rem);
+            font-size: var(--small-size);
+        }
+
+        .gantt-bar .label {
+            width: clamp(80px, 15vw, 140px);
+            text-align: right;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .gantt-bar .bar {
+            flex: 1;
+            height: clamp(6px, 0.8vw, 10px);
+            background: var(--accent-gold);
+            border-radius: 99px;
+            max-width: min(50vw, 400px);
+        }
+
+        .gantt-bar .pct {
+            color: var(--accent-gold);
+            font-weight: 600;
+            width: 35px;
+        }
+
+        /* --- Stat row --- */
+        .stat-row {
+            display: flex;
+            gap: clamp(1rem, 3vw, 3rem);
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat .value {
+            font-family: var(--font-display);
+            font-size: clamp(1.5rem, 4vw, 3rem);
+            font-weight: 700;
+            color: var(--accent-gold);
+            line-height: 1;
+        }
+
+        .stat .label {
+            font-size: var(--small-size);
+            color: var(--text-secondary);
+            margin-top: clamp(0.15rem, 0.3vw, 0.3rem);
+        }
+
+        /* --- Check grid (for competency tables) --- */
+        .check-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+            gap: clamp(0.4rem, 1vw, 0.75rem);
+        }
+
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: clamp(0.3rem, 0.6vw, 0.5rem);
+            font-size: var(--small-size);
+            color: var(--text-secondary);
+        }
+
+        .check-item .check {
+            color: var(--accent-teal);
+            font-weight: 700;
+        }
+
+        /* --- Subtle divider --- */
+        .divider {
+            width: 100%;
+            height: 1px;
+            background: var(--border-subtle);
+            margin: clamp(0.5rem, 1vw, 1rem) 0;
+        }
+
+        /* --- Endpoint list --- */
+        .endpoint {
+            display: flex;
+            align-items: baseline;
+            gap: clamp(0.4rem, 1vw, 0.8rem);
+            padding: clamp(0.2rem, 0.4vw, 0.35rem) 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .endpoint .method {
+            font-family: var(--font-mono);
+            font-size: clamp(0.5rem, 0.7vw, 0.65rem);
+            font-weight: 500;
+            color: var(--accent-teal);
+            width: clamp(25px, 3vw, 35px);
+            flex-shrink: 0;
+        }
+
+        .endpoint .path {
+            font-family: var(--font-mono);
+            font-size: clamp(0.55rem, 0.85vw, 0.75rem);
+            color: var(--text-primary);
+        }
+
+        .endpoint .desc {
+            font-size: var(--small-size);
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+
+        /* ===========================================
+           PROGRESS BAR
+           =========================================== */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 2px;
+            background: var(--accent-gold);
+            z-index: 9999;
+            transition: width 0.3s ease;
+        }
+
+        /* ===========================================
+           NAVIGATION DOTS
+           =========================================== */
+        .nav-dots {
+            position: fixed;
+            right: clamp(0.5rem, 1.5vw, 1.5rem);
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: clamp(4px, 0.5vw, 8px);
+            z-index: 9998;
+        }
+
+        .nav-dot {
+            width: clamp(5px, 0.5vw, 8px);
+            height: clamp(5px, 0.5vw, 8px);
+            border-radius: 50%;
+            background: rgba(212, 165, 116, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            padding: 0;
+        }
+
+        .nav-dot.active {
+            background: var(--accent-gold);
+            transform: scale(1.4);
+        }
+
+        .nav-dot:hover {
+            background: rgba(212, 165, 116, 0.5);
+        }
+
+        /* ===========================================
+           TITLE SLIDE (special)
+           =========================================== */
+        .title-slide {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .title-slide .slide-content {
+            align-items: center;
+            gap: clamp(0.8rem, 2vw, 1.5rem);
+        }
+
+        .title-tag {
+            font-family: var(--font-body);
+            font-size: clamp(0.6rem, 0.9vw, 0.75rem);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--accent-gold);
+        }
+
+        .title-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: clamp(0.5rem, 1.5vw, 1.5rem);
+            justify-content: center;
+            font-size: var(--small-size);
+            color: var(--text-secondary);
+        }
+
+        .title-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.3em;
+        }
+
+        .title-stack {
+            font-family: var(--font-mono);
+            font-size: clamp(0.5rem, 0.75vw, 0.65rem);
+            color: var(--text-secondary);
+            max-width: min(80vw, 600px);
+            text-align: center;
+            line-height: 1.7;
+        }
+
+        /* --- Thin accent line --- */
+        .accent-line {
+            width: clamp(30px, 5vw, 60px);
+            height: 1px;
+            background: var(--accent-gold);
+        }
+
+        /* ===========================================
+           CLOSING SLIDE
+           =========================================== */
+        .closing-slide .slide-content {
+            align-items: center;
+            text-align: center;
+            gap: clamp(1rem, 2.5vw, 2rem);
+        }
+
+        /* ===========================================
+           Q&A SLIDE
+           =========================================== */
+        .qa-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+            gap: clamp(0.4rem, 1vw, 0.75rem);
+        }
+
+        .qa-link {
+            font-family: var(--font-mono);
+            font-size: clamp(0.5rem, 0.75vw, 0.65rem);
+            color: var(--accent-teal);
+            background: rgba(107, 191, 171, 0.06);
+            padding: clamp(0.3rem, 0.6vw, 0.5rem) clamp(0.5rem, 1vw, 0.8rem);
+            border-radius: 6px;
+            border: 1px solid rgba(107, 191, 171, 0.12);
+        }
+
+        .qa-link .port {
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <!-- Progress bar -->
+    <div class="progress-bar" id="progressBar"></div>
+
+    <!-- Navigation dots -->
+    <nav class="nav-dots" id="navDots" aria-label="Navigation des slides"></nav>
+
+    <!-- =========================================================
+         SLIDE 1 — TITRE
+         ========================================================= -->
+    <section class="slide title-slide" data-slide="0">
+        <div class="botanical-orb orb-gold" style="top: -10%; left: -5%;"></div>
+        <div class="botanical-orb orb-pink" style="bottom: -10%; right: -5%;"></div>
+
+        <div class="slide-content">
+            <span class="title-tag reveal">RNCP Niveau 7 — Expert en Infrastructures de Données Massives</span>
+            <div class="accent-line reveal"></div>
+            <h1 class="reveal" style="max-width: min(85vw, 750px);">Optimisation de Portefeuille Crypto avec Binance</h1>
+            <p class="reveal" style="color: var(--text-secondary); max-width: min(75vw, 550px);">
+                Certification Data Engineer — Blocs 1 à 4 (C1–C21)
+            </p>
+            <div class="title-meta reveal">
+                <span><strong>Laien Wu</strong></span>
+                <span>Data Engineer</span>
+                <span>2026</span>
+            </div>
+            <div class="title-stack reveal">
+                Python · PyArrow · DuckDB · FastAPI · Streamlit · Airflow · Kafka · Redis · MinIO · Prometheus · Docker
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 2 — Contexte & Besoin (C1)
+         ========================================================= -->
+    <section class="slide" data-slide="1">
+        <span class="slide-number">01</span>
+        <div class="botanical-orb orb-gold" style="bottom: -15%; right: -10%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">C1 — Analyse du besoin</span>
+            <h2 class="reveal">Contexte &amp; Besoin</h2>
+
+            <div class="accent-card reveal" style="background: var(--accent-orange);">
+                <h3>Comment allouer un portefeuille crypto de manière optimale ?</h3>
+            </div>
+
+            <ul class="bullets reveal">
+                <li>Marché 24/7, haute volatilité, <strong>12 actifs</strong> suivis (BTC, ETH, BNB, SOL…)</li>
+                <li>Besoin : données fraîches, métriques fiables, décision fondée sur <strong>Markowitz</strong></li>
+                <li>Parties prenantes : investisseur particulier, jury certification</li>
+            </ul>
+
+            <div class="reveal">
+                <h3 style="margin-bottom: var(--element-gap);">Objectifs SMART</h3>
+                <ul class="bullets">
+                    <li>Automatiser l'ingestion quotidienne de 12 symboles via API Binance</li>
+                    <li>Calculer rendements, volatilité, corrélation en <strong>&lt; 60 secondes</strong></li>
+                    <li>Exposer portefeuille optimisé via <strong>API REST + dashboard</strong></li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 3 — Cartographie des Données (C2)
+         ========================================================= -->
+    <section class="slide" data-slide="2">
+        <span class="slide-number">02</span>
+        <div class="botanical-orb orb-teal" style="top: -10%; left: -8%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">C2 + C8 — Cartographie</span>
+            <h2 class="reveal">5 Sources de Données Hétérogènes</h2>
+
+            <table class="data-table reveal">
+                <thead>
+                    <tr><th>Source</th><th>Type</th><th>Données</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><strong>Binance API</strong></td><td>REST / JSON</td><td>OHLCV klines (1j, 12 symboles)</td></tr>
+                    <tr><td><strong>symbols_metadata.csv</strong></td><td>CSV</td><td>Métadonnées actifs</td></tr>
+                    <tr><td><strong>portfolio_config.json</strong></td><td>JSON</td><td>Config allocation initiale</td></tr>
+                    <tr><td><strong>CoinGecko</strong></td><td>Web scraping</td><td>Benchmarks de marché</td></tr>
+                    <tr><td><strong>PostgreSQL</strong></td><td>BDD relationnelle</td><td>Données historiques benchmarks</td></tr>
+                </tbody>
+            </table>
+
+            <div class="reveal" style="margin-top: var(--element-gap);">
+                <p><strong>Flux :</strong> API → Bronze → Silver → Gold → DWH → API REST → Dashboard</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 4 — Cadre Technique (C3)
+         ========================================================= -->
+    <section class="slide" data-slide="3">
+        <span class="slide-number">03</span>
+        <div class="botanical-orb orb-pink" style="bottom: -12%; left: -6%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">C3 — Cadre technique</span>
+            <h2 class="reveal">Décisions Architecturales (ADR)</h2>
+
+            <table class="data-table reveal">
+                <thead>
+                    <tr><th>Décision</th><th>Choix</th><th>Justification</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Format stockage</td><td><strong>Parquet</strong></td><td>Colonnaire, compressé, schéma fort</td></tr>
+                    <tr><td>Moteur DWH</td><td><strong>DuckDB</strong></td><td>OLAP embarqué, SQL natif sur Parquet</td></tr>
+                    <tr><td>Traitement</td><td><strong>PyArrow</strong></td><td>Mémoire 2–5× plus efficace que Pandas</td></tr>
+                    <tr><td>API</td><td><strong>FastAPI</strong></td><td>Async, OpenAPI auto, injection DI</td></tr>
+                    <tr><td>Orchestration</td><td><strong>Airflow</strong></td><td>Standard industrie, monitoring, retry</td></tr>
+                </tbody>
+            </table>
+
+            <p class="reveal" style="font-size: var(--small-size);">
+                5 ADR documentés dans <code>docs/architecture/adr/</code> — chaque choix a une alternative rejetée documentée
+            </p>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 5 — Veille Technologique (C4)
+         ========================================================= -->
+    <section class="slide" data-slide="4">
+        <span class="slide-number">04</span>
+        <div class="botanical-orb orb-gold" style="top: -8%; right: -10%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">C4 — Veille technologique</span>
+            <h2 class="reveal">Surveillance Active de 5 Domaines</h2>
+
+            <div class="check-grid reveal">
+                <div class="check-item"><span class="check">●</span> <strong>Streamlit</strong> — évolutions dashboard</div>
+                <div class="check-item"><span class="check">●</span> <strong>DuckDB</strong> — nouvelles fonctionnalités OLAP</div>
+                <div class="check-item"><span class="check">●</span> <strong>Binance API</strong> — limites, endpoints</div>
+                <div class="check-item"><span class="check">●</span> <strong>Airflow</strong> — TaskFlow API</div>
+                <div class="check-item"><span class="check">●</span> <strong>Réglementation MiCA</strong> — impact conformité</div>
+            </div>
+
+            <div class="accent-card reveal" style="background: rgba(212, 165, 116, 0.08); border: 1px solid var(--border-subtle);">
+                <p style="color: var(--text-secondary);">Chaque item : source évaluée (fiabilité), impact analysé, action trackée. Documenté dans <code>04_veille.md</code></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 6 — Planification Projet (C5, C6)
+         ========================================================= -->
+    <section class="slide" data-slide="5">
+        <span class="slide-number">05</span>
+        <div class="botanical-orb orb-teal" style="bottom: -10%; right: -8%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">C5 + C6 — Planification</span>
+            <h2 class="reveal">6 Phases sur 12 Semaines</h2>
+
+            <div class="reveal" style="display: flex; flex-direction: column; gap: clamp(0.25rem, 0.6vw, 0.5rem);">
+                <div class="gantt-bar"><span class="label">Fondations</span><div class="bar" style="width: 100%;"></div><span class="pct">S1–2</span></div>
+                <div class="gantt-bar"><span class="label">Transformation</span><div class="bar" style="width: 100%;"></div><span class="pct">S3–4</span></div>
+                <div class="gantt-bar"><span class="label">Analytics</span><div class="bar" style="width: 100%; background: var(--accent-pink);"></div><span class="pct">S5–6</span></div>
+                <div class="gantt-bar"><span class="label">Exposition</span><div class="bar" style="width: 100%; background: var(--accent-pink);"></div><span class="pct">S7–8</span></div>
+                <div class="gantt-bar"><span class="label">Optimisation</span><div class="bar" style="width: 100%; background: var(--accent-teal);"></div><span class="pct">S9–10</span></div>
+                <div class="gantt-bar"><span class="label">Finalisation</span><div class="bar" style="width: 100%; background: var(--accent-teal);"></div><span class="pct">S11–12</span></div>
+            </div>
+
+            <div class="stat-row reveal">
+                <div class="stat"><div class="value">5</div><div class="label">Jalons validés</div></div>
+                <div class="stat"><div class="value">342</div><div class="label">Tests passants</div></div>
+                <div class="stat"><div class="value">0</div><div class="label">Dette technique</div></div>
+                <div class="stat"><div class="value">127h</div><div class="label">Estimées</div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 7 — Communication Projet (C7)
+         ========================================================= -->
+    <section class="slide" data-slide="6">
+        <span class="slide-number">06</span>
+        <div class="botanical-orb orb-pink" style="top: -10%; left: -6%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">C7 — Communication</span>
+            <h2 class="reveal">Stratégie Multi-Canal</h2>
+
+            <table class="data-table reveal">
+                <thead><tr><th>Support</th><th>Cible</th><th>Format</th></tr></thead>
+                <tbody>
+                    <tr><td>Rapport professionnel</td><td>Jury</td><td>Markdown/PDF (10 documents)</td></tr>
+                    <tr><td>Slides soutenance</td><td>Jury</td><td>HTML (cette présentation)</td></tr>
+                    <tr><td>Documentation API</td><td>Développeurs</td><td>Swagger UI auto-générée</td></tr>
+                    <tr><td>README + CLAUDE.md</td><td>Contributeurs</td><td>Markdown dans le repo</td></tr>
+                </tbody>
+            </table>
+
+            <ul class="bullets reveal">
+                <li><strong>6 jalons de communication</strong> : lancement → pipeline → métriques → DWH → API → soutenance</li>
+                <li><strong>Accessibilité</strong> : RGAA respecté (titres hiérarchiques, contraste, texte structuré)</li>
+                <li><strong>Retours intégrés</strong> : rétrospectives, commits traçables dans Git</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 8 — Architecture Globale
+         ========================================================= -->
+    <section class="slide" data-slide="7">
+        <span class="slide-number">07</span>
+        <div class="botanical-orb orb-gold" style="top: -8%; left: -8%;"></div>
+        <div class="botanical-orb orb-teal" style="bottom: -12%; right: -6%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">Architecture globale</span>
+            <h2 class="reveal">Vue C4 — Niveau Contexte</h2>
+
+            <div class="code-block reveal" style="line-height: 1.5;">
+<span class="hl">SOURCES</span>              <span class="hl">PIPELINE</span>           <span class="hl">EXPOSITION</span>
+
+Binance API ──▶  Kafka (stream) ──▶  FastAPI :8000
+CSV / JSON  ──▶  BRONZE → SILVER ──▶  Streamlit :8501
+Scraping    ──▶  GOLD → DuckDB  ──▶  OpenAPI /docs
+PostgreSQL  ──▶  MinIO (S3)     ──▶  Airflow :8081
+             ──▶  Redis (cache)  ──▶  Grafana :3000</div>
+
+            <div class="two-col reveal">
+                <ul class="bullets">
+                    <li><strong>15+ services Docker</strong> (8 profiles)</li>
+                    <li><strong>Airflow</strong> = orchestrateur unique</li>
+                </ul>
+                <ul class="bullets">
+                    <li><strong>Kafka</strong> = streaming temps réel</li>
+                    <li><strong>Prometheus + Grafana</strong> = monitoring</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 9 — Data Lake (C18-C21)
+         ========================================================= -->
+    <section class="slide" data-slide="8">
+        <span class="slide-number">08</span>
+        <div class="botanical-orb orb-pink" style="bottom: -10%; left: -8%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">C18–C21 — Data Lake</span>
+            <h2 class="reveal">Architecture 3 Zones + Gouvernance</h2>
+
+            <table class="data-table reveal">
+                <thead><tr><th>Zone</th><th>Contenu</th><th>Format</th><th>Rétention</th></tr></thead>
+                <tbody>
+                    <tr><td><span class="tag" style="background: rgba(224,122,79,0.15); color: var(--accent-orange);">Bronze</span></td><td>Données brutes Binance</td><td>Parquet</td><td>90 jours</td></tr>
+                    <tr><td><span class="tag-pink tag">Silver</span></td><td>Rendements, métriques</td><td>Parquet</td><td>1 an</td></tr>
+                    <tr><td><span class="tag">Gold</span></td><td>Portefeuille, frontier</td><td>JSON</td><td>Dernier run</td></tr>
+                </tbody>
+            </table>
+
+            <ul class="bullets reveal">
+                <li><strong>Catalogue de données</strong> complet : schéma, lignage, qualité, propriétaire (C20)</li>
+                <li><strong>RGPD</strong> : données publiques, aucune PII, pas d'applicabilité directe (C21)</li>
+                <li>Politique de rétention documentée avec justification légale</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 10 — Pipeline ETL (C8, C10, C15, C16)
+         ========================================================= -->
+    <section class="slide" data-slide="9">
+        <span class="slide-number">09</span>
+        <div class="botanical-orb orb-gold" style="top: -12%; right: -10%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">C8 + C10 + C15 + C16 — Pipeline ETL</span>
+            <h2 class="reveal">Airflow DAG — 5 Tâches Séquentielles</h2>
+
+            <div class="code-block reveal" style="text-align: center;">
+<span class="hl">ingest</span>  ──▶  <span class="hl">transform</span>  ──▶  <span class="hl">optimize</span>  ──▶  <span class="hl">frontier</span>  ──▶  <span class="hl">backtest</span></div>
+
+            <div class="two-col reveal">
+                <div>
+                    <ul class="bullets">
+                        <li><strong>C8</strong> — 5 sources via DataSource ABC</li>
+                        <li><strong>C10</strong> — Règles d'agrégation : union, normalisation, alignement</li>
+                    </ul>
+                </div>
+                <div>
+                    <ul class="bullets">
+                        <li><strong>C15</strong> — DAG Airflow : retry, timeout, SLA</li>
+                        <li><strong>C16</strong> — Monitoring via Airflow UI + logs structurés</li>
+                    </ul>
+                </div>
+            </div>
+
+            <p class="reveal" style="font-size: var(--small-size);">
+                <strong>Scheduler :</strong> <code>@daily</code> avec catchup désactivé — backfill manuel si nécessaire
+            </p>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 11 — Data Warehouse (C9, C11, C13-C17)
+         ========================================================= -->
+    <section class="slide" data-slide="10">
+        <span class="slide-number">10</span>
+        <div class="botanical-orb orb-teal" style="top: -8%; left: -8%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">C9 + C11 + C13–C17 — Data Warehouse</span>
+            <h2 class="reveal">Schéma en Étoile — DuckDB</h2>
+
+            <div class="code-block reveal" style="text-align: center;">
+      <span class="hl">dim_symbol</span>          <span class="hl">dim_date</span>
+           │                   │
+           └──────┬────────────┘
+                  ▼
+             <span class="hl">fact_prices</span>
+       (symbol_id, date_id,
+        open, high, low, close, volume)</div>
+
+            <div class="two-col reveal">
+                <ul class="bullets">
+                    <li><strong>C11</strong> — MERISE : MCD → MLD → MPD</li>
+                    <li><strong>C13</strong> — Faits OHLCV, dimensions symbole/date</li>
+                </ul>
+                <ul class="bullets">
+                    <li><strong>C14</strong> — DuckDB + vues analytiques SQL (C9)</li>
+                    <li><strong>C17</strong> — SCD Type 1 + Type 2 documenté</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 12 — API REST (C12)
+         ========================================================= -->
+    <section class="slide" data-slide="11">
+        <span class="slide-number">11</span>
+        <div class="botanical-orb orb-pink" style="bottom: -10%; right: -8%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">C12 — Exposition API</span>
+            <h2 class="reveal">FastAPI — 9 Endpoints</h2>
+
+            <div class="reveal" style="display: flex; flex-direction: column; gap: clamp(0.15rem, 0.3vw, 0.25rem);">
+                <div class="endpoint"><span class="method">GET</span><span class="path">/</span><span class="desc">Health check</span></div>
+                <div class="endpoint"><span class="method">GET</span><span class="path">/symbols</span><span class="desc">Symboles disponibles</span></div>
+                <div class="endpoint"><span class="method">GET</span><span class="path">/klines/{symbol}</span><span class="desc">Historique OHLCV</span></div>
+                <div class="endpoint"><span class="method">GET</span><span class="path">/metrics</span><span class="desc">Toutes les métriques</span></div>
+                <div class="endpoint"><span class="method">GET</span><span class="path">/metrics/{name}</span><span class="desc">Métrique spécifique</span></div>
+                <div class="endpoint"><span class="method">GET</span><span class="path">/portfolio</span><span class="desc">Portefeuille optimisé</span></div>
+                <div class="endpoint"><span class="method">GET</span><span class="path">/portfolio/summary</span><span class="desc">KPIs consolidés</span></div>
+                <div class="endpoint"><span class="method">GET</span><span class="path">/portfolio/frontier</span><span class="desc">Frontière efficiente</span></div>
+                <div class="endpoint"><span class="method">GET</span><span class="path">/portfolio/backtest</span><span class="desc">Walk-forward</span></div>
+            </div>
+
+            <div class="reveal" style="display: flex; gap: clamp(0.5rem, 1.5vw, 1rem); flex-wrap: wrap;">
+                <span class="tag">Depends() injection</span>
+                <span class="tag-pink tag">Pydantic models</span>
+                <span class="tag-teal tag">Redis cache</span>
+                <span class="tag">OpenAPI auto</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 13 — Dashboard (C12)
+         ========================================================= -->
+    <section class="slide" data-slide="12">
+        <span class="slide-number">12</span>
+        <div class="botanical-orb orb-gold" style="top: -8%; right: -6%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">C12 — Dashboard</span>
+            <h2 class="reveal">Streamlit — 6 Pages Interactives</h2>
+
+            <table class="data-table reveal">
+                <thead><tr><th>Page</th><th>Contenu</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Dashboard</strong></td><td>KPIs, allocation, risk contribution, risk-return scatter</td></tr>
+                    <tr><td><strong>Symbols</strong></td><td>Charts techniques (SMA, Bollinger, RSI), compare mode</td></tr>
+                    <tr><td><strong>Metrics</strong></td><td>Heatmaps corrélation/covariance, rolling pair correlation</td></tr>
+                    <tr><td><strong>Frontier</strong></td><td>Frontière efficiente + iso-Sharpe + capital market line</td></tr>
+                    <tr><td><strong>Backtest</strong></td><td>Walk-forward résultats, win rate, contribution par actif</td></tr>
+                    <tr><td><strong>Risk</strong></td><td>Vol roulante, beta vs BTC, skewness, VaR/CVaR, réseau</td></tr>
+                </tbody>
+            </table>
+
+            <p class="reveal" style="font-size: var(--small-size);">
+                Auto-refresh configurable · Refresh manuel · Date range selector · <strong>Plotly</strong> interactive charts
+            </p>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 14 — Optimisation de Portefeuille
+         ========================================================= -->
+    <section class="slide" data-slide="13">
+        <span class="slide-number">13</span>
+        <div class="botanical-orb orb-teal" style="bottom: -12%; left: -8%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">Optimisation</span>
+            <h2 class="reveal">Théorie de Markowitz</h2>
+
+            <div class="two-col reveal">
+                <div>
+                    <h3 style="margin-bottom: var(--element-gap);">Méthode</h3>
+                    <ul class="bullets">
+                        <li>Matrice de covariance (PyArrow, ddof=1)</li>
+                        <li>Optimisation SLSQP (scipy) : max Sharpe</li>
+                        <li>Fallback grid search si scipy indisponible</li>
+                        <li>Frontière efficiente (100 points)</li>
+                        <li>Walk-forward : train 60j → test 30j</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="margin-bottom: var(--element-gap);">Formules clés</h3>
+                    <div class="code-block" style="font-size: clamp(0.55rem, 0.85vw, 0.75rem);">
+r_t = ln(P_t / P_{t-1})
+σ   = std(r) × √365
+S   = (E[R] - Rf) / σ
+σ²p = w' × Cov × w</div>
+                </div>
+            </div>
+
+            <p class="reveal" style="font-size: var(--small-size);">
+                Résultats mesurés en live — comparaison optimisé vs equal weight vs BTC only
+            </p>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 15 — Qualité & Tests
+         ========================================================= -->
+    <section class="slide" data-slide="14">
+        <span class="slide-number">14</span>
+        <div class="botanical-orb orb-pink" style="top: -10%; right: -10%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">Qualité</span>
+            <h2 class="reveal">342 Tests — 100% Passants</h2>
+
+            <table class="data-table reveal">
+                <thead><tr><th>Fichier</th><th>Tests</th><th>Couverture</th></tr></thead>
+                <tbody>
+                    <tr><td>test_optimize.py</td><td><strong>53</strong></td><td>Markowitz, frontier, contraintes</td></tr>
+                    <tr><td>test_validation.py</td><td><strong>40</strong></td><td>Data quality bronze/silver/gold</td></tr>
+                    <tr><td>test_ingest_sources.py</td><td><strong>40</strong></td><td>5 sources DataSource ABC</td></tr>
+                    <tr><td>test_transform.py</td><td><strong>37</strong></td><td>Calculs financiers</td></tr>
+                    <tr><td>test_api + test_minio + test_redis</td><td><strong>61</strong></td><td>API, MinIO S3, Redis cache</td></tr>
+                    <tr><td>+ 6 autres fichiers</td><td><strong>111</strong></td><td>Config, storage, streaming, drift…</td></tr>
+                </tbody>
+            </table>
+
+            <div class="reveal" style="display: flex; gap: clamp(0.5rem, 1.5vw, 1rem); flex-wrap: wrap;">
+                <span class="tag-teal tag">ruff — 0 violation</span>
+                <span class="tag">mypy strict — 0 erreur</span>
+                <span class="tag-pink tag">GitHub Actions CI</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 16 — Choix Techniques — Justifications ADR
+         ========================================================= -->
+    <section class="slide" data-slide="15">
+        <span class="slide-number">15</span>
+        <div class="botanical-orb orb-gold" style="bottom: -8%; left: -6%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">ADR — Justifications</span>
+            <h2 class="reveal">Pourquoi Ces Choix ?</h2>
+
+            <table class="data-table reveal">
+                <thead><tr><th>Question probable</th><th>Réponse</th></tr></thead>
+                <tbody>
+                    <tr><td>Pourquoi PyArrow et pas Pandas ?</td><td>Mémoire 2–5× plus efficace, typage strict (ADR-003)</td></tr>
+                    <tr><td>Pourquoi DuckDB et pas PostgreSQL ?</td><td>OLAP embarqué, SQL sur Parquet sans serveur (ADR-002)</td></tr>
+                    <tr><td>Pourquoi Airflow et pas Cron ?</td><td>Retry, DAG visualisation, SLA alerting (ADR-005)</td></tr>
+                    <tr><td>Pourquoi FastAPI et pas Flask ?</td><td>Async natif, OpenAPI auto, Depends() injection (ADR-004)</td></tr>
+                    <tr><td>Pourquoi Kafka et pas polling ?</td><td>Streaming temps réel, découplage producteur/consommateur</td></tr>
+                    <tr><td>Comment scale si 100 symboles ?</td><td>Storage ABC pluggable (MinIO implémenté), Airflow parallélisme</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 17 — RGPD & Éco-conception (C21)
+         ========================================================= -->
+    <section class="slide" data-slide="16">
+        <span class="slide-number">16</span>
+        <div class="botanical-orb orb-teal" style="top: -10%; right: -8%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">C21 — Conformité</span>
+            <h2 class="reveal">RGPD &amp; Éco-Conception</h2>
+
+            <div class="two-col reveal">
+                <div>
+                    <h3 style="margin-bottom: var(--element-gap);">RGPD</h3>
+                    <ul class="bullets">
+                        <li>Données Binance = <strong>cours publics</strong>, aucune PII</li>
+                        <li>Registre des traitements conforme CNIL</li>
+                        <li>Base légale = intérêt légitime</li>
+                        <li>Mesures préventives documentées</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="margin-bottom: var(--element-gap);">Éco-conception</h3>
+                    <ul class="bullets">
+                        <li><strong>PyArrow</strong> : empreinte mémoire réduite</li>
+                        <li><strong>DuckDB</strong> : pas de serveur (0 idle)</li>
+                        <li><strong>Parquet</strong> : –60–80% vs CSV</li>
+                        <li><strong>Docker</strong> : pas de sur-provisionnement</li>
+                    </ul>
+                </div>
+            </div>
+
+            <p class="reveal" style="font-size: var(--small-size);">
+                Rétention : Bronze 90j · Silver 1 an · Gold = dernier run (écrasement)
+            </p>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 18 — Résultats & Bilan
+         ========================================================= -->
+    <section class="slide" data-slide="17">
+        <span class="slide-number">17</span>
+        <div class="botanical-orb orb-gold" style="top: -10%; left: -6%;"></div>
+        <div class="botanical-orb orb-pink" style="bottom: -12%; right: -8%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">Bilan</span>
+            <h2 class="reveal">21 Compétences Couvertes</h2>
+
+            <div class="check-grid reveal">
+                <div class="check-item"><span class="check">✓</span> Bloc 1 — Pilotage (C1–C7) : <strong>7/7</strong></div>
+                <div class="check-item"><span class="check">✓</span> Bloc 2 — Collecte (C8–C12) : <strong>5/5</strong></div>
+                <div class="check-item"><span class="check">✓</span> Bloc 3 — Warehouse (C13–C17) : <strong>5/5</strong></div>
+                <div class="check-item"><span class="check">✓</span> Bloc 4 — Data Lake (C18–C21) : <strong>4/4</strong></div>
+            </div>
+
+            <div class="divider reveal"></div>
+
+            <div class="stat-row reveal">
+                <div class="stat"><div class="value">8K+</div><div class="label">Lignes Python</div></div>
+                <div class="stat"><div class="value">342</div><div class="label">Tests</div></div>
+                <div class="stat"><div class="value">15+</div><div class="label">Services Docker</div></div>
+                <div class="stat"><div class="value">10</div><div class="label">Documents rapport</div></div>
+            </div>
+
+            <div class="reveal" style="display: flex; gap: clamp(0.4rem, 1vw, 0.7rem); flex-wrap: wrap;">
+                <span class="tag">API REST</span>
+                <span class="tag-teal tag">Redis cache</span>
+                <span class="tag-pink tag">Kafka streaming</span>
+                <span class="tag">MinIO S3</span>
+                <span class="tag-teal tag">Prometheus</span>
+                <span class="tag-pink tag">Data quality</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 19 — Perspectives & Limites
+         ========================================================= -->
+    <section class="slide" data-slide="18">
+        <span class="slide-number">18</span>
+        <div class="botanical-orb orb-teal" style="bottom: -10%; left: -8%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">Perspectives</span>
+            <h2 class="reveal">Limites &amp; Évolutions</h2>
+
+            <div class="two-col reveal">
+                <div>
+                    <h3 style="margin-bottom: var(--element-gap); color: var(--accent-pink);">Limites actuelles</h3>
+                    <ul class="bullets">
+                        <li>Pas de ML prédictif (Markowitz = classique)</li>
+                        <li>Grid search fallback limité à ~15 actifs</li>
+                        <li>Monitoring métriques métier déclaratif</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="margin-bottom: var(--element-gap); color: var(--accent-teal);">Évolutions naturelles</h3>
+                    <ul class="bullets">
+                        <li>ML (LSTM, transformer) pour prédiction</li>
+                        <li>SCD Type 2 pour historisation métadonnées</li>
+                        <li>Terraform/IaC pour déploiement cloud</li>
+                        <li>Schema Registry (Avro) pour Kafka</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 20 — Conclusion
+         ========================================================= -->
+    <section class="slide closing-slide" data-slide="19">
+        <div class="botanical-orb orb-gold" style="top: -8%; left: -5%;"></div>
+        <div class="botanical-orb orb-pink" style="bottom: -10%; right: -5%;"></div>
+        <div class="botanical-orb orb-teal" style="top: 40%; left: 50%; transform: translateX(-50%);"></div>
+
+        <div class="slide-content">
+            <span class="title-tag reveal">Conclusion</span>
+            <div class="accent-line reveal"></div>
+            <h1 class="reveal" style="font-size: var(--h2-size); max-width: min(80vw, 650px);">
+                Un système de données complet, de bout en bout
+            </h1>
+
+            <div class="code-block reveal" style="text-align: center; max-width: min(80vw, 600px); margin: 0 auto;">
+Besoin → 5 sources → Data Lake → DWH → API → Dashboard
+ <span class="hl">C1</span>        <span class="hl">C8</span>          <span class="hl">C18</span>       <span class="hl">C13</span>   <span class="hl">C12</span>     <span class="hl">C12</span></div>
+
+            <ul class="bullets reveal" style="max-width: min(75vw, 500px);">
+                <li>Architecture propre, testée, documentée</li>
+                <li>Décisions fondées sur ADR, patterns industriels</li>
+                <li>Conformité RGPD démontrée</li>
+                <li>Démonstration live disponible</li>
+            </ul>
+
+            <p class="reveal" style="font-family: var(--font-display); font-size: var(--h3-size); font-style: italic; color: var(--accent-gold); margin-top: var(--element-gap);">
+                Merci pour votre attention.
+            </p>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SLIDE 21 — Questions & Réponses
+         ========================================================= -->
+    <section class="slide" data-slide="20">
+        <span class="slide-number">Q&amp;A</span>
+        <div class="botanical-orb orb-gold" style="top: -5%; right: -5%;"></div>
+        <div class="botanical-orb orb-pink" style="bottom: -8%; left: -5%;"></div>
+
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="tag reveal">Questions &amp; Réponses</span>
+            <h2 class="reveal">Points Chauds Préparés</h2>
+
+            <div class="check-grid reveal">
+                <div class="check-item"><span class="check">●</span> Storage ABC → swappabilité backend</div>
+                <div class="check-item"><span class="check">●</span> PyArrow covariance → preuve calcul</div>
+                <div class="check-item"><span class="check">●</span> Walk-forward → pas de data leakage</div>
+                <div class="check-item"><span class="check">●</span> Kafka → temps réel vs batch Airflow</div>
+                <div class="check-item"><span class="check">●</span> Redis cache → TTL + fallback gracieux</div>
+                <div class="check-item"><span class="check">●</span> Data quality → validation contracts</div>
+                <div class="check-item"><span class="check">●</span> RGPD → registre des traitements</div>
+                <div class="check-item"><span class="check">●</span> Scale → MinIO S3 + Airflow parallélisme</div>
+            </div>
+
+            <div class="divider reveal"></div>
+
+            <div class="qa-links reveal">
+                <div class="qa-link"><span class="port">:8000</span>/docs — API live</div>
+                <div class="qa-link"><span class="port">:8501</span> — Dashboard</div>
+                <div class="qa-link"><span class="port">:8081</span> — Airflow DAG</div>
+                <div class="qa-link"><span class="port">:9001</span> — MinIO Console</div>
+                <div class="qa-link"><span class="port">:8080</span> — Redpanda Console</div>
+                <div class="qa-link"><span class="port">:3000</span> — Grafana</div>
+                <div class="qa-link"><span class="port">:9090</span> — Prometheus</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         JAVASCRIPT — Slide controller
+         =========================================== -->
+    <script>
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupWheelNav();
+                this.setupProgressBar();
+                this.setupNavDots();
+            }
+
+            /* --- Intersection Observer: add .visible on scroll --- */
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            const idx = Array.from(this.slides).indexOf(entry.target);
+                            if (idx !== -1) {
+                                this.currentSlide = idx;
+                                this.updateProgressBar();
+                                this.updateNavDots();
+                            }
+                        }
+                    });
+                }, { threshold: 0.4 });
+
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            /* --- Keyboard: arrows, space, page up/down --- */
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    switch (e.key) {
+                        case 'ArrowDown':
+                        case 'ArrowRight':
+                        case ' ':
+                        case 'PageDown':
+                            e.preventDefault();
+                            this.goToSlide(this.currentSlide + 1);
+                            break;
+                        case 'ArrowUp':
+                        case 'ArrowLeft':
+                        case 'PageUp':
+                            e.preventDefault();
+                            this.goToSlide(this.currentSlide - 1);
+                            break;
+                        case 'Home':
+                            e.preventDefault();
+                            this.goToSlide(0);
+                            break;
+                        case 'End':
+                            e.preventDefault();
+                            this.goToSlide(this.slides.length - 1);
+                            break;
+                    }
+                });
+            }
+
+            /* --- Touch/swipe --- */
+            setupTouchNav() {
+                let startY = 0;
+                document.addEventListener('touchstart', (e) => {
+                    startY = e.touches[0].clientY;
+                }, { passive: true });
+
+                document.addEventListener('touchend', (e) => {
+                    const diff = startY - e.changedTouches[0].clientY;
+                    if (Math.abs(diff) > 50) {
+                        this.goToSlide(this.currentSlide + (diff > 0 ? 1 : -1));
+                    }
+                }, { passive: true });
+            }
+
+            /* --- Mouse wheel with debounce --- */
+            setupWheelNav() {
+                document.addEventListener('wheel', (e) => {
+                    if (this.isScrolling) return;
+                    if (Math.abs(e.deltaY) < 30) return;
+
+                    this.isScrolling = true;
+                    this.goToSlide(this.currentSlide + (e.deltaY > 0 ? 1 : -1));
+
+                    setTimeout(() => { this.isScrolling = false; }, 800);
+                }, { passive: true });
+            }
+
+            /* --- Navigate to slide --- */
+            goToSlide(index) {
+                if (index < 0 || index >= this.slides.length) return;
+                this.currentSlide = index;
+                this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                this.updateProgressBar();
+                this.updateNavDots();
+            }
+
+            /* --- Progress bar --- */
+            setupProgressBar() {
+                this.progressBar = document.getElementById('progressBar');
+                this.updateProgressBar();
+            }
+
+            updateProgressBar() {
+                if (!this.progressBar) return;
+                const pct = ((this.currentSlide + 1) / this.slides.length) * 100;
+                this.progressBar.style.width = pct + '%';
+            }
+
+            /* --- Nav dots --- */
+            setupNavDots() {
+                const container = document.getElementById('navDots');
+                if (!container) return;
+
+                this.slides.forEach((_, i) => {
+                    const dot = document.createElement('button');
+                    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                    dot.setAttribute('aria-label', `Slide ${i + 1}`);
+                    dot.addEventListener('click', () => this.goToSlide(i));
+                    container.appendChild(dot);
+                });
+
+                this.dots = container.querySelectorAll('.nav-dot');
+            }
+
+            updateNavDots() {
+                if (!this.dots) return;
+                this.dots.forEach((dot, i) => {
+                    dot.classList.toggle('active', i === this.currentSlide);
+                });
+            }
+        }
+
+        /* Initialize on DOM ready */
+        document.addEventListener('DOMContentLoaded', () => {
+            new SlidePresentation();
+        });
+    </script>
+</body>
+</html>
