@@ -41,7 +41,7 @@ All engineering work complete. 342 tests passing. Remaining items are soutenance
 
 ## Soutenance Prep
 
-- [ ] **SP-1**: Generate HTML slides from `slides_soutenance.md`
+- [x] **SP-1**: Generate HTML slides from `slides_soutenance.md`
 - [ ] **SP-2**: Demo dry run — test all Docker profiles end-to-end
 - [ ] **SP-3**: Dashboard mobile check (L-10)
 - [ ] **SP-4**: French spell check on docs (L-12)
