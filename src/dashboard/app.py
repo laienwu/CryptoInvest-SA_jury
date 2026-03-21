@@ -1045,7 +1045,7 @@ def page_symbols() -> None:
 
     st.markdown("---")
     st.subheader("Raw Data")
-    st.dataframe(df.drop(columns=["date"], errors="ignore").head(20), use_container_width=True)
+    st.dataframe(df.drop(columns=["date"], errors="ignore").tail(30), use_container_width=True)
     render_csv_export(df.drop(columns=["date"], errors="ignore"), f"{selected_symbol}_klines.csv")
 
 
