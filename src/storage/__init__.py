@@ -38,8 +38,15 @@ from typing import Any
 
 from .base import Storage, StorageError
 from .duckdb import DuckDBStorage
-from .minio import MinIOStorage
 from .parquet import ParquetStorage
+
+# MinIO is an optional dependency — only register if installed
+try:
+    from .minio import MinIOStorage
+
+    _has_minio = True
+except ImportError:
+    _has_minio = False
 
 # Type alias for storage names
 StorageName = str
@@ -51,8 +58,9 @@ StorageName = str
 _mutable_registry: dict[str, type[Storage]] = {
     "parquet": ParquetStorage,
     "duckdb": DuckDBStorage,
-    "minio": MinIOStorage,
 }
+if _has_minio:
+    _mutable_registry["minio"] = MinIOStorage
 _STORAGE_REGISTRY: MappingProxyType[str, type[Storage]] = MappingProxyType(_mutable_registry)
 
 # Default storage backend
@@ -154,8 +162,9 @@ __all__ = [
     # Implementations
     "ParquetStorage",
     "DuckDBStorage",
-    "MinIOStorage",
     # Utilities
     "register_storage",
     "list_available_backends",
 ]
+if _has_minio:
+    __all__.append("MinIOStorage")

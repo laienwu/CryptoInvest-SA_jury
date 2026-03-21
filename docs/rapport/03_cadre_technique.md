@@ -200,7 +200,7 @@ Conformément au [RGESN](https://ecoresponsable.numerique.gouv.fr/publications/r
 
 ## 9. Accessibilité
 
-### 9.1 Adaptation postes de travail
+### 9.1 Adaptation des postes de travail
 - API REST : accessible depuis tout client HTTP
 - Documentation OpenAPI : navigateur standard
 - Logs : format texte lisible
