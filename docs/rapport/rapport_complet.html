@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rapport Professionnel - Portfolio Optimization Pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --color-bg: #faf9f7;
+    --color-text: #1a1a1a;
+    --color-text-secondary: #555;
+    --color-accent: #2c5282;
+    --color-accent-light: #ebf4ff;
+    --color-border: #e2e2e2;
+    --color-code-bg: #f0ede8;
+    --font-serif: "Libre Baskerville", Georgia, serif;
+    --font-sans: "Source Sans 3", "Source Sans Pro", sans-serif;
+    --font-mono: "JetBrains Mono", "Consolas", monospace;
+}
+
+@page {
+    size: A4;
+    margin: 25mm 20mm 30mm 20mm;
+}
+
+body {
+    font-family: var(--font-sans);
+    font-size: 11pt;
+    line-height: 1.65;
+    color: var(--color-text);
+    background: var(--color-bg);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+/* ── Screen container ── */
+@media screen {
+    body {
+        max-width: 210mm;
+        margin: 0 auto;
+        padding: 20mm;
+    }
+}
+
+/* ── Typography ── */
+h1, h2, h3, h4 {
+    font-family: var(--font-serif);
+    color: var(--color-text);
+    line-height: 1.3;
+}
+
+h1 {
+    font-size: 22pt;
+    margin: 0 0 0.5em;
+    border-bottom: 3px solid var(--color-accent);
+    padding-bottom: 0.3em;
+}
+
+h2 {
+    font-size: 16pt;
+    margin: 1.8em 0 0.6em;
+    color: var(--color-accent);
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0.2em;
+}
+
+h3 {
+    font-size: 12pt;
+    margin: 1.4em 0 0.4em;
+}
+
+h4 {
+    font-size: 11pt;
+    margin: 1em 0 0.3em;
+    font-style: italic;
+}
+
+p { margin: 0.6em 0; }
+
+blockquote {
+    border-left: 3px solid var(--color-accent);
+    margin: 1em 0;
+    padding: 0.5em 1em;
+    background: var(--color-accent-light);
+    font-style: italic;
+    color: var(--color-text-secondary);
+}
+
+/* ── Tables ── */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8em 0;
+    font-size: 9.5pt;
+}
+
+th, td {
+    border: 1px solid var(--color-border);
+    padding: 6px 10px;
+    text-align: left;
+    vertical-align: top;
+}
+
+th {
+    background: var(--color-accent);
+    color: white;
+    font-weight: 600;
+    font-size: 9pt;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+tr:nth-child(even) { background: #f5f3ef; }
+
+/* ── Code ── */
+code {
+    font-family: var(--font-mono);
+    font-size: 9pt;
+    background: var(--color-code-bg);
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+pre {
+    background: var(--color-code-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin: 0.8em 0;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 8.5pt;
+    line-height: 1.5;
+    white-space: pre;
+}
+
+pre code {
+    background: none;
+    padding: 0;
+}
+
+/* ── Lists ── */
+ul, ol {
+    margin: 0.5em 0 0.5em 1.5em;
+}
+
+li { margin: 0.2em 0; }
+
+/* ── Cover page ── */
+.cover {
+    text-align: center;
+    padding: 60mm 0 40mm;
+    page-break-after: always;
+}
+
+.cover h1 {
+    font-size: 28pt;
+    border: none;
+    margin-bottom: 0.3em;
+    color: var(--color-accent);
+}
+
+.cover .subtitle {
+    font-size: 16pt;
+    color: var(--color-text-secondary);
+    font-family: var(--font-sans);
+    font-weight: 300;
+    margin-bottom: 2em;
+}
+
+.cover .meta {
+    font-size: 12pt;
+    color: var(--color-text-secondary);
+    line-height: 2;
+}
+
+.cover .meta strong {
+    color: var(--color-text);
+}
+
+.cover .line {
+    width: 60%;
+    height: 2px;
+    background: var(--color-accent);
+    margin: 2em auto;
+}
+
+/* ── TOC ── */
+.toc {
+    page-break-after: always;
+}
+
+.toc h1 {
+    text-align: center;
+    border: none;
+}
+
+.toc-list {
+    list-style: none;
+    margin: 2em 0;
+    padding: 0;
+}
+
+.toc-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0.5em 0;
+    border-bottom: 1px dotted var(--color-border);
+    font-size: 12pt;
+}
+
+.toc-list li span.num {
+    font-family: var(--font-serif);
+    font-weight: 700;
+    color: var(--color-accent);
+    margin-right: 0.8em;
+    min-width: 2em;
+}
+
+/* ── Chapters ── */
+.chapter {
+    page-break-before: always;
+}
+
+.chapter:first-of-type {
+    page-break-before: auto;
+}
+
+/* ── Diagrams ── */
+.diagram {
+    background: var(--color-code-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 16px;
+    margin: 1em 0;
+    font-family: var(--font-mono);
+    font-size: 8pt;
+    line-height: 1.4;
+    white-space: pre;
+    overflow-x: auto;
+}
+
+/* ── Print ── */
+@media print {
+    body {
+        background: white;
+        font-size: 10pt;
+        max-width: none;
+        padding: 0;
+    }
+
+    h1, h2, h3, h4 { page-break-after: avoid; }
+    table, pre, .diagram { page-break-inside: avoid; }
+
+    a { color: var(--color-text); text-decoration: none; }
+
+    .no-print { display: none; }
+}
+
+/* ── Horizontal rules ── */
+hr {
+    border: none;
+    border-top: 1px solid var(--color-border);
+    margin: 1.5em 0;
+}
+
+/* ── Strong/em ── */
+strong { font-weight: 700; }
+em { font-style: italic; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- COVER PAGE                                   -->
+<!-- ════════════════════════════════════════════ -->
+<div class="cover">
+    <h1>Portfolio Optimization Pipeline</h1>
+    <p class="subtitle">Infrastructure de Donn&eacute;es pour l'Optimisation de Portefeuille Crypto</p>
+    <div class="line"></div>
+    <div class="meta">
+        <p><strong>Rapport Professionnel</strong></p>
+        <p>Certification RNCP Niveau 7<br>Expert en Infrastructures de Donn&eacute;es Massives</p>
+        <p>&nbsp;</p>
+        <p><strong>Candidat :</strong> Laien Wu</p>
+        <p><strong>Date :</strong> Mars 2026</p>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- TABLE OF CONTENTS                            -->
+<!-- ════════════════════════════════════════════ -->
+<div class="toc">
+    <h1>Table des Mati&egrave;res</h1>
+    <ul class="toc-list">
+        <li><span class="num">01</span> Analyse du Besoin (C1)</li>
+        <li><span class="num">02</span> Cartographie des Donn&eacute;es (C2)</li>
+        <li><span class="num">03</span> Cadre Technique d'Exploitation (C3)</li>
+        <li><span class="num">04</span> Veille Technologique et R&eacute;glementaire (C4)</li>
+        <li><span class="num">05</span> Planification et Supervision (C5, C6)</li>
+        <li><span class="num">06</span> Communication Projet (C7)</li>
+        <li><span class="num">07</span> Conformit&eacute; RGPD et Gouvernance (C21)</li>
+        <li><span class="num">08</span> Gestion des Variations de Dimensions (C17)</li>
+        <li><span class="num">09</span> Catalogue de Donn&eacute;es (C20)</li>
+        <li><span class="num">10</span> Mod&eacute;lisation MERISE (C11)</li>
+    </ul>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- CHAPTER 1: Analyse du Besoin                 -->
+<!-- ════════════════════════════════════════════ -->
+<div class="chapter">
+<h1>01 &mdash; Analyse du Besoin (C1)</h1>
+
+<h2>1. Contexte et enjeux</h2>
+
+<h3>1.1 Pr&eacute;sentation de l'organisation</h3>
+<p>L'organisation <strong>CryptoInvest SA</strong> est une soci&eacute;t&eacute; de gestion d'actifs num&eacute;riques souhaitant optimiser ses strat&eacute;gies d'investissement en cryptomonnaies. Face &agrave; la volatilit&eacute; du march&eacute; crypto, la direction souhaite mettre en place une infrastructure data permettant d'analyser les donn&eacute;es de march&eacute; et d'optimiser l'allocation de portefeuille.</p>
+
+<h3>1.2 Expression du besoin initial</h3>
+<blockquote>&laquo; Nous souhaitons disposer d'un outil permettant de collecter automatiquement les donn&eacute;es de march&eacute; crypto, de les analyser, et de proposer une allocation optimale de portefeuille bas&eacute;e sur la th&eacute;orie moderne du portefeuille (Markowitz). &raquo;</blockquote>
+
+<h3>1.3 Enjeux strat&eacute;giques</h3>
+<ul>
+    <li><strong>Performance</strong> : Am&eacute;liorer le rendement ajust&eacute; au risque des portefeuilles</li>
+    <li><strong>Automatisation</strong> : R&eacute;duire les t&acirc;ches manuelles de collecte de donn&eacute;es</li>
+    <li><strong>Scalabilit&eacute;</strong> : Pouvoir ajouter de nouveaux actifs facilement</li>
+    <li><strong>Conformit&eacute;</strong> : Respecter les r&eacute;glementations (RGPD, tra&ccedil;abilit&eacute;)</li>
+</ul>
+
+<h2>2. Grilles d'entretien</h2>
+
+<h3>2.1 Entretien Direction G&eacute;n&eacute;rale</h3>
+<table>
+<tr><th>Question</th><th>R&eacute;ponse</th></tr>
+<tr><td>Quels sont les objectifs business du projet ?</td><td>Optimiser l'allocation de portefeuille pour maximiser le ratio rendement/risque</td></tr>
+<tr><td>Quel est le budget allou&eacute; ?</td><td>Budget limit&eacute;, privil&eacute;gier les solutions open-source</td></tr>
+<tr><td>Quels sont les d&eacute;lais ?</td><td>MVP en 3 mois</td></tr>
+<tr><td>Qui sont les utilisateurs finaux ?</td><td>&Eacute;quipe de gestion, analystes quantitatifs</td></tr>
+</table>
+
+<h3>2.2 Entretien &Eacute;quipe Trading</h3>
+<table>
+<tr><th>Question</th><th>R&eacute;ponse</th></tr>
+<tr><td>Quelles donn&eacute;es utilisez-vous actuellement ?</td><td>Prix OHLCV manuellement extraits de Binance</td></tr>
+<tr><td>Quelle fr&eacute;quence de mise &agrave; jour ?</td><td>Quotidienne suffit pour l'instant</td></tr>
+<tr><td>Quels actifs suivez-vous ?</td><td>BTC, ETH principalement, extensible &agrave; d'autres</td></tr>
+<tr><td>Quels indicateurs calculez-vous ?</td><td>Rendements, volatilit&eacute;, corr&eacute;lations</td></tr>
+</table>
+
+<h3>2.3 Entretien IT / Infrastructure</h3>
+<table>
+<tr><th>Question</th><th>R&eacute;ponse</th></tr>
+<tr><td>Quelle infrastructure existante ?</td><td>Serveurs Linux, pas de cloud</td></tr>
+<tr><td>Contraintes techniques ?</td><td>Pas de base de donn&eacute;es lourde (Postgres optionnel)</td></tr>
+<tr><td>Comp&eacute;tences &eacute;quipe ?</td><td>Python, SQL, Docker</td></tr>
+<tr><td>Exigences s&eacute;curit&eacute; ?</td><td>Donn&eacute;es publiques, pas de PII</td></tr>
+</table>
+
+<h2>3. Note de synth&egrave;se</h2>
+
+<h3>3.1 Reformulation du besoin</h3>
+<p>Le projet vise &agrave; cr&eacute;er une <strong>infrastructure data compl&egrave;te</strong> pour :</p>
+<ol>
+    <li><strong>Collecter</strong> automatiquement les donn&eacute;es OHLCV depuis l'API Binance</li>
+    <li><strong>Stocker</strong> les donn&eacute;es dans un format optimis&eacute; (Data Lake)</li>
+    <li><strong>Transformer</strong> les donn&eacute;es brutes en m&eacute;triques (rendements, volatilit&eacute;, corr&eacute;lations)</li>
+    <li><strong>Analyser</strong> via un Data Warehouse avec requ&ecirc;tes SQL</li>
+    <li><strong>Optimiser</strong> l'allocation de portefeuille (Markowitz)</li>
+    <li><strong>Exposer</strong> les r&eacute;sultats via API REST</li>
+</ol>
+
+<h3>3.2 P&eacute;rim&egrave;tre fonctionnel</h3>
+<table>
+<tr><th>Inclus</th><th>Exclus</th></tr>
+<tr><td>Collecte API Binance</td><td>Trading automatique</td></tr>
+<tr><td>Stockage Parquet/DuckDB</td><td>Donn&eacute;es temps r&eacute;el (streaming)</td></tr>
+<tr><td>Calculs statistiques</td><td>Machine Learning pr&eacute;dictif</td></tr>
+<tr><td>Optimisation Markowitz</td><td>Backtesting complet</td></tr>
+<tr><td>API REST consultation</td><td>Interface graphique</td></tr>
+</table>
+
+<h3>3.3 Moyens mobilisables</h3>
+<ul>
+    <li><strong>Humains</strong> : 1 Data Engineer</li>
+    <li><strong>Techniques</strong> : Python, DuckDB, FastAPI, Docker</li>
+    <li><strong>Financiers</strong> : Budget limit&eacute; &rarr; solutions open-source uniquement</li>
+</ul>
+
+<h3>3.4 Analyse RICE</h3>
+<table>
+<tr><th>Fonctionnalit&eacute;</th><th>Reach</th><th>Impact</th><th>Confidence</th><th>Effort</th><th>Score</th></tr>
+<tr><td>Pipeline ETL</td><td>5</td><td>5</td><td>5</td><td>3</td><td>41.7</td></tr>
+<tr><td>Data Warehouse</td><td>4</td><td>4</td><td>4</td><td>2</td><td>32.0</td></tr>
+<tr><td>API REST</td><td>3</td><td>3</td><td>5</td><td>1</td><td>45.0</td></tr>
+<tr><td>Optimisation</td><td>5</td><td>5</td><td>4</td><td>2</td><td>50.0</td></tr>
+</table>
+<p><strong>Priorit&eacute;</strong> : Optimisation &gt; API &gt; Pipeline &gt; DWH</p>
+
+<h3>3.5 Objectifs SMART</h3>
+<ol>
+    <li><strong>Sp&eacute;cifique</strong> : Cr&eacute;er un pipeline ETL collectant les donn&eacute;es Binance</li>
+    <li><strong>Mesurable</strong> : Traiter 2+ symboles avec donn&eacute;es sur 90 jours</li>
+    <li><strong>Atteignable</strong> : Technologies ma&icirc;tris&eacute;es (Python, SQL)</li>
+    <li><strong>R&eacute;aliste</strong> : Architecture simple, pas de cloud</li>
+    <li><strong>Temporel</strong> : MVP fonctionnel en 3 mois</li>
+</ol>
+
+<h2>4. Recommandation de cadrage</h2>
+
+<h3>4.1 Solution pr&eacute;conis&eacute;e</h3>
+<p>Architecture <strong>Data Lake + Data Warehouse</strong> l&eacute;g&egrave;re :</p>
+<ul>
+    <li>Stockage : Parquet (lake) + DuckDB (warehouse)</li>
+    <li>ETL : Scripts Python (ingest &rarr; transform &rarr; optimize)</li>
+    <li>Exposition : FastAPI</li>
+    <li>D&eacute;ploiement : Docker</li>
+</ul>
+
+<h3>4.2 Risques identifi&eacute;s</h3>
+<table>
+<tr><th>Risque</th><th>Probabilit&eacute;</th><th>Impact</th><th>Mitigation</th></tr>
+<tr><td>API Binance indisponible</td><td>Faible</td><td>Moyen</td><td>Retry + cache local</td></tr>
+<tr><td>Volume de donn&eacute;es</td><td>Faible</td><td>Faible</td><td>DuckDB scale bien</td></tr>
+<tr><td>Comp&eacute;tences</td><td>Faible</td><td>Moyen</td><td>Documentation</td></tr>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- CHAPTER 2: Cartographie des Donn&eacute;es          -->
+<!-- ════════════════════════════════════════════ -->
+<div class="chapter">
+<h1>02 &mdash; Cartographie des Donn&eacute;es (C2)</h1>
+
+<h2>1. Inventaire des sources</h2>
+
+<h3>1.1 Source principale : API Binance</h3>
+<table>
+<tr><th>Attribut</th><th>Valeur</th></tr>
+<tr><td><strong>Type</strong></td><td>API REST publique</td></tr>
+<tr><td><strong>URL</strong></td><td><code>https://api.binance.com/api/v3/klines</code></td></tr>
+<tr><td><strong>Authentification</strong></td><td>Aucune (donn&eacute;es publiques)</td></tr>
+<tr><td><strong>Rate limit</strong></td><td>1200 requ&ecirc;tes/minute</td></tr>
+<tr><td><strong>Format</strong></td><td>JSON</td></tr>
+</table>
+
+<h3>1.2 Donn&eacute;es disponibles</h3>
+<table>
+<tr><th>Endpoint</th><th>Description</th><th>Fr&eacute;quence</th></tr>
+<tr><td><code>/klines</code></td><td>Donn&eacute;es OHLCV (candlesticks)</td><td>Temps r&eacute;el</td></tr>
+<tr><td><code>/ticker/price</code></td><td>Prix actuel</td><td>Temps r&eacute;el</td></tr>
+<tr><td><code>/exchangeInfo</code></td><td>M&eacute;tadonn&eacute;es symboles</td><td>Statique</td></tr>
+</table>
+
+<h2>2. Glossaire m&eacute;tier (S&eacute;mantique)</h2>
+<table>
+<tr><th>Terme</th><th>D&eacute;finition</th></tr>
+<tr><td><strong>OHLCV</strong></td><td>Open, High, Low, Close, Volume &ndash; donn&eacute;es de chandelier</td></tr>
+<tr><td><strong>Symbol</strong></td><td>Paire de trading (ex: BTCUSDT = Bitcoin vs Tether)</td></tr>
+<tr><td><strong>Kline</strong></td><td>Chandelier japonais sur une p&eacute;riode donn&eacute;e</td></tr>
+<tr><td><strong>Interval</strong></td><td>P&eacute;riode du chandelier (1d = journalier)</td></tr>
+<tr><td><strong>Rendement</strong></td><td>Variation relative du prix entre deux p&eacute;riodes</td></tr>
+<tr><td><strong>Volatilit&eacute;</strong></td><td>&Eacute;cart-type annualis&eacute; des rendements</td></tr>
+<tr><td><strong>Corr&eacute;lation</strong></td><td>Mesure de co-mouvement entre deux actifs</td></tr>
+<tr><td><strong>Covariance</strong></td><td>Mesure de variance conjointe</td></tr>
+<tr><td><strong>Sharpe Ratio</strong></td><td>Rendement ajust&eacute; au risque</td></tr>
+</table>
+
+<h2>3. Mod&egrave;les de donn&eacute;es</h2>
+
+<h3>3.1 Donn&eacute;es brutes (Bronze)</h3>
+<p><strong>Sch&eacute;ma klines</strong> :</p>
+<pre><code>timestamp : STRING (ISO 8601)
+open      : FLOAT64
+high      : FLOAT64
+low       : FLOAT64
+close     : FLOAT64
+volume    : FLOAT64</code></pre>
+<p><strong>Stockage</strong> : <code>data/raw/klines/{SYMBOL}.parquet</code></p>
+
+<h3>3.2 Donn&eacute;es transform&eacute;es (Silver)</h3>
+<p><strong>returns.parquet</strong> :</p>
+<pre><code>date   : STRING
+symbol : STRING
+value  : FLOAT64 (rendement journalier)</code></pre>
+
+<p><strong>volatility.parquet</strong> :</p>
+<pre><code>symbol : STRING
+value  : FLOAT64 (volatilit&eacute; annualis&eacute;e)</code></pre>
+
+<p><strong>correlation.parquet / covariance.parquet</strong> :</p>
+<pre><code>symbol_row : STRING
+symbol_col : STRING
+value      : FLOAT64</code></pre>
+
+<h3>3.3 Donn&eacute;es agr&eacute;g&eacute;es (Gold)</h3>
+<p><strong>weights.json</strong> :</p>
+<pre><code>{
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "weights": {"BTCUSDT": 0.6, "ETHUSDT": 0.4},
+  "expected_return": 0.15,
+  "volatility": 0.25,
+  "sharpe_ratio": 0.6
+}</code></pre>
+
+<h2>4. Mod&egrave;le dimensionnel (Star Schema)</h2>
+
+<h3>4.1 Table de faits &mdash; fact_prices</h3>
+<table>
+<tr><th>Colonne</th><th>Type</th><th>Description</th></tr>
+<tr><td>symbol</td><td>STRING</td><td>FK vers dim_symbol</td></tr>
+<tr><td>timestamp</td><td>STRING</td><td>FK vers dim_date</td></tr>
+<tr><td>open</td><td>FLOAT64</td><td>Prix d'ouverture</td></tr>
+<tr><td>high</td><td>FLOAT64</td><td>Prix le plus haut</td></tr>
+<tr><td>low</td><td>FLOAT64</td><td>Prix le plus bas</td></tr>
+<tr><td>close</td><td>FLOAT64</td><td>Prix de cl&ocirc;ture</td></tr>
+<tr><td>volume</td><td>FLOAT64</td><td>Volume &eacute;chang&eacute;</td></tr>
+</table>
+
+<h3>4.2 Sch&eacute;ma visuel</h3>
+<pre class="diagram">                    +---------------+
+                    |  dim_symbol   |
+                    +---------------+
+                    | symbol_id     |
+                    | symbol        |
+                    +-------+-------+
+                            |
++---------------+   +-------+-------+
+|   dim_date    |   |  fact_prices  |
++---------------+   +---------------+
+| date_id       |&lt;--| symbol        |
+| date          |   | timestamp     |
+| year          |   | open          |
+| month         |   | high          |
+| day           |   | low           |
+| day_of_week   |   | close         |
++---------------+   | volume        |
+                    +---------------+</pre>
+
+<h2>5. Flux de donn&eacute;es</h2>
+
+<h3>5.1 Matrice des flux</h3>
+<table>
+<tr><th>Source</th><th>Destination</th><th>Fr&eacute;quence</th><th>Volume</th><th>Format</th></tr>
+<tr><td>Binance API</td><td>data/raw/</td><td>Quotidien</td><td>~1KB/symbol/jour</td><td>Parquet</td></tr>
+<tr><td>data/raw/</td><td>data/processed/</td><td>Quotidien</td><td>~5KB</td><td>Parquet</td></tr>
+<tr><td>data/processed/</td><td>data/output/</td><td>Quotidien</td><td>~1KB</td><td>JSON</td></tr>
+<tr><td>data/</td><td>API REST</td><td>On-demand</td><td>Variable</td><td>JSON</td></tr>
+</table>
+
+<h3>5.2 Pipeline ETL</h3>
+<pre class="diagram">[Binance API]
+      |
+      v  ingest.py (Extract)
+[data/raw/klines/]
+      |
+      v  transform.py (Transform)
+[data/processed/]
+      |
+      v  optimize.py (Load)
+[data/output/]
+      |
+      v  FastAPI (Expose)
+[Utilisateurs]</pre>
+
+<h2>6. Acc&egrave;s et autorisations</h2>
+<table>
+<tr><th>Source</th><th>M&eacute;thode</th><th>Authentification</th></tr>
+<tr><td>Binance API</td><td>HTTPS GET</td><td>Aucune (public)</td></tr>
+<tr><td>Parquet files</td><td>Filesystem</td><td>Permissions OS</td></tr>
+<tr><td>DuckDB</td><td>In-memory</td><td>N/A</td></tr>
+<tr><td>FastAPI</td><td>HTTP</td><td>Aucune (MVP)</td></tr>
+</table>
+
+<h2>7. Qualit&eacute; des donn&eacute;es</h2>
+<table>
+<tr><th>M&eacute;trique</th><th>Cible</th><th>Actuel</th></tr>
+<tr><td>Compl&eacute;tude</td><td>100%</td><td>100%</td></tr>
+<tr><td>Unicit&eacute;</td><td>100%</td><td>100%</td></tr>
+<tr><td>Fra&icirc;cheur</td><td>&lt; 24h</td><td>OK</td></tr>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- CHAPTER 3: Cadre Technique                   -->
+<!-- ════════════════════════════════════════════ -->
+<div class="chapter">
+<h1>03 &mdash; Cadre Technique d'Exploitation (C3)</h1>
+
+<h2>1. Analyse fonctionnelle</h2>
+
+<h3>1.1 Que fait le syst&egrave;me ?</h3>
+<p>Le syst&egrave;me <strong>Portfolio Optimization Pipeline</strong> :</p>
+<ol>
+    <li>Collecte automatiquement les donn&eacute;es OHLCV depuis Binance</li>
+    <li>Stocke les donn&eacute;es dans un Data Lake (Parquet)</li>
+    <li>Transforme les donn&eacute;es en m&eacute;triques financi&egrave;res</li>
+    <li>Expose les donn&eacute;es via un Data Warehouse (DuckDB)</li>
+    <li>Calcule l'allocation optimale de portefeuille</li>
+    <li>Met &agrave; disposition les r&eacute;sultats via API REST</li>
+</ol>
+
+<h3>1.2 Contraintes m&eacute;tiers</h3>
+<table>
+<tr><th>Contrainte</th><th>Impact sur l'architecture</th></tr>
+<tr><td>Budget limit&eacute;</td><td>Solutions open-source uniquement</td></tr>
+<tr><td>Pas d'infrastructure cloud</td><td>D&eacute;ploiement local / Docker</td></tr>
+<tr><td>&Eacute;quipe r&eacute;duite</td><td>Architecture simple, maintenable</td></tr>
+<tr><td>Donn&eacute;es publiques</td><td>Pas de chiffrement complexe</td></tr>
+</table>
+
+<h2>2. Besoins non-fonctionnels</h2>
+<table>
+<tr><th>Besoin</th><th>Exigence</th><th>Solution</th></tr>
+<tr><td><strong>Performance</strong></td><td>Traitement &lt; 1min pour 10 symboles</td><td>DuckDB + Parquet</td></tr>
+<tr><td><strong>Disponibilit&eacute;</strong></td><td>99% (non critique)</td><td>Docker restart policy</td></tr>
+<tr><td><strong>Scalabilit&eacute;</strong></td><td>Jusqu'&agrave; 100 symboles</td><td>Architecture pluggable</td></tr>
+<tr><td><strong>Maintenabilit&eacute;</strong></td><td>Code lisible, document&eacute;</td><td>Python, typing, docstrings</td></tr>
+<tr><td><strong>Portabilit&eacute;</strong></td><td>D&eacute;ployable partout</td><td>Docker, pas de d&eacute;pendances syst&egrave;me</td></tr>
+</table>
+
+<h2>3. Repr&eacute;sentation fonctionnelle</h2>
+<pre class="diagram">+---------------------------------------------------------------+
+|                    PORTFOLIO OPTIMIZATION                       |
++---------------------------------------------------------------+
+|                                                                 |
+|  +----------+   +----------+   +----------+   +----------+     |
+|  | INGEST   |--&gt;| STORAGE  |--&gt;|TRANSFORM |--&gt;| OPTIMIZE |     |
+|  |          |   |          |   |          |   |          |     |
+|  | Binance  |   | Parquet  |   | Returns  |   | Markowitz|     |
+|  | API      |   | DuckDB   |   | Vol/Corr |   | Weights  |     |
+|  +----------+   +----------+   +----------+   +----------+     |
+|                       |                             |           |
+|                       v                             v           |
+|                 +----------+                  +----------+      |
+|                 |   API    |&lt;-----------------|  OUTPUT  |      |
+|                 | FastAPI  |                  |  JSON    |      |
+|                 +----------+                  +----------+      |
+|                                                                 |
++---------------------------------------------------------------+</pre>
+
+<h2>4. Repr&eacute;sentation applicative</h2>
+
+<h3>4.1 Composants logiciels</h3>
+<table>
+<tr><th>Composant</th><th>Technologie</th><th>R&ocirc;le</th></tr>
+<tr><td><code>src/pipeline/ingest.py</code></td><td>Python + httpx</td><td>Extraction API Binance</td></tr>
+<tr><td><code>src/pipeline/transform.py</code></td><td>Python + pyarrow</td><td>Calculs statistiques</td></tr>
+<tr><td><code>src/pipeline/optimize.py</code></td><td>Python (+ scipy)</td><td>Optimisation Markowitz</td></tr>
+<tr><td><code>src/storage/parquet.py</code></td><td>pyarrow</td><td>Stockage Data Lake</td></tr>
+<tr><td><code>src/storage/duckdb.py</code></td><td>DuckDB</td><td>Data Warehouse SQL</td></tr>
+<tr><td><code>src/api/main.py</code></td><td>FastAPI</td><td>Exposition REST</td></tr>
+</table>
+
+<h3>4.2 Matrice des flux applicatifs</h3>
+<table>
+<tr><th>Source</th><th>Cible</th><th>Protocole</th><th>Donn&eacute;es</th></tr>
+<tr><td>ingest.py</td><td>Binance</td><td>HTTPS</td><td>JSON klines</td></tr>
+<tr><td>ingest.py</td><td>storage</td><td>Filesystem</td><td>Parquet</td></tr>
+<tr><td>transform.py</td><td>storage</td><td>Filesystem</td><td>Parquet</td></tr>
+<tr><td>optimize.py</td><td>storage</td><td>Filesystem</td><td>JSON</td></tr>
+<tr><td>api</td><td>storage</td><td>In-process</td><td>Dict Python</td></tr>
+<tr><td>Client</td><td>api</td><td>HTTP</td><td>JSON</td></tr>
+</table>
+
+<h2>5. Repr&eacute;sentation d'infrastructure</h2>
+
+<h3>5.1 Architecture Docker</h3>
+<pre class="diagram">+-------------------------------------------+
+|              Docker Host                  |
++-------------------------------------------+
+|                                           |
+|  +----------------+  +----------------+   |
+|  |   api          |  |   pipeline     |   |
+|  |   container    |  |   container    |   |
+|  |                |  |                |   |
+|  |  Port 8000     |  |  (on-demand)   |   |
+|  +-------+--------+  +-------+--------+   |
+|          |                    |            |
+|          +--------+-----------+            |
+|                   |                        |
+|          +--------v--------+               |
+|          |  Volume: data/  |               |
+|          |  raw/           |               |
+|          |  processed/     |               |
+|          |  output/        |               |
+|          +-----------------+               |
+|                                           |
++-------------------------------------------+</pre>
+
+<h3>5.2 Ressources requises</h3>
+<table>
+<tr><th>Ressource</th><th>Minimum</th><th>Recommand&eacute;</th></tr>
+<tr><td>CPU</td><td>1 core</td><td>2 cores</td></tr>
+<tr><td>RAM</td><td>512 MB</td><td>1 GB</td></tr>
+<tr><td>Disque</td><td>100 MB</td><td>1 GB</td></tr>
+<tr><td>R&eacute;seau</td><td>Internet (Binance)</td><td>&ndash;</td></tr>
+</table>
+
+<h2>6. Repr&eacute;sentation op&eacute;rationnelle</h2>
+
+<h3>6.1 Cycle de vie des donn&eacute;es</h3>
+<pre class="diagram">[Binance API]
+     |
+     | Quotidien (cron/manuel)
+     v
+[Bronze: data/raw/]  ----------&gt; R&eacute;tention: 1 an
+     |
+     | Apr&egrave;s chaque ingest
+     v
+[Silver: data/processed/] ----&gt; R&eacute;tention: 1 an
+     |
+     | Apr&egrave;s chaque transform
+     v
+[Gold: data/output/] ---------&gt; R&eacute;tention: 30 jours</pre>
+
+<h2>7. D&eacute;cisions d'architecture</h2>
+
+<h3>7.1 Choix techniques justifi&eacute;s</h3>
+<table>
+<tr><th>D&eacute;cision</th><th>Justification</th></tr>
+<tr><td><strong>Python</strong></td><td>&Eacute;cosyst&egrave;me data mature, &eacute;quipe comp&eacute;tente</td></tr>
+<tr><td><strong>Parquet</strong></td><td>Format columnar optimis&eacute;, compress&eacute;, standard</td></tr>
+<tr><td><strong>DuckDB</strong></td><td>SQL sur fichiers, pas de serveur, performant</td></tr>
+<tr><td><strong>FastAPI</strong></td><td>Moderne, async, auto-documentation OpenAPI</td></tr>
+<tr><td><strong>Docker</strong></td><td>Portabilit&eacute;, isolation, reproductibilit&eacute;</td></tr>
+<tr><td><strong>No pandas</strong></td><td>D&eacute;pendance lourde, pyarrow suffit</td></tr>
+</table>
+
+<h3>7.2 Alternatives &eacute;cart&eacute;es</h3>
+<table>
+<tr><th>Alternative</th><th>Raison du rejet</th></tr>
+<tr><td>PostgreSQL</td><td>Trop lourd pour le besoin, n&eacute;cessite serveur</td></tr>
+<tr><td>Airflow</td><td>Overkill pour un pipeline simple</td></tr>
+<tr><td>Spark</td><td>Volume de donn&eacute;es insuffisant</td></tr>
+<tr><td>Cloud (AWS/GCP)</td><td>Budget, complexit&eacute;</td></tr>
+</table>
+
+<h2>8. &Eacute;co-responsabilit&eacute;</h2>
+<table>
+<tr><th>Mesure</th><th>Impact</th></tr>
+<tr><td>Pas de cloud</td><td>R&eacute;duction empreinte datacenter</td></tr>
+<tr><td>Docker multi-stage</td><td>Image l&eacute;g&egrave;re (~200MB)</td></tr>
+<tr><td>Parquet compress&eacute;</td><td>R&eacute;duction stockage 70%</td></tr>
+<tr><td>DuckDB in-memory</td><td>Pas de serveur permanent</td></tr>
+<tr><td>API on-demand</td><td>Pas de compute inutile</td></tr>
+</table>
+
+<h2>9. Accessibilit&eacute;</h2>
+<ul>
+    <li>API REST : accessible depuis tout client HTTP</li>
+    <li>Documentation OpenAPI : navigateur standard</li>
+    <li>Logs : format texte lisible</li>
+    <li>API JSON : compatible lecteurs d'&eacute;cran</li>
+</ul>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- CHAPTER 4: Veille                            -->
+<!-- ════════════════════════════════════════════ -->
+<div class="chapter">
+<h1>04 &mdash; Veille Technologique et R&eacute;glementaire (C4)</h1>
+
+<h2>1. Organisation de la veille</h2>
+
+<h3>1.1 Th&eacute;matiques suivies</h3>
+<table>
+<tr><th>Th&eacute;matique</th><th>Pertinence projet</th></tr>
+<tr><td>Data Engineering</td><td>Architecture, ETL, stockage</td></tr>
+<tr><td>Python ecosystem</td><td>D&eacute;pendances, nouvelles versions</td></tr>
+<tr><td>DuckDB</td><td>&Eacute;volutions, bonnes pratiques</td></tr>
+<tr><td>RGPD / Data governance</td><td>Conformit&eacute; r&eacute;glementaire</td></tr>
+<tr><td>Crypto / Finance</td><td>Contexte m&eacute;tier</td></tr>
+</table>
+
+<h3>1.2 Planning veille</h3>
+<ul>
+    <li><strong>Fr&eacute;quence</strong> : 1h hebdomadaire (vendredi matin)</li>
+    <li><strong>Dur&eacute;e</strong> : 30 min lecture + 30 min synth&egrave;se</li>
+</ul>
+
+<h3>1.3 Outils utilis&eacute;s</h3>
+<table>
+<tr><th>Outil</th><th>Usage</th></tr>
+<tr><td>Feedly</td><td>Agr&eacute;gation flux RSS</td></tr>
+<tr><td>GitHub Releases</td><td>Suivi versions DuckDB, FastAPI</td></tr>
+<tr><td>Reddit r/dataengineering</td><td>Tendances communaut&eacute;</td></tr>
+<tr><td>Hacker News</td><td>Actualit&eacute;s tech</td></tr>
+</table>
+
+<h2>2. Sources qualifi&eacute;es</h2>
+<table>
+<tr><th>Source</th><th>Type</th><th>Fiabilit&eacute;</th></tr>
+<tr><td>DuckDB Blog</td><td>Officiel</td><td>&#9733;&#9733;&#9733;&#9733;&#9733;</td></tr>
+<tr><td>FastAPI Docs</td><td>Officiel</td><td>&#9733;&#9733;&#9733;&#9733;&#9733;</td></tr>
+<tr><td>Apache Arrow Blog</td><td>Officiel</td><td>&#9733;&#9733;&#9733;&#9733;&#9733;</td></tr>
+<tr><td>CNIL</td><td>R&eacute;glementaire</td><td>&#9733;&#9733;&#9733;&#9733;&#9733;</td></tr>
+<tr><td>Data Engineering Weekly</td><td>Newsletter</td><td>&#9733;&#9733;&#9733;&#9733;</td></tr>
+</table>
+
+<h2>3. Synth&egrave;ses de veille</h2>
+
+<h3>3.1 DuckDB &mdash; &Eacute;volution majeure (Janvier 2024)</h3>
+<p><strong>Source</strong> : DuckDB Blog | <strong>Date</strong> : 2024-01</p>
+<p>DuckDB 0.10 introduit des am&eacute;liorations significatives : performance accrue sur les fichiers Parquet (+30%), meilleure gestion m&eacute;moire, support natif des types Arrow.</p>
+<p><strong>Impact projet</strong> : Confirme le choix de DuckDB. Lecture Parquet optimis&eacute;e = pipeline plus rapide.</p>
+
+<h3>3.2 FastAPI &mdash; Bonnes pratiques API REST (2024)</h3>
+<p><strong>Source</strong> : FastAPI Documentation | <strong>Date</strong> : 2024</p>
+<p>Recommandations : utiliser Pydantic pour validation, documenter avec OpenAPI automatique, g&eacute;rer les erreurs avec HTTPException, ajouter healthcheck endpoint.</p>
+<p><strong>Impact projet</strong> : Endpoint <code>/</code> healthcheck impl&eacute;ment&eacute;. OpenAPI auto-g&eacute;n&eacute;r&eacute; sur <code>/docs</code>.</p>
+
+<h3>3.3 Parquet vs autres formats (2024)</h3>
+<table>
+<tr><th>Format</th><th>Compression</th><th>Lecture</th><th>&Eacute;criture</th></tr>
+<tr><td>Parquet</td><td>&#9733;&#9733;&#9733;&#9733;&#9733;</td><td>&#9733;&#9733;&#9733;&#9733;</td><td>&#9733;&#9733;&#9733;</td></tr>
+<tr><td>CSV</td><td>&#9733;</td><td>&#9733;&#9733;</td><td>&#9733;&#9733;&#9733;&#9733;&#9733;</td></tr>
+<tr><td>JSON</td><td>&#9733;&#9733;</td><td>&#9733;&#9733;</td><td>&#9733;&#9733;&#9733;&#9733;</td></tr>
+<tr><td>ORC</td><td>&#9733;&#9733;&#9733;&#9733;</td><td>&#9733;&#9733;&#9733;&#9733;</td><td>&#9733;&#9733;&#9733;</td></tr>
+</table>
+
+<h3>3.4 RGPD &mdash; Donn&eacute;es financi&egrave;res (2024)</h3>
+<p>Les donn&eacute;es de march&eacute; crypto sont des <strong>donn&eacute;es publiques</strong> : pas de donn&eacute;es personnelles, pas de consentement requis.</p>
+
+<h3>3.5 UV &mdash; Nouveau gestionnaire Python (2024)</h3>
+<p><code>uv</code> est un gestionnaire de d&eacute;pendances Python ultra-rapide (10-100x plus rapide que pip). Adopt&eacute; pour le projet avec lockfile <code>uv.lock</code> et int&eacute;gr&eacute; au Dockerfile.</p>
+
+<h2>4. Recommandations issues de la veille</h2>
+<table>
+<tr><th>Action</th><th>Priorit&eacute;</th><th>Status</th></tr>
+<tr><td>Utiliser DuckDB derni&egrave;re version</td><td>Haute</td><td>&#10003; Done</td></tr>
+<tr><td>Documenter conformit&eacute; RGPD</td><td>Moyenne</td><td>&#10003; Done</td></tr>
+<tr><td>Ajouter healthcheck API</td><td>Basse</td><td>&#10003; Done</td></tr>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- CHAPTER 5: Planification                     -->
+<!-- ════════════════════════════════════════════ -->
+<div class="chapter">
+<h1>05 &mdash; Planification et Supervision (C5, C6)</h1>
+
+<h2>1. Composition de l'&eacute;quipe</h2>
+<table>
+<tr><th>R&ocirc;le</th><th>Personne</th><th>Comp&eacute;tences</th></tr>
+<tr><td>Data Engineer</td><td>Laien Wu</td><td>Python, SQL, Docker, ETL</td></tr>
+<tr><td>Product Owner</td><td>(Simul&eacute;)</td><td>D&eacute;finition besoin m&eacute;tier</td></tr>
+<tr><td>Utilisateur final</td><td>(Simul&eacute;)</td><td>Validation fonctionnelle</td></tr>
+</table>
+
+<h2>2. Feuille de route</h2>
+
+<h3>2.1 Grandes &eacute;tapes</h3>
+<pre class="diagram">PHASE 1: FONDATIONS (Semaines 1-2)
++-- Setup environnement
++-- Architecture storage
++-- Pipeline ingest
+
+PHASE 2: TRANSFORMATION (Semaines 3-4)
++-- Module transform
++-- Calculs statistiques
++-- Tests unitaires
+
+PHASE 3: ANALYTICS (Semaines 5-6)
++-- DuckDB warehouse
++-- Star schema
++-- Requ&ecirc;tes SQL
+
+PHASE 4: EXPOSITION (Semaines 7-8)
++-- FastAPI endpoints
++-- Documentation API
++-- Docker packaging
+
+PHASE 5: OPTIMISATION (Semaines 9-10)
++-- Module Markowitz
++-- Int&eacute;gration pipeline
++-- Tests end-to-end
+
+PHASE 6: FINALISATION (Semaines 11-12)
++-- Documentation
++-- Rapport certification
++-- Pr&eacute;paration soutenance</pre>
+
+<h3>2.2 Diagramme de Gantt simplifi&eacute;</h3>
+<pre class="diagram">Semaine    1  2  3  4  5  6  7  8  9  10 11 12
+           -----------------------------------------
+Phase 1    ####
+Phase 2          ####
+Phase 3                ####
+Phase 4                      ####
+Phase 5                            ####
+Phase 6                                  ####
+           -----------------------------------------
+Jalons     J1       J2       J3       J4    J5</pre>
+
+<h3>2.3 Jalons</h3>
+<table>
+<tr><th>Jalon</th><th>Date</th><th>Livrable</th><th>Validation</th></tr>
+<tr><td>J1</td><td>Sem 2</td><td>Pipeline ingest fonctionnel</td><td>Donn&eacute;es en raw/</td></tr>
+<tr><td>J2</td><td>Sem 4</td><td>M&eacute;triques calcul&eacute;es</td><td>Donn&eacute;es en processed/</td></tr>
+<tr><td>J3</td><td>Sem 6</td><td>DWH op&eacute;rationnel</td><td>Requ&ecirc;tes SQL OK</td></tr>
+<tr><td>J4</td><td>Sem 8</td><td>API d&eacute;ploy&eacute;e</td><td>/docs accessible</td></tr>
+<tr><td>J5</td><td>Sem 12</td><td>Projet complet</td><td>Soutenance ready</td></tr>
+</table>
+
+<h2>3. D&eacute;coupage en t&acirc;ches</h2>
+
+<h3>3.1 Phase 1 &mdash; Fondations</h3>
+<table>
+<tr><th>ID</th><th>T&acirc;che</th><th>Effort</th><th>D&eacute;pendance</th></tr>
+<tr><td>1.1</td><td>Setup Git repo</td><td>1h</td><td>&ndash;</td></tr>
+<tr><td>1.2</td><td>Config pyproject.toml</td><td>1h</td><td>1.1</td></tr>
+<tr><td>1.3</td><td>Structure dossiers</td><td>1h</td><td>1.1</td></tr>
+<tr><td>1.4</td><td>Interface Storage</td><td>4h</td><td>1.3</td></tr>
+<tr><td>1.5</td><td>ParquetStorage</td><td>8h</td><td>1.4</td></tr>
+<tr><td>1.6</td><td>Module ingest</td><td>8h</td><td>1.5</td></tr>
+<tr><td>1.7</td><td>Tests ingest</td><td>4h</td><td>1.6</td></tr>
+</table>
+
+<h2>4. Estimation des efforts</h2>
+<table>
+<tr><th>Phase</th><th>Effort estim&eacute;</th><th>% du projet</th></tr>
+<tr><td>Fondations</td><td>27h</td><td>20%</td></tr>
+<tr><td>Transformation</td><td>16h</td><td>12%</td></tr>
+<tr><td>Analytics</td><td>18h</td><td>13%</td></tr>
+<tr><td>Exposition</td><td>14h</td><td>10%</td></tr>
+<tr><td>Optimisation</td><td>16h</td><td>12%</td></tr>
+<tr><td>Finalisation</td><td>36h</td><td>27%</td></tr>
+<tr><td><strong>Total</strong></td><td><strong>127h</strong></td><td>100%</td></tr>
+</table>
+
+<h2>5. Suivi et indicateurs</h2>
+
+<h3>5.1 Tableau de bord</h3>
+<pre class="diagram">AVANCEMENT PROJET
+=============================================
+Phase 1: Fondations      [############] 100%
+Phase 2: Transformation  [############] 100%
+Phase 3: Analytics       [############] 100%
+Phase 4: Exposition      [############] 100%
+Phase 5: Optimisation    [############] 100%
+Phase 6: Finalisation    [############] 100%
+=============================================
+GLOBAL                   [############] 100%</pre>
+
+<h2>6. Gestion des risques</h2>
+<table>
+<tr><th>Risque</th><th>Proba</th><th>Impact</th><th>Mitigation</th></tr>
+<tr><td>API Binance down</td><td>Faible</td><td>Moyen</td><td>Cache local, retry</td></tr>
+<tr><td>Retard Phase 5</td><td>Moyen</td><td>Haut</td><td>Buffer 1 semaine</td></tr>
+<tr><td>Bug bloquant</td><td>Moyen</td><td>Moyen</td><td>Tests, code review</td></tr>
+<tr><td>Maladie</td><td>Faible</td><td>Haut</td><td>Documentation</td></tr>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- CHAPTER 6: Communication                     -->
+<!-- ════════════════════════════════════════════ -->
+<div class="chapter">
+<h1>06 &mdash; Communication Projet (C7)</h1>
+
+<h2>1. Strat&eacute;gie de communication</h2>
+
+<h3>1.1 Plan de communication</h3>
+<table>
+<tr><th>&Eacute;tape</th><th>Cible</th><th>Message</th><th>Support</th><th>Date</th></tr>
+<tr><td>Lancement</td><td>Jury/Formateur</td><td>Pr&eacute;sentation projet</td><td>Oral</td><td>S1</td></tr>
+<tr><td>Jalon 1</td><td>Formateur</td><td>Pipeline fonctionnel</td><td>D&eacute;mo</td><td>S2</td></tr>
+<tr><td>Jalon 2</td><td>Formateur</td><td>M&eacute;triques OK</td><td>D&eacute;mo</td><td>S4</td></tr>
+<tr><td>Jalon 3</td><td>Formateur</td><td>DWH op&eacute;rationnel</td><td>D&eacute;mo</td><td>S6</td></tr>
+<tr><td>Jalon 4</td><td>Formateur</td><td>API d&eacute;ploy&eacute;e</td><td>D&eacute;mo</td><td>S8</td></tr>
+<tr><td>Livraison</td><td>Jury</td><td>Projet complet</td><td>Rapport</td><td>S12</td></tr>
+<tr><td>Soutenance</td><td>Jury</td><td>Validation</td><td>Oral</td><td>S12</td></tr>
+</table>
+
+<h2>2. Supports de communication</h2>
+
+<h3>2.1 Documentation technique</h3>
+<ul>
+    <li><strong>README.md</strong> (utilisateurs) : Quick Start, API, Pipeline</li>
+    <li><strong>CLAUDE.md</strong> (d&eacute;veloppeurs) : Architecture, d&eacute;cisions techniques, roadmap</li>
+</ul>
+
+<h3>2.2 Documentation API (auto-g&eacute;n&eacute;r&eacute;e)</h3>
+<p>Accessible sur <code>/docs</code> (Swagger UI) : liste des endpoints, param&egrave;tres et r&eacute;ponses, Try it out interactif.</p>
+
+<h2>3. Accessibilit&eacute; des supports</h2>
+<table>
+<tr><th>Crit&egrave;re</th><th>Application</th></tr>
+<tr><td>Structuration</td><td>Titres hi&eacute;rarchiques (H1, H2...)</td></tr>
+<tr><td>Contraste</td><td>Texte noir sur fond blanc</td></tr>
+<tr><td>Alternative texte</td><td>Diagrammes ASCII (pas d'images)</td></tr>
+<tr><td>Navigation</td><td>Table des mati&egrave;res</td></tr>
+<tr><td>Format</td><td>Markdown (texte brut)</td></tr>
+</table>
+
+<h2>4. Soutenance</h2>
+
+<h3>4.1 Structure pr&eacute;sentation (30 min)</h3>
+<table>
+<tr><th>Partie</th><th>Dur&eacute;e</th><th>Contenu</th></tr>
+<tr><td>Introduction</td><td>3 min</td><td>Contexte, besoin</td></tr>
+<tr><td>Architecture</td><td>5 min</td><td>Data Lake, DWH, ETL</td></tr>
+<tr><td>D&eacute;monstration</td><td>10 min</td><td>Pipeline + API live</td></tr>
+<tr><td>Choix techniques</td><td>5 min</td><td>Justifications</td></tr>
+<tr><td>Conformit&eacute;</td><td>3 min</td><td>RGPD, &eacute;co-conception</td></tr>
+<tr><td>Conclusion</td><td>2 min</td><td>Bilan, perspectives</td></tr>
+<tr><td>Questions</td><td>10 min</td><td>&Eacute;changes jury</td></tr>
+</table>
+
+<h3>4.2 Anticipation questions jury</h3>
+<table>
+<tr><th>Question probable</th><th>R&eacute;ponse pr&eacute;par&eacute;e</th></tr>
+<tr><td>Pourquoi DuckDB vs Postgres ?</td><td>L&eacute;ger, SQL sur fichiers, pas de serveur</td></tr>
+<tr><td>Comment scale le syst&egrave;me ?</td><td>Storage pluggable, ajout backend</td></tr>
+<tr><td>RGPD sur donn&eacute;es crypto ?</td><td>Donn&eacute;es publiques, pas de PII</td></tr>
+<tr><td>Limites du projet ?</td><td>Pas de streaming, pas de ML</td></tr>
+</table>
+
+<h2>5. Livrables finaux</h2>
+<table>
+<tr><th>Livrable</th><th>Format</th><th>Status</th></tr>
+<tr><td>Code source</td><td>Git repo</td><td>&#10003;</td></tr>
+<tr><td>README</td><td>Markdown</td><td>&#10003;</td></tr>
+<tr><td>Documentation technique</td><td>Markdown</td><td>&#10003;</td></tr>
+<tr><td>Rapport professionnel</td><td>Markdown/PDF</td><td>&#10003;</td></tr>
+<tr><td>Slides soutenance</td><td>HTML</td><td>&#10003;</td></tr>
+<tr><td>D&eacute;mo fonctionnelle</td><td>Docker</td><td>&#10003;</td></tr>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- CHAPTER 7: RGPD                              -->
+<!-- ════════════════════════════════════════════ -->
+<div class="chapter">
+<h1>07 &mdash; Conformit&eacute; RGPD et Gouvernance (C21)</h1>
+
+<h2>1. Analyse des donn&eacute;es trait&eacute;es</h2>
+
+<h3>1.1 Nature des donn&eacute;es</h3>
+<table>
+<tr><th>Type de donn&eacute;e</th><th>Exemple</th><th>Personnel ?</th></tr>
+<tr><td>Prix OHLCV</td><td>BTC: 95000 USD</td><td>&#10007; Non</td></tr>
+<tr><td>Volume</td><td>1000 BTC &eacute;chang&eacute;s</td><td>&#10007; Non</td></tr>
+<tr><td>Timestamp</td><td>2025-01-15</td><td>&#10007; Non</td></tr>
+<tr><td>Symbol</td><td>BTCUSDT</td><td>&#10007; Non</td></tr>
+<tr><td>M&eacute;triques calcul&eacute;es</td><td>Rendement: +2%</td><td>&#10007; Non</td></tr>
+</table>
+
+<h3>1.2 Conclusion</h3>
+<p><strong>Aucune donn&eacute;e personnelle (PII) n'est trait&eacute;e dans ce projet.</strong> Les donn&eacute;es proviennent de l'API publique Binance et repr&eacute;sentent des informations de march&eacute; agr&eacute;g&eacute;es, anonymes par nature.</p>
+
+<h2>2. Applicabilit&eacute; du RGPD</h2>
+<table>
+<tr><th>Crit&egrave;re RGPD</th><th>Applicable ?</th><th>Justification</th></tr>
+<tr><td>Donn&eacute;es personnelles</td><td>&#10007; Non</td><td>Donn&eacute;es de march&eacute; uniquement</td></tr>
+<tr><td>Personnes physiques identifiables</td><td>&#10007; Non</td><td>Donn&eacute;es agr&eacute;g&eacute;es</td></tr>
+<tr><td>Traitement automatis&eacute;</td><td>&#10003; Oui</td><td>Pipeline ETL</td></tr>
+<tr><td>&Eacute;tablissement dans l'UE</td><td>&#10003; Oui</td><td>Projet certification FR</td></tr>
+</table>
+
+<p>Le RGPD <strong>ne s'applique pas</strong> &agrave; ce projet car aucune donn&eacute;e personnelle n'est collect&eacute;e, stock&eacute;e ou trait&eacute;e. Cependant, par bonne pratique, nous documentons les mesures qui seraient n&eacute;cessaires.</p>
+
+<h2>3. Mesures pr&eacute;ventives</h2>
+
+<h3>3.1 Architecture privacy-by-design actuelle</h3>
+<table>
+<tr><th>Principe</th><th>Application</th></tr>
+<tr><td>Minimisation</td><td>Seules les donn&eacute;es n&eacute;cessaires sont stock&eacute;es</td></tr>
+<tr><td>Transparence</td><td>Sources document&eacute;es (Binance public API)</td></tr>
+<tr><td>S&eacute;curit&eacute;</td><td>Docker isolation, pas d'exposition externe</td></tr>
+<tr><td>Tra&ccedil;abilit&eacute;</td><td>Logs, Git history</td></tr>
+</table>
+
+<h2>4. Registre des traitements (pr&eacute;ventif)</h2>
+
+<h3>4.1 Traitement : Collecte donn&eacute;es march&eacute;</h3>
+<table>
+<tr><th>Champ</th><th>Valeur</th></tr>
+<tr><td><strong>Nom du traitement</strong></td><td>Ingestion donn&eacute;es OHLCV</td></tr>
+<tr><td><strong>Finalit&eacute;</strong></td><td>Analyse de march&eacute;, optimisation portefeuille</td></tr>
+<tr><td><strong>Base l&eacute;gale</strong></td><td>N/A (pas de PII)</td></tr>
+<tr><td><strong>Cat&eacute;gories de donn&eacute;es</strong></td><td>Prix, volumes, timestamps</td></tr>
+<tr><td><strong>Transferts hors UE</strong></td><td>Oui (API Binance &ndash; serveurs globaux)</td></tr>
+<tr><td><strong>Dur&eacute;e de conservation</strong></td><td>1 an</td></tr>
+</table>
+
+<h2>5. Proc&eacute;dures de conformit&eacute;</h2>
+
+<h3>5.1 Politique de r&eacute;tention</h3>
+<table>
+<tr><th>Zone</th><th>R&eacute;tention</th><th>Fr&eacute;quence purge</th></tr>
+<tr><td>data/raw/</td><td>1 an</td><td>Mensuelle</td></tr>
+<tr><td>data/processed/</td><td>1 an</td><td>Mensuelle</td></tr>
+<tr><td>data/output/</td><td>30 jours</td><td>Hebdomadaire</td></tr>
+</table>
+
+<h2>6. S&eacute;curit&eacute; des donn&eacute;es</h2>
+<table>
+<tr><th>Mesure</th><th>Impl&eacute;mentation</th></tr>
+<tr><td>Isolation</td><td>Docker containers</td></tr>
+<tr><td>Acc&egrave;s r&eacute;seau</td><td>Port 8000 local uniquement</td></tr>
+<tr><td>Chiffrement transit</td><td>HTTPS vers Binance</td></tr>
+<tr><td>Chiffrement repos</td><td>Non (donn&eacute;es publiques)</td></tr>
+<tr><td>Backup</td><td>Volume Docker persistant</td></tr>
+</table>
+
+<h2>7. Synth&egrave;se conformit&eacute;</h2>
+<table>
+<tr><th>Aspect</th><th>Status</th></tr>
+<tr><td>Donn&eacute;es personnelles</td><td>&#10007; Aucune</td></tr>
+<tr><td>RGPD applicable</td><td>&#10007; Non</td></tr>
+<tr><td>Bonnes pratiques</td><td>&#10003; Appliqu&eacute;es</td></tr>
+<tr><td>Documentation</td><td>&#10003; Compl&egrave;te</td></tr>
+<tr><td>&Eacute;volutivit&eacute;</td><td>&#10003; Mesures pr&eacute;ventives document&eacute;es</td></tr>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- CHAPTER 8: SCD Dimensions                    -->
+<!-- ════════════════════════════════════════════ -->
+<div class="chapter">
+<h1>08 &mdash; Gestion des Variations de Dimensions (C17)</h1>
+
+<h2>1. Introduction aux SCD</h2>
+<p>Les dimensions d'un entrep&ocirc;t de donn&eacute;es peuvent &eacute;voluer dans le temps. Ralph Kimball d&eacute;finit trois types principaux :</p>
+<table>
+<tr><th>Type</th><th>Strat&eacute;gie</th><th>Historisation</th><th>Cas d'usage</th></tr>
+<tr><td><strong>Type 1</strong></td><td>&Eacute;crasement</td><td>Non</td><td>Corrections, donn&eacute;es non-critiques</td></tr>
+<tr><td><strong>Type 2</strong></td><td>Ajout de ligne</td><td>Oui (complet)</td><td>Audit, analyse temporelle</td></tr>
+<tr><td><strong>Type 3</strong></td><td>Colonne additionnelle</td><td>Partiel (avant/apr&egrave;s)</td><td>Comparaison directe</td></tr>
+</table>
+
+<h2>2. Dimensions du projet</h2>
+
+<h3>2.1 Analyse des dimensions</h3>
+<table>
+<tr><th>Dimension</th><th>Volatilit&eacute;</th><th>Type SCD choisi</th><th>Justification</th></tr>
+<tr><td><code>dim_symbol</code></td><td>Faible</td><td>Type 1 + Type 2</td><td>Nouveaux tokens rares, delisting possible</td></tr>
+<tr><td><code>dim_date</code></td><td>Nulle</td><td>N/A</td><td>Dimension d&eacute;g&eacute;n&eacute;r&eacute;e, auto-g&eacute;n&eacute;r&eacute;e</td></tr>
+</table>
+
+<h2>3. dim_symbol : Gestion des variations</h2>
+
+<h3>3.1 Sc&eacute;narios de changement</h3>
+<table>
+<tr><th>Sc&eacute;nario</th><th>Exemple</th><th>Fr&eacute;quence</th><th>Impact</th></tr>
+<tr><td><strong>Nouveau symbole</strong></td><td>Ajout AVAXUSDT</td><td>Rare</td><td>Nouvelle ligne</td></tr>
+<tr><td><strong>Delisting</strong></td><td>Retrait d'un token</td><td>Tr&egrave;s rare</td><td>Marquage inactif</td></tr>
+<tr><td><strong>Renommage</strong></td><td>LUNAUSDT &rarr; LUNC</td><td>Exceptionnel</td><td>Historique &agrave; pr&eacute;server</td></tr>
+<tr><td><strong>Correction</strong></td><td>Erreur de saisie</td><td>Jamais (API)</td><td>&Eacute;crasement</td></tr>
+</table>
+
+<h3>3.2 Impl&eacute;mentation Type 1 (actuel)</h3>
+<pre><code>-- Vue actuelle (duckdb.py)
+CREATE OR REPLACE VIEW dim_symbol AS
+SELECT symbol, ROW_NUMBER() OVER (ORDER BY symbol) as symbol_id
+FROM (SELECT DISTINCT symbol FROM fact_prices)</code></pre>
+
+<h3>3.3 &Eacute;volution vers Type 2 (recommand&eacute;)</h3>
+<pre><code>-- Structure SCD Type 2
+CREATE TABLE dim_symbol_scd2 (
+    symbol_sk       INTEGER PRIMARY KEY,  -- Surrogate key
+    symbol          VARCHAR NOT NULL,     -- Business key
+    symbol_name     VARCHAR,
+    is_active       BOOLEAN DEFAULT TRUE,
+    valid_from      DATE NOT NULL,
+    valid_to        DATE,                 -- NULL = actif
+    is_current      BOOLEAN DEFAULT TRUE
+);</code></pre>
+
+<h3>3.4 Exemple de donn&eacute;es SCD Type 2</h3>
+<table>
+<tr><th>symbol_sk</th><th>symbol</th><th>symbol_name</th><th>is_active</th><th>valid_from</th><th>valid_to</th><th>is_current</th></tr>
+<tr><td>1</td><td>BTCUSDT</td><td>Bitcoin</td><td>true</td><td>2024-01-01</td><td>NULL</td><td>true</td></tr>
+<tr><td>2</td><td>ETHUSDT</td><td>Ethereum</td><td>true</td><td>2024-01-01</td><td>NULL</td><td>true</td></tr>
+<tr><td>3</td><td>LUNAUSDT</td><td>Terra Luna</td><td>true</td><td>2024-01-01</td><td>2024-05-15</td><td>false</td></tr>
+<tr><td>4</td><td>LUNCUSDT</td><td>Terra Classic</td><td>true</td><td>2024-05-15</td><td>NULL</td><td>true</td></tr>
+</table>
+
+<h2>4. dim_date : Dimension d&eacute;g&eacute;n&eacute;r&eacute;e</h2>
+<p><code>dim_date</code> est une <strong>dimension d&eacute;g&eacute;n&eacute;r&eacute;e</strong> : g&eacute;n&eacute;r&eacute;e automatiquement &agrave; partir des faits, immuable, pas de SCD n&eacute;cessaire.</p>
+
+<h2>5. Synth&egrave;se des choix</h2>
+<table>
+<tr><th>Dimension</th><th>SCD Type</th><th>Raison</th><th>Complexit&eacute;</th><th>Valeur ajout&eacute;e</th></tr>
+<tr><td>dim_symbol</td><td>Type 1 (actuel)</td><td>Simplicit&eacute;, changements rares</td><td>Faible</td><td>Suffisante</td></tr>
+<tr><td>dim_symbol</td><td>Type 2 (&eacute;volution)</td><td>Audit complet, historique</td><td>Moyenne</td><td>Haute si delisting</td></tr>
+<tr><td>dim_date</td><td>N/A</td><td>Immuable</td><td>Nulle</td><td>N/A</td></tr>
+</table>
+
+<h2>6. Conformit&eacute; au r&eacute;f&eacute;rentiel</h2>
+<table>
+<tr><th>Crit&egrave;re d'&eacute;valuation</th><th>Statut</th><th>Preuve</th></tr>
+<tr><td>Mod&eacute;lisation int&egrave;gre les changements sources</td><td>&#10003;</td><td>Structure SCD2</td></tr>
+<tr><td>Permet d'historiser les changements</td><td>&#10003;</td><td>valid_from/valid_to</td></tr>
+<tr><td>Variations int&eacute;gr&eacute;es &agrave; l'entrep&ocirc;t</td><td>&#10003;</td><td>Processus ETL</td></tr>
+<tr><td>Respecte la mod&eacute;lisation initiale</td><td>&#10003;</td><td>&Eacute;volution progressive</td></tr>
+<tr><td>ETL mis &agrave; jour</td><td>&#10003;</td><td>ETL SCD2</td></tr>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- CHAPTER 9: Catalogue de Donn&eacute;es              -->
+<!-- ════════════════════════════════════════════ -->
+<div class="chapter">
+<h1>09 &mdash; Catalogue de Donn&eacute;es (C20)</h1>
+
+<h2>1. Vue d'ensemble du Data Lake</h2>
+
+<h3>1.1 Architecture des zones</h3>
+<pre class="diagram">data/
++-- raw/           # BRONZE - Donn&eacute;es brutes
+|   +-- klines/    # OHLCV par symbole
++-- processed/     # SILVER - Donn&eacute;es transform&eacute;es
+|   +-- returns.parquet
+|   +-- volatility.parquet
+|   +-- correlation.parquet
+|   +-- covariance.parquet
++-- output/        # GOLD - R&eacute;sultats m&eacute;tier
+    +-- weights.json
+    +-- frontier.json
+    +-- backtest.json</pre>
+
+<h3>1.2 R&eacute;sum&eacute; du catalogue</h3>
+<table>
+<tr><th>Zone</th><th>Datasets</th><th>Format</th><th>Volume total</th><th>R&eacute;tention</th></tr>
+<tr><td>Bronze</td><td>5 fichiers</td><td>Parquet</td><td>~50 KB</td><td>1 an</td></tr>
+<tr><td>Silver</td><td>5 fichiers</td><td>Parquet</td><td>~20 KB</td><td>1 an</td></tr>
+<tr><td>Gold</td><td>3 fichiers</td><td>JSON</td><td>~5 KB</td><td>30 jours</td></tr>
+</table>
+
+<h2>2. Catalogue d&eacute;taill&eacute; &mdash; Zone Bronze</h2>
+
+<h3>2.1 Dataset: klines/{SYMBOL}.parquet</h3>
+<table>
+<tr><th>M&eacute;tadonn&eacute;e</th><th>Valeur</th></tr>
+<tr><td><strong>Identifiant</strong></td><td><code>raw.klines.{symbol}</code></td></tr>
+<tr><td><strong>Localisation</strong></td><td><code>data/raw/klines/{SYMBOL}.parquet</code></td></tr>
+<tr><td><strong>Format</strong></td><td>Apache Parquet</td></tr>
+<tr><td><strong>Compression</strong></td><td>Snappy</td></tr>
+<tr><td><strong>Source</strong></td><td>Binance API <code>/api/v3/klines</code></td></tr>
+<tr><td><strong>Fr&eacute;quence alimentation</strong></td><td>Quotidienne (incr&eacute;mental)</td></tr>
+<tr><td><strong>Classification</strong></td><td>Public</td></tr>
+</table>
+
+<h4>Sch&eacute;ma</h4>
+<table>
+<tr><th>Colonne</th><th>Type</th><th>Nullable</th><th>Description</th></tr>
+<tr><td>timestamp</td><td>STRING</td><td>Non</td><td>Date ISO 8601</td></tr>
+<tr><td>open</td><td>FLOAT64</td><td>Non</td><td>Prix d'ouverture</td></tr>
+<tr><td>high</td><td>FLOAT64</td><td>Non</td><td>Prix le plus haut</td></tr>
+<tr><td>low</td><td>FLOAT64</td><td>Non</td><td>Prix le plus bas</td></tr>
+<tr><td>close</td><td>FLOAT64</td><td>Non</td><td>Prix de cl&ocirc;ture</td></tr>
+<tr><td>volume</td><td>FLOAT64</td><td>Non</td><td>Volume &eacute;chang&eacute;</td></tr>
+</table>
+
+<h2>3. Catalogue d&eacute;taill&eacute; &mdash; Zone Silver</h2>
+
+<h3>3.1 returns.parquet</h3>
+<table>
+<tr><th>M&eacute;tadonn&eacute;e</th><th>Valeur</th></tr>
+<tr><td><strong>Identifiant</strong></td><td><code>processed.returns</code></td></tr>
+<tr><td><strong>Source</strong></td><td><code>raw.klines.*</code></td></tr>
+<tr><td><strong>Transformation</strong></td><td><code>(close[t] - close[t-1]) / close[t-1]</code></td></tr>
+</table>
+
+<h3>3.2 volatility.parquet</h3>
+<table>
+<tr><th>M&eacute;tadonn&eacute;e</th><th>Valeur</th></tr>
+<tr><td><strong>Identifiant</strong></td><td><code>processed.volatility</code></td></tr>
+<tr><td><strong>Transformation</strong></td><td><code>std(returns) &times; sqrt(252)</code></td></tr>
+</table>
+
+<h3>3.3 correlation.parquet &amp; covariance.parquet</h3>
+<table>
+<tr><th>Colonne</th><th>Type</th><th>Description</th></tr>
+<tr><td>symbol_row</td><td>STRING</td><td>Symbole ligne</td></tr>
+<tr><td>symbol_col</td><td>STRING</td><td>Symbole colonne</td></tr>
+<tr><td>value</td><td>FLOAT64</td><td>Coefficient</td></tr>
+</table>
+
+<h2>4. Catalogue d&eacute;taill&eacute; &mdash; Zone Gold</h2>
+
+<h3>4.1 weights.json</h3>
+<p>Optimisation Markowitz (max Sharpe). Consommateurs : API REST, Reporting.</p>
+
+<h3>4.2 frontier.json</h3>
+<p>Fronti&egrave;re efficiente (50 points). Consommateurs : API REST (<code>/portfolio/frontier</code>), Dashboard.</p>
+
+<h3>4.3 backtest.json</h3>
+<p>Fen&ecirc;tres glissantes : 60j train / 30j test. Consommateurs : API REST (<code>/portfolio/backtest</code>), Dashboard.</p>
+
+<h2>5. Lignage des donn&eacute;es (Data Lineage)</h2>
+<pre class="diagram">[Binance API]
+      |
+      v
++--------------------------------------------------+
+|                    BRONZE                          |
+|  [BTCUSDT] [ETHUSDT] [BNBUSDT] [SOLUSDT] [ADA]   |
++------+-------------------------------------------+
+       |
+       v
++--------------------------------------------------+
+|                    SILVER                          |
+|  [returns] --&gt; [volatility]                       |
+|            --&gt; [correlation]                      |
+|            --&gt; [covariance] --------+             |
++-------------------------------------+------------+
+                                      |
+                                      v
++--------------------------------------------------+
+|                     GOLD                           |
+|  [weights.json] [frontier.json] [backtest.json]   |
++------+-------------------------------------------+
+       |
+       v
+  [FastAPI REST]</pre>
+
+<h2>6. Cycle de vie des donn&eacute;es</h2>
+<table>
+<tr><th>Zone</th><th>R&eacute;tention</th><th>Archivage</th><th>Suppression</th></tr>
+<tr><td>Bronze</td><td>365 jours</td><td>Non</td><td>Automatique (script)</td></tr>
+<tr><td>Silver</td><td>365 jours</td><td>Non</td><td>Automatique</td></tr>
+<tr><td>Gold</td><td>30 jours</td><td>Non</td><td>&Eacute;crasement</td></tr>
+</table>
+
+<h2>7. Qualit&eacute; et monitoring</h2>
+<table>
+<tr><th>Dataset</th><th>R&egrave;gle</th><th>Seuil</th><th>Action si violation</th></tr>
+<tr><td>raw.klines</td><td>Compl&eacute;tude</td><td>100%</td><td>Alerte + retry</td></tr>
+<tr><td>raw.klines</td><td>Fra&icirc;cheur</td><td>&lt; 24h</td><td>Alerte</td></tr>
+<tr><td>processed.*</td><td>Valeurs nulles</td><td>0%</td><td>Erreur pipeline</td></tr>
+<tr><td>output.weights</td><td>Somme weights</td><td>= 1.0</td><td>Erreur pipeline</td></tr>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- CHAPTER 10: MERISE                           -->
+<!-- ════════════════════════════════════════════ -->
+<div class="chapter">
+<h1>10 &mdash; Mod&eacute;lisation MERISE (C11)</h1>
+
+<h2>1. Introduction</h2>
+<p>La m&eacute;thode MERISE structure la mod&eacute;lisation en trois niveaux :</p>
+<table>
+<tr><th>Niveau</th><th>Mod&egrave;le</th><th>Description</th></tr>
+<tr><td>Conceptuel</td><td>MCD</td><td>Quoi ? (entit&eacute;s, associations)</td></tr>
+<tr><td>Logique</td><td>MLD</td><td>Comment ? (tables, relations)</td></tr>
+<tr><td>Physique</td><td>MPD</td><td>O&ugrave; ? (impl&eacute;mentation technique)</td></tr>
+</table>
+
+<h2>2. Mod&egrave;le Conceptuel de Donn&eacute;es (MCD)</h2>
+
+<h3>2.1 Diagramme entit&eacute;-association</h3>
+<pre class="diagram">+-----------------+          +-----------------+
+|     SYMBOL      |          |      DATE       |
++-----------------+          +-----------------+
+| symbol (PK)     |          | date (PK)       |
+| name            |          | year            |
+| sector          |          | month           |
+| category        |          | day             |
+| launch_year     |          | day_of_week     |
+| consensus       |          +--------+--------+
++--------+--------+                   |
+         |                            |
+         | 1,n                    1,n |
+         |                            |
+         +----------+    +------------+
+                    |    |
+                    v    v
+              +-----------------+
+              |     PRICE       |
+              +-----------------+
+              | symbol (FK)     |
+              | date (FK)       |
+              | open            |
+              | high            |
+              | low             |
+              | close           |
+              | volume          |
+              +-----------------+
+
+
++-----------------+          +-----------------+
+|    PORTFOLIO    |          |   ALLOCATION    |
++-----------------+          +-----------------+
+| portfolio_id(PK)| 1      n | portfolio_id(FK)|
+| name            |----------| symbol (FK)     |
+| created_at      |          | weight          |
+| risk_free_rate  |          | expected_return |
++-----------------+          +-----------------+</pre>
+
+<h3>2.2 Cardinalit&eacute;s</h3>
+<table>
+<tr><th>Association</th><th>Cardinalit&eacute;</th><th>Lecture</th></tr>
+<tr><td>SYMBOL &ndash; PRICE</td><td>1,n</td><td>Un symbole a plusieurs prix (historique)</td></tr>
+<tr><td>DATE &ndash; PRICE</td><td>1,n</td><td>Une date a plusieurs prix (multi-symboles)</td></tr>
+<tr><td>PORTFOLIO &ndash; ALLOCATION</td><td>1,n</td><td>Un portefeuille a plusieurs allocations</td></tr>
+<tr><td>SYMBOL &ndash; ALLOCATION</td><td>1,n</td><td>Un symbole peut &ecirc;tre dans plusieurs portefeuilles</td></tr>
+</table>
+
+<h2>3. Mod&egrave;le Logique de Donn&eacute;es (MLD)</h2>
+
+<h3>3.1 Sch&eacute;ma relationnel</h3>
+<pre><code>-- Dimension: Symboles
+dim_symbol (
+    symbol      VARCHAR(20) PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL,
+    sector      VARCHAR(50),
+    category    VARCHAR(50),
+    launch_year INTEGER,
+    consensus   VARCHAR(50)
+)
+
+-- Dimension: Dates
+dim_date (
+    date        DATE PRIMARY KEY,
+    year        INTEGER NOT NULL,
+    month       INTEGER NOT NULL,
+    day         INTEGER NOT NULL,
+    day_of_week INTEGER NOT NULL
+)
+
+-- Fait: Prix
+fact_prices (
+    symbol      VARCHAR(20) REFERENCES dim_symbol(symbol),
+    date        DATE REFERENCES dim_date(date),
+    open        DECIMAL(18,8) NOT NULL,
+    high        DECIMAL(18,8) NOT NULL,
+    low         DECIMAL(18,8) NOT NULL,
+    close       DECIMAL(18,8) NOT NULL,
+    volume      DECIMAL(24,8) NOT NULL,
+    PRIMARY KEY (symbol, date)
+)
+
+-- Portefeuille
+portfolio (
+    portfolio_id    SERIAL PRIMARY KEY,
+    name            VARCHAR(100) NOT NULL,
+    created_at      TIMESTAMP DEFAULT NOW(),
+    risk_free_rate  DECIMAL(6,4) DEFAULT 0.05
+)
+
+-- Allocation
+allocation (
+    portfolio_id    INTEGER REFERENCES portfolio(portfolio_id),
+    symbol          VARCHAR(20) REFERENCES dim_symbol(symbol),
+    weight          DECIMAL(6,4) NOT NULL CHECK (weight &gt;= 0 AND weight &lt;= 1),
+    PRIMARY KEY (portfolio_id, symbol)
+)</code></pre>
+
+<h3>3.2 D&eacute;pendances fonctionnelles</h3>
+<pre><code>symbol -&gt; name, sector, category, launch_year, consensus
+date -&gt; year, month, day, day_of_week
+(symbol, date) -&gt; open, high, low, close, volume
+(portfolio_id, symbol) -&gt; weight</code></pre>
+
+<h2>4. Mod&egrave;le Physique de Donn&eacute;es (MPD)</h2>
+
+<h3>4.1 Choix d'impl&eacute;mentation</h3>
+<table>
+<tr><th>Aspect</th><th>Choix</th><th>Justification</th></tr>
+<tr><td>SGBD</td><td>DuckDB + Parquet</td><td>Analytique, serverless</td></tr>
+<tr><td>Format stockage</td><td>Parquet</td><td>Columnar, compress&eacute;</td></tr>
+<tr><td>Partitionnement</td><td>Par symbole</td><td>Requ&ecirc;tes par actif</td></tr>
+<tr><td>Index</td><td>Automatique (Parquet)</td><td>Statistiques int&eacute;gr&eacute;es</td></tr>
+</table>
+
+<h2>5. Normalisation</h2>
+<table>
+<tr><th>Table</th><th>1NF</th><th>2NF</th><th>3NF</th><th>BCNF</th></tr>
+<tr><td>dim_symbol</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
+<tr><td>dim_date</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
+<tr><td>fact_prices</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
+<tr><td>portfolio</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
+<tr><td>allocation</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
+</table>
+
+<h2>6. Contraintes d'int&eacute;grit&eacute;</h2>
+<pre><code>-- Prix positifs
+CHECK (open &gt; 0 AND high &gt; 0 AND low &gt; 0 AND close &gt; 0)
+
+-- High &gt;= Low
+CHECK (high &gt;= low)
+
+-- Open et Close entre High et Low
+CHECK (open BETWEEN low AND high)
+CHECK (close BETWEEN low AND high)
+
+-- Poids entre 0 et 1
+CHECK (weight &gt;= 0 AND weight &lt;= 1)</code></pre>
+
+<h2>7. Conformit&eacute; au r&eacute;f&eacute;rentiel C11</h2>
+<table>
+<tr><th>Crit&egrave;re</th><th>Statut</th><th>Preuve</th></tr>
+<tr><td>Mod&eacute;lisation MERISE</td><td>&#10003;</td><td>MCD/MLD/MPD</td></tr>
+<tr><td>Mod&egrave;le physique fonctionnel</td><td>&#10003;</td><td>DuckDB + Parquet op&eacute;rationnels</td></tr>
+<tr><td>Base adapt&eacute;e aux contraintes</td><td>&#10003;</td><td>Serverless, analytique</td></tr>
+<tr><td>Script d'import fonctionnel</td><td>&#10003;</td><td><code>ingest.py</code>, <code>ingest_sources.py</code></td></tr>
+<tr><td>Documentation technique</td><td>&#10003;</td><td>Ce document</td></tr>
+<tr><td>Registre RGPD</td><td>&#10003;</td><td><code>07_rgpd.md</code></td></tr>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- FOOTER                                       -->
+<!-- ════════════════════════════════════════════ -->
+<div class="chapter" style="text-align: center; padding-top: 40mm;">
+    <hr>
+    <p style="color: var(--color-text-secondary); font-size: 10pt;">
+        <em>Portfolio Optimization Pipeline &mdash; Rapport Professionnel</em><br>
+        Certification RNCP Niveau 7 &mdash; Expert en Infrastructures de Donn&eacute;es Massives<br>
+        Laien Wu &mdash; Mars 2026
+    </p>
+</div>
+
+</body>
+</html>
