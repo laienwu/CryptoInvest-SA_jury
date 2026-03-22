@@ -437,10 +437,10 @@ class TestPostgresSource:
 class TestListAvailableSources:
     """Tests for list_available_sources using DataSource classes."""
 
-    def test_returns_all_five_sources(self):
+    def test_returns_all_six_sources(self):
         from src.pipeline.ingest_sources import list_available_sources
         result = list_available_sources()
-        assert set(result.keys()) == {"csv", "json", "api", "scraping", "postgres"}
+        assert set(result.keys()) == {"csv", "json", "api", "scraping", "postgres", "yfinance"}
 
     def test_values_are_booleans(self):
         from src.pipeline.ingest_sources import list_available_sources

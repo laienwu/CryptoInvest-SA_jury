@@ -10,7 +10,7 @@ Plate-forme d'ingénierie de données prête pour la production pour l'optimisat
 
 ## Caractéristiques
 
-- **Ingestion de données multi-sources** - 5 types de sources : API REST, CSV, JSON, Web Scraping, PostgreSQL
+- **Ingestion de données multi-sources** - 6 types de sources : API REST, CSV, JSON, Web Scraping, PostgreSQL, yfinance
 - **Streaming temps réel** - Ingestion Kafka (Redpanda) via WebSocket Binance
 - **Architecture médaillon** - Zones de données Bronze/Argent/Or avec Parquet stockage
 - **Star Schema Warehouse** - Requêtes analytiques basées sur DuckDB
@@ -29,7 +29,7 @@ Plate-forme d'ingénierie de données prête pour la production pour l'optimisat
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      DATA SOURCES                           │
-│   [Binance API] [CSV] [JSON] [Web Scraping] [PostgreSQL]   │
+│ [Binance API] [CSV] [JSON] [Scraping] [PostgreSQL] [yfinance] │
 └──────────┬──────────────────────────────────────────────────┘
            │
            ▼
@@ -140,6 +140,9 @@ uv run streamlit run src/dashboard/app.py
 | `GET /portfolio/summary` | KPI du portefeuille |
 | `GET /portfolio/frontier` | Frontière efficiente |
 | `GET /portfolio/backtest` | Résultats du backtest walk-forward |
+| `GET /portfolio/trad` | Portefeuille traditionnel (actions, ETF, matières premières) |
+| `GET /portfolio/trad/frontier` | Frontière efficiente actifs traditionnels |
+| `GET /portfolio/trad/backtest` | Backtest actifs traditionnels (benchmark SPY) |
 
 ## Tableau de bord
 
@@ -160,7 +163,7 @@ uv run pytest tests/ -v
 # Run with coverage
 uv run pytest tests/ --cov=src --cov-report=term-missing
 
-# Results: 342 tests (100% passing)
+# Results: 364 tests (100% passing)
 ```
 
 ## Structure du projet
@@ -173,6 +176,7 @@ src/
 │   ├── ingest_sources.py   # Multi-source orchestration (DataSource ABC)
 │   ├── ingest_scraping.py  # CoinGecko web scraping
 │   ├── ingest_postgres.py  # PostgreSQL benchmarks
+│   ├── ingest_yfinance.py  # Yahoo Finance (stocks, ETFs, commodities)
 │   ├── transform.py        # Financial metrics calculation
 │   ├── optimize.py         # Markowitz optimization + efficient frontier
 │   ├── backtest.py         # Walk-forward backtesting engine
@@ -193,7 +197,7 @@ src/
 └── dashboard/               # Visualization
     └── app.py              # Streamlit app
 
-tests/                       # Test suite (342 tests)
+tests/                       # Test suite (364 tests)
 dags/                        # Airflow DAGs
 docs/                        # Documentation
 data/                        # Data zones (bronze/silver/gold)
@@ -208,6 +212,11 @@ Modifier `config.toml` :
 symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "ADAUSDT"]
 interval = "1d"
 period_days = 30
+
+[yfinance]
+symbols = ["SPY", "EFA", "GLD", "SLV", "TLT", "AAPL", "MSFT", "ASML.AS", "MC.PA", "SAP.DE"]
+trading_days_per_year = 252
+period_days = 365
 ```
 
 ## Technologies clés

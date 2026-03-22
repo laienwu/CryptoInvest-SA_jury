@@ -163,6 +163,28 @@ class PostgresSource(DataSource):
         return {"benchmarks": benchmarks}
 
 
+class YFinanceSource(DataSource):
+    """Yahoo Finance data source (traditional assets: stocks, ETFs, commodities)."""
+
+    def __init__(self, symbols: list[str] | None = None):
+        self._symbols = symbols
+
+    @property
+    def name(self) -> str:
+        return "yfinance"
+
+    def is_available(self) -> bool:
+        try:
+            import yfinance as yf  # noqa: F401
+            return True
+        except ImportError:
+            return False
+
+    def fetch(self) -> dict[str, Any]:
+        from src.pipeline.ingest_yfinance import ingest_yfinance_data
+        return {"yfinance_prices": ingest_yfinance_data(symbols=self._symbols)}
+
+
 # =============================================================================
 # Source 1: CSV File Reader (C8 - fichier de données)
 # =============================================================================
@@ -377,12 +399,13 @@ def ingest_all_sources(
     include_api: bool = True,
     include_scraping: bool = True,
     include_postgres: bool = True,
+    include_yfinance: bool = True,
 ) -> dict[str, Any]:
     """
     Ingest data from all configured sources.
 
     Main entry point for multi-source ingestion (C8 compliance).
-    Demonstrates extraction from 5 different source types.
+    Demonstrates extraction from 6 different source types.
 
     Sources:
     1. CSV: Symbol metadata (static file)
@@ -390,32 +413,35 @@ def ingest_all_sources(
     3. API: Price data from Binance (REST API)
     4. Scraping: Market rankings from CoinGecko (web scraping)
     5. PostgreSQL: Historical benchmarks (relational database)
+    6. yfinance: Traditional assets from Yahoo Finance (stocks, ETFs, commodities)
 
     Args:
         symbols: List of symbols to fetch. If None, uses config.
         include_api: Whether to fetch live API data.
         include_scraping: Whether to scrape market rankings.
         include_postgres: Whether to load from PostgreSQL.
+        include_yfinance: Whether to fetch traditional assets from Yahoo Finance.
 
     Returns:
         Aggregated data from all sources:
         {
-            "sources": ["csv", "json", "api", "scraping", "postgres"],
-            "metadata": {...},      # From CSV
-            "config": {...},        # From JSON
-            "prices": {...},        # From API
-            "market_rankings": [...], # From scraping
-            "benchmarks": {...},    # From PostgreSQL
-            "enriched": {...},      # Merged data
+            "sources": ["csv", "json", "api", "scraping", "postgres", "yfinance"],
+            "metadata": {...},          # From CSV
+            "config": {...},            # From JSON
+            "prices": {...},            # From API
+            "market_rankings": [...],   # From scraping
+            "benchmarks": {...},        # From PostgreSQL
+            "yfinance_prices": {...},   # From yfinance
+            "enriched": {...},          # Merged data
         }
 
     Example:
         >>> data = ingest_all_sources()
         >>> print(data["sources"])
-        ['csv', 'json', 'api', 'scraping', 'postgres']
+        ['csv', 'json', 'api', 'scraping', 'postgres', 'yfinance']
     """
     logger.info("=" * 60)
-    logger.info("MULTI-SOURCE INGESTION (C8) - 5 Source Types")
+    logger.info("MULTI-SOURCE INGESTION (C8) - 6 Source Types")
     logger.info("=" * 60)
 
     sources_loaded: list[str] = []
@@ -442,6 +468,12 @@ def ingest_all_sources(
         sources.append(ScrapingSource())
     if include_postgres:
         sources.append(PostgresSource())
+    if include_yfinance:
+        yf_source = YFinanceSource()
+        if yf_source.is_available():
+            sources.append(yf_source)
+        else:
+            logger.info("yfinance not installed, skipping traditional assets")
 
     # Fetch from each source
     for i, source in enumerate(sources, 1):
@@ -519,6 +551,7 @@ def list_available_sources() -> dict[str, bool]:
         BinanceAPISource(),
         ScrapingSource(),
         PostgresSource(),
+        YFinanceSource(),
     ]
     return {source.name: source.is_available() for source in all_sources}
 

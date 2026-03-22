@@ -28,7 +28,7 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.compute as pc
 
-from src.config import load_config
+from src.config import load_config, load_yfinance_config
 from src.storage import Storage, get_storage
 
 logger = logging.getLogger(__name__)
@@ -525,3 +525,68 @@ def load_processed_metrics(
         ) from e
 
 
+def transform_yfinance_data(
+    storage: Storage | None = None,
+) -> dict[str, Any]:
+    """
+    Transform traditional asset data (yfinance) with 252 trading days.
+
+    Same pipeline as crypto but uses yfinance config symbols and
+    saves results with ``_trad`` suffix to keep portfolios separate.
+
+    Args:
+        storage: Storage instance. If None, resolves from config.
+
+    Returns:
+        Dictionary containing all computed metrics for traditional assets.
+    """
+    logger.info("Starting yfinance data transformation (252 trading days)")
+
+    yf_cfg = load_yfinance_config()
+    cfg = load_config()
+    if storage is None:
+        storage = get_storage(cfg.storage_backend)
+    trading_days = yf_cfg.trading_days_per_year
+
+    # Load raw data for yfinance symbols
+    try:
+        raw_data = storage.load_raw(list(yf_cfg.symbols))
+    except Exception as e:
+        raise TransformError(
+            f"Failed to load yfinance raw data: {e}", operation="load"
+        ) from e
+
+    # Align data by date
+    symbols_list, dates, prices_matrix = align_data_by_date(raw_data)
+
+    # Calculate metrics
+    returns = calculate_log_returns(prices_matrix)
+    returns_dates = dates[1:]
+    volatility = calculate_volatility(returns, trading_days)
+    mean_returns = calculate_mean_returns(returns, trading_days)
+    correlation = calculate_correlation_matrix(returns)
+    covariance = calculate_covariance_matrix(returns, trading_days)
+
+    results: dict[str, Any] = {
+        "returns": {"symbols": symbols_list, "dates": returns_dates, "values": returns},
+        "volatility": {"symbols": symbols_list, "values": volatility},
+        "mean_returns": {"symbols": symbols_list, "values": mean_returns},
+        "correlation": {"symbols": symbols_list, "matrix": correlation},
+        "covariance": {"symbols": symbols_list, "matrix": covariance},
+    }
+
+    # Save with _trad suffix
+    logger.info("Saving processed data (traditional assets)")
+    try:
+        storage.save_processed(results["returns"], "returns_trad")
+        storage.save_processed(results["volatility"], "volatility_trad")
+        storage.save_processed(results["mean_returns"], "mean_returns_trad")
+        storage.save_processed(results["correlation"], "correlation_trad")
+        storage.save_processed(results["covariance"], "covariance_trad")
+    except Exception as e:
+        raise TransformError(
+            f"Failed to save yfinance processed data: {e}", operation="save"
+        ) from e
+
+    logger.info(f"yfinance transformation complete: {len(symbols_list)} symbols, {len(returns_dates)} periods")
+    return results

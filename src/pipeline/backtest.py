@@ -23,7 +23,7 @@ import logging
 import math
 from typing import Any
 
-from src.config import load_config
+from src.config import load_config, load_yfinance_config
 from src.pipeline.optimize import optimize_weights
 from src.pipeline.transform import (
     align_data_by_date,
@@ -493,4 +493,150 @@ def run_backtest(
             ) from e
 
     logger.info("Backtest complete")
+    return result
+
+
+def run_yfinance_backtest(
+    train_window: int = 60,
+    test_window: int = 30,
+    strategy: str = "max_sharpe",
+    storage: Storage | None = None,
+    save: bool = True,
+) -> dict[str, Any]:
+    """
+    Run walk-forward backtest on traditional asset portfolio.
+
+    Same algorithm as crypto backtest, but loads yfinance symbols
+    and uses SPY as the single-asset benchmark instead of BTC.
+    Saves to ``backtest_trad.json``.
+
+    Args:
+        train_window: Training window size in days.
+        test_window: Test window size in days.
+        strategy: Optimization strategy.
+        storage: Storage instance. If None, resolves from config.
+        save: Whether to save results.
+
+    Returns:
+        Dictionary with windows, cumulative values, metrics, and config.
+    """
+    logger.info("Running walk-forward backtest (traditional assets)")
+
+    yf_cfg = load_yfinance_config()
+    cfg = load_config()
+    risk_free_rate = yf_cfg.risk_free_rate
+    trading_days = yf_cfg.trading_days_per_year
+
+    if storage is None:
+        storage = get_storage(cfg.storage_backend)
+
+    # Load raw data for yfinance symbols
+    try:
+        raw_data = storage.load_raw(list(yf_cfg.symbols))
+    except Exception as e:
+        raise BacktestError(
+            f"Failed to load yfinance raw data: {e}",
+            operation="load",
+        ) from e
+
+    symbols, dates, prices_matrix = align_data_by_date(raw_data)
+    n_symbols = len(symbols)
+    logger.info(f"Trad symbols: {symbols}, data points: {len(dates)}")
+
+    windows = _create_rolling_windows(dates, prices_matrix, train_window, test_window)
+    logger.info(f"Windows: {len(windows)}")
+
+    all_strategy_returns: list[float] = []
+    all_equal_returns: list[float] = []
+    all_spy_returns: list[float] = []
+    all_dates: list[str] = []
+    window_results: list[dict[str, Any]] = []
+
+    equal_weights = [1.0 / n_symbols] * n_symbols
+
+    # Use SPY as single-asset benchmark (instead of BTC)
+    spy_idx = 0
+    for i, sym in enumerate(symbols):
+        if sym == "SPY":
+            spy_idx = i
+            break
+    spy_weights = [0.0] * n_symbols
+    spy_weights[spy_idx] = 1.0
+
+    for window in windows:
+        ti, te = window["train_start_idx"], window["train_end_idx"]
+        tsi, tei = window["test_start_idx"], window["test_end_idx"]
+
+        train_prices = [s[ti:te] for s in prices_matrix]
+        test_prices = [s[tsi:tei] for s in prices_matrix]
+
+        opt_weights = _optimize_on_window(train_prices, strategy, risk_free_rate, trading_days)
+
+        strategy_returns = _compute_portfolio_daily_returns(test_prices, opt_weights)
+        equal_returns = _compute_portfolio_daily_returns(test_prices, equal_weights)
+        spy_returns = _compute_portfolio_daily_returns(test_prices, spy_weights)
+
+        all_strategy_returns.extend(strategy_returns)
+        all_equal_returns.extend(equal_returns)
+        all_spy_returns.extend(spy_returns)
+
+        test_dates = dates[tsi + 1:tei]
+        all_dates.extend(test_dates)
+
+        test_return = sum(strategy_returns)
+
+        window_results.append({
+            "window_id": window["window_id"],
+            "train_start": window["train_start_date"],
+            "train_end": window["train_end_date"],
+            "test_start": window["test_start_date"],
+            "test_end": window["test_end_date"],
+            "weights": {symbols[i]: round(opt_weights[i], 6) for i in range(n_symbols)},
+            "test_return": round(test_return, 6),
+        })
+
+    strategy_values = _cumulative_values(all_strategy_returns)
+    equal_values = _cumulative_values(all_equal_returns)
+    spy_values = _cumulative_values(all_spy_returns)
+
+    strategy_metrics = _compute_metrics(all_strategy_returns, risk_free_rate, trading_days)
+    equal_metrics = _compute_metrics(all_equal_returns, risk_free_rate, trading_days)
+    spy_metrics = _compute_metrics(all_spy_returns, risk_free_rate, trading_days)
+
+    result: dict[str, Any] = {
+        "windows": window_results,
+        "daily_returns": {
+            "strategy": [round(r, 8) for r in all_strategy_returns],
+            "equal_weight": [round(r, 8) for r in all_equal_returns],
+            "spy_only": [round(r, 8) for r in all_spy_returns],
+        },
+        "cumulative_values": {
+            "dates": all_dates,
+            "strategy": [round(v, 6) for v in strategy_values],
+            "equal_weight": [round(v, 6) for v in equal_values],
+            "spy_only": [round(v, 6) for v in spy_values],
+        },
+        "metrics": {
+            "strategy": strategy_metrics,
+            "equal_weight": equal_metrics,
+            "spy_only": spy_metrics,
+        },
+        "symbols": symbols,
+        "config": {
+            "train_window": train_window,
+            "test_window": test_window,
+            "strategy": strategy,
+            "risk_free_rate": risk_free_rate,
+        },
+    }
+
+    if save:
+        try:
+            storage.save_output(result, "backtest_trad")
+        except Exception as e:
+            raise BacktestError(
+                f"Failed to save trad backtest: {e}", operation="save"
+            ) from e
+
+    logger.info("Traditional backtest complete")
     return result

@@ -197,6 +197,71 @@ def get_backtest(
         raise HTTPException(500, "Internal server error") from e
 
 
+# =============================================================================
+# Traditional Assets (yfinance) — /portfolio/trad/*
+# =============================================================================
+
+
+@app.get("/portfolio/trad", response_model=PortfolioResponse)
+def get_trad_portfolio(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Get optimal traditional asset portfolio weights."""
+    try:
+        return cached_response(
+            cache,
+            "portfolio:weights_trad",
+            _CACHE_TTL_SECONDS,
+            lambda: storage.load_output("weights_trad"),
+        )
+    except (StorageError, FileNotFoundError) as e:
+        raise HTTPException(404, "Traditional portfolio not found") from e
+    except Exception as e:
+        logger.error("Failed to load trad portfolio: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+@app.get("/portfolio/trad/frontier", response_model=FrontierResponse)
+def get_trad_frontier(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Get efficient frontier for traditional assets."""
+    try:
+        return cached_response(
+            cache,
+            "portfolio:frontier_trad",
+            _CACHE_TTL_SECONDS,
+            lambda: storage.load_output("frontier_trad"),
+        )
+    except (StorageError, FileNotFoundError) as e:
+        raise HTTPException(404, "Traditional frontier not found") from e
+    except Exception as e:
+        logger.error("Failed to load trad frontier: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+@app.get("/portfolio/trad/backtest", response_model=BacktestResponse)
+def get_trad_backtest(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Get backtest results for traditional assets."""
+    try:
+        return cached_response(
+            cache,
+            "portfolio:backtest_trad",
+            _CACHE_TTL_SECONDS,
+            lambda: storage.load_output("backtest_trad"),
+        )
+    except (StorageError, FileNotFoundError) as e:
+        raise HTTPException(404, "Traditional backtest not found") from e
+    except Exception as e:
+        logger.error("Failed to load trad backtest: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
