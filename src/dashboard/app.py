@@ -116,6 +116,50 @@ def fetch_api(endpoint: str) -> dict[str, Any] | None:
 
 
 # =============================================================================
+# Portfolio Mode Helpers (Crypto vs Traditional toggle)
+# =============================================================================
+
+
+def _is_trad_mode() -> bool:
+    """Return True when the sidebar toggle is set to Traditional."""
+    return st.session_state.get("portfolio_mode") == "Traditional"
+
+
+def _portfolio_endpoint() -> str:
+    """Return /portfolio or /portfolio/trad based on toggle."""
+    return "/portfolio/trad" if _is_trad_mode() else "/portfolio"
+
+
+def _frontier_endpoint() -> str:
+    return "/portfolio/trad/frontier" if _is_trad_mode() else "/portfolio/frontier"
+
+
+def _backtest_endpoint() -> str:
+    return "/portfolio/trad/backtest" if _is_trad_mode() else "/portfolio/backtest"
+
+
+def _metric_endpoint(name: str) -> str:
+    """Return /metrics/{name}_trad or /metrics/{name} based on toggle."""
+    return f"/metrics/{name}_trad" if _is_trad_mode() else f"/metrics/{name}"
+
+
+def _strategy_labels() -> dict[str, str]:
+    if _is_trad_mode():
+        return {"strategy": "Optimized", "equal_weight": "Equal Weight", "spy_only": "SPY Only"}
+    return dict(STRATEGY_LABELS)
+
+
+def _strategy_colors() -> dict[str, str]:
+    if _is_trad_mode():
+        return {
+            "strategy": COLORS["strategy"],
+            "equal_weight": COLORS["equal"],
+            "spy_only": COLORS["btc"],
+        }
+    return dict(STRATEGY_COLORS)
+
+
+# =============================================================================
 # Math Helpers (pure Python, no Streamlit state)
 # =============================================================================
 
@@ -635,9 +679,10 @@ def render_rolling_avg_correlation(returns_data: dict[str, Any], window: int = 3
 
 def page_dashboard() -> None:
     """Render the main Dashboard page."""
-    st.title("Portfolio Optimization Dashboard")
+    mode_label = "Traditional" if _is_trad_mode() else "Crypto"
+    st.title(f"Portfolio Optimization Dashboard — {mode_label}")
 
-    portfolio = fetch_api("/portfolio")
+    portfolio = fetch_api(_portfolio_endpoint())
     if not portfolio:
         st.warning(
             "No portfolio data available. Run the pipeline first: "
@@ -645,7 +690,7 @@ def page_dashboard() -> None:
         )
         return
 
-    bt_data = fetch_api("/portfolio/backtest")
+    bt_data = fetch_api(_backtest_endpoint())
     bt_metrics = bt_data.get("metrics") if bt_data else None
 
     render_kpi_cards(portfolio, bt_metrics)
@@ -670,7 +715,7 @@ def page_dashboard() -> None:
         f"Net exposure is always 100% by construction (weights sum to 1)."
     )
 
-    cov_resp = fetch_api("/metrics/covariance")
+    cov_resp = fetch_api(_metric_endpoint("covariance"))
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -681,8 +726,8 @@ def page_dashboard() -> None:
         else:
             st.info("Run transform pipeline for risk contribution")
     with col3:
-        mean_ret = fetch_api("/metrics/mean_returns")
-        vol = fetch_api("/metrics/volatility")
+        mean_ret = fetch_api(_metric_endpoint("mean_returns"))
+        vol = fetch_api(_metric_endpoint("volatility"))
         if mean_ret and vol and mean_ret.get("data") and vol.get("data"):
             render_risk_return_scatter(
                 mean_ret["data"], vol["data"], portfolio.get("weights", {})
@@ -701,7 +746,7 @@ def page_dashboard() -> None:
 
     col1, col2 = st.columns(2)
     with col1:
-        corr = fetch_api("/metrics/correlation")
+        corr = fetch_api(_metric_endpoint("correlation"))
         if corr and corr.get("data"):
             cd = corr["data"]
             render_matrix_heatmap(
@@ -724,9 +769,9 @@ def page_dashboard() -> None:
 
     st.markdown("---")
 
-    returns_resp = fetch_api("/metrics/returns")
-    if returns_resp and returns_resp.get("data"):
-        rd = returns_resp["data"]
+    returns_resp_dash = fetch_api(_metric_endpoint("returns"))
+    if returns_resp_dash and returns_resp_dash.get("data"):
+        rd = returns_resp_dash["data"]
         render_rolling_avg_correlation(rd)
         st.markdown("---")
         render_monthly_returns_heatmap(
@@ -1286,9 +1331,10 @@ def page_metrics() -> None:
 
 def page_frontier() -> None:
     """Render the Efficient Frontier page."""
-    st.title("Efficient Frontier")
+    mode_label = "Traditional" if _is_trad_mode() else "Crypto"
+    st.title(f"Efficient Frontier — {mode_label}")
 
-    frontier_data = fetch_api("/portfolio/frontier")
+    frontier_data = fetch_api(_frontier_endpoint())
     if not frontier_data:
         st.warning(
             "No frontier data available. Run: "
@@ -1680,13 +1726,14 @@ def render_correlation_network(
 
 def page_risk() -> None:
     """Render the Risk Analysis page."""
-    st.title("Risk Analysis")
+    mode_label = "Traditional" if _is_trad_mode() else "Crypto"
+    st.title(f"Risk Analysis — {mode_label}")
     st.caption("Tail risk, volatility regimes, beta sensitivity, and correlation structure.")
 
-    returns_resp = fetch_api("/metrics/returns")
-    mean_ret_resp = fetch_api("/metrics/mean_returns")
-    vol_resp = fetch_api("/metrics/volatility")
-    corr_resp = fetch_api("/metrics/correlation")
+    returns_resp = fetch_api(_metric_endpoint("returns"))
+    mean_ret_resp = fetch_api(_metric_endpoint("mean_returns"))
+    vol_resp = fetch_api(_metric_endpoint("volatility"))
+    corr_resp = fetch_api(_metric_endpoint("correlation"))
 
     returns_data = returns_resp.get("data") if returns_resp else None
     mean_ret_data = mean_ret_resp.get("data") if mean_ret_resp else None
@@ -1830,7 +1877,9 @@ def render_rolling_sharpe(
     daily_rf = risk_free_rate / 365
 
     fig = go.Figure()
-    for key, label in STRATEGY_LABELS.items():
+    labels = _strategy_labels()
+    colors = _strategy_colors()
+    for key, label in labels.items():
         returns = daily_returns.get(key, [])
         if len(returns) < window:
             continue
@@ -1852,7 +1901,7 @@ def render_rolling_sharpe(
         fig.add_trace(go.Scatter(
             x=rolling_dates, y=rolling_sharpe,
             mode="lines", name=label,
-            line={"color": STRATEGY_COLORS[key], "width": 2},
+            line={"color": colors[key], "width": 2},
         ))
 
     fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
@@ -1870,13 +1919,15 @@ def render_performance_comparison(metrics: dict[str, Any]) -> None:
     metric_keys = ["cumulative_return", "annualized_return", "sharpe_ratio", "sortino_ratio", "calmar_ratio"]
     display_names = ["Cumulative", "Annualized", "Sharpe", "Sortino", "Calmar"]
 
+    labels = _strategy_labels()
+    colors = _strategy_colors()
     fig = go.Figure()
-    for key, label in STRATEGY_LABELS.items():
+    for key, label in labels.items():
         strat_metrics = metrics.get(key, {})
         values = [strat_metrics.get(k, 0) for k in metric_keys]
         fig.add_trace(go.Bar(
             name=label, x=display_names, y=values,
-            marker_color=STRATEGY_COLORS[key], opacity=0.85,
+            marker_color=colors[key], opacity=0.85,
         ))
 
     styled_layout(
@@ -1896,8 +1947,9 @@ def render_backtest_monthly_heatmap(
     if not dates or not daily_returns:
         return
 
-    strategies = ["strategy", "equal_weight", "btc_only"]
-    labels = [STRATEGY_LABELS[s] for s in strategies]
+    strat_labels = _strategy_labels()
+    strategies = list(strat_labels.keys())
+    labels = list(strat_labels.values())
 
     month_data: dict[str, dict[str, float]] = {}
     for day_idx, date_str in enumerate(dates):
@@ -2026,9 +2078,10 @@ def render_contribution_chart(
 
 def page_backtest() -> None:
     """Render the Backtest page."""
-    st.title("Portfolio Backtest")
+    mode_label = "Traditional" if _is_trad_mode() else "Crypto"
+    st.title(f"Portfolio Backtest — {mode_label}")
 
-    bt_data = fetch_api("/portfolio/backtest")
+    bt_data = fetch_api(_backtest_endpoint())
     if not bt_data:
         st.warning(
             "No backtest data available. Run: "
@@ -2052,16 +2105,19 @@ def page_backtest() -> None:
         f"Risk-free: **{rf:.1%}**"
     )
 
+    bt_labels = _strategy_labels()
+    bt_colors = _strategy_colors()
+
     if cum_dates:
         fig_cum = go.Figure()
-        for key, label in STRATEGY_LABELS.items():
+        for key, label in bt_labels.items():
             vals = cum_vals.get(key, [])
             if vals:
                 fig_cum.add_trace(go.Scatter(
                     x=cum_dates,
                     y=vals[1:len(cum_dates) + 1],
                     mode="lines", name=label,
-                    line={"color": STRATEGY_COLORS[key], "width": 2},
+                    line={"color": bt_colors[key], "width": 2},
                 ))
         styled_layout(
             fig_cum,
@@ -2078,13 +2134,15 @@ def page_backtest() -> None:
                     "sharpe_ratio", "sortino_ratio", "calmar_ratio"]
     display_names = ["Cumulative Return", "Annualized Return", "Max Drawdown",
                      "Sharpe Ratio", "Sortino Ratio", "Calmar Ratio"]
+    bench_key = "spy_only" if _is_trad_mode() else "btc_only"
+    bench_label = "SPY Only" if _is_trad_mode() else "BTC Only"
     rows = []
     for mname, dname in zip(metric_names, display_names):
         rows.append({
             "Metric": dname,
             "Optimized": _fmt_metric(mname, metrics.get("strategy", {}).get(mname)),
             "Equal Weight": _fmt_metric(mname, metrics.get("equal_weight", {}).get(mname)),
-            "BTC Only": _fmt_metric(mname, metrics.get("btc_only", {}).get(mname)),
+            bench_label: _fmt_metric(mname, metrics.get(bench_key, {}).get(mname)),
         })
     df_metrics = pd.DataFrame(rows)
     st.dataframe(df_metrics, use_container_width=True, hide_index=True)
@@ -2093,7 +2151,7 @@ def page_backtest() -> None:
     st.subheader("Drawdown Comparison")
     if cum_dates:
         fig_dd = go.Figure()
-        for key, label in STRATEGY_LABELS.items():
+        for key, label in bt_labels.items():
             vals = cum_vals.get(key, [])
             if vals:
                 trimmed = vals[1:len(cum_dates) + 1]
@@ -2101,7 +2159,7 @@ def page_backtest() -> None:
                 fig_dd.add_trace(go.Scatter(
                     x=cum_dates, y=dd_series,
                     mode="lines", name=label,
-                    line={"color": STRATEGY_COLORS[key], "width": 1.5},
+                    line={"color": bt_colors[key], "width": 1.5},
                     fill="tozeroy" if key == "strategy" else None,
                     fillcolor="rgba(44,160,44,0.15)" if key == "strategy" else None,
                 ))
@@ -2215,6 +2273,14 @@ def main() -> None:
     page = st.sidebar.radio(
         "Select Page",
         ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest"],
+    )
+
+    st.sidebar.markdown("---")
+    st.sidebar.radio(
+        "Portfolio",
+        ["Crypto", "Traditional"],
+        key="portfolio_mode",
+        horizontal=True,
     )
 
     st.sidebar.markdown("---")
