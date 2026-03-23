@@ -738,9 +738,13 @@ def page_dashboard() -> None:
     st.markdown("---")
 
     symbols_resp = fetch_api("/symbols")
-    symbols = symbols_resp.get("symbols", []) if symbols_resp else []
-    if symbols:
-        render_normalized_prices(symbols)
+    all_syms = symbols_resp.get("symbols", []) if symbols_resp else []
+    if _is_trad_mode():
+        dash_symbols = [s for s in all_syms if not s.endswith(("USDT", "BUSD"))]
+    else:
+        dash_symbols = [s for s in all_syms if s.endswith(("USDT", "BUSD"))]
+    if dash_symbols:
+        render_normalized_prices(dash_symbols)
 
     st.markdown("---")
 
@@ -962,14 +966,24 @@ def render_symbol_stats(df: pd.DataFrame) -> None:
 
 def page_symbols() -> None:
     """Render the Symbols page."""
-    st.title("Symbol Analysis")
+    mode_label = "Traditional" if _is_trad_mode() else "Crypto"
+    st.title(f"Symbol Analysis — {mode_label}")
 
     symbols_data = fetch_api("/symbols")
     if not symbols_data or not symbols_data.get("symbols"):
         st.warning("No symbols available")
         return
 
-    symbols = symbols_data["symbols"]
+    all_symbols = symbols_data["symbols"]
+    # Filter: crypto symbols end with USDT/BUSD, traditional ones don't
+    if _is_trad_mode():
+        symbols = [s for s in all_symbols if not s.endswith(("USDT", "BUSD"))]
+    else:
+        symbols = [s for s in all_symbols if s.endswith(("USDT", "BUSD"))]
+
+    if not symbols:
+        st.warning(f"No {mode_label.lower()} symbols found. Run the pipeline first.")
+        return
 
     col_sym, col_chart, col_compare = st.columns([2, 2, 1])
     with col_sym:
@@ -2239,7 +2253,7 @@ def page_backtest() -> None:
 
 def _render_sidebar_data_range() -> None:
     """Show the date range of loaded data below API status."""
-    returns_resp = fetch_api("/metrics/returns")
+    returns_resp = fetch_api(_metric_endpoint("returns"))
     if returns_resp and returns_resp.get("data"):
         dates = returns_resp["data"].get("dates", [])
         if dates:
@@ -2249,7 +2263,8 @@ def _render_sidebar_data_range() -> None:
 def _render_sidebar_last_updated() -> None:
     """Show when portfolio data was last computed."""
     try:
-        path = os.path.join("data", "output", "weights.json")
+        weights_file = "weights_trad.json" if _is_trad_mode() else "weights.json"
+        path = os.path.join("data", "output", weights_file)
         if os.path.exists(path):
             import json
             with open(path) as f:
