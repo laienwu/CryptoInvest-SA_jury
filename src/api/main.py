@@ -23,6 +23,7 @@ from src.api.schemas import (
     KlinesResponse,
     MetricResponse,
     MetricsListResponse,
+    MonteCarloResponse,
     PortfolioResponse,
     PortfolioSummaryResponse,
     SymbolsResponse,
@@ -259,6 +260,26 @@ def get_trad_backtest(
         raise HTTPException(404, "Traditional backtest not found") from e
     except Exception as e:
         logger.error("Failed to load trad backtest: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+@app.get("/portfolio/monte-carlo", response_model=MonteCarloResponse)
+def get_monte_carlo(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Get Monte Carlo simulation results."""
+    try:
+        return cached_response(
+            cache,
+            "portfolio:monte_carlo",
+            _CACHE_TTL_SECONDS,
+            lambda: storage.load_output("monte_carlo"),
+        )
+    except (StorageError, FileNotFoundError) as e:
+        raise HTTPException(404, "Monte Carlo results not found") from e
+    except Exception as e:
+        logger.error("Failed to load Monte Carlo results: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 

@@ -33,6 +33,10 @@ compute_and_save_frontier()
 print("=== CRYPTO: backtest ===")
 run_backtest()
 
+print("=== CRYPTO: Monte Carlo ===")
+from src.pipeline.monte_carlo import run_monte_carlo
+run_monte_carlo()
+
 # =========================================================================
 # Traditional assets pipeline (yfinance)
 # =========================================================================

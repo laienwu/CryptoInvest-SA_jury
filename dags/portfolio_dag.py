@@ -179,11 +179,28 @@ backtest_trad_task = PythonOperator(
 )
 
 # =============================================================================
-# DAG dependencies — two parallel branches
+# Monte Carlo (runs after crypto backtest)
 # =============================================================================
 
-# Crypto: ingest → transform → optimize → frontier → backtest
-ingest_task >> transform_task >> optimize_task >> frontier_task >> backtest_task
+
+def run_monte_carlo_task() -> str:
+    from src.pipeline.monte_carlo import run_monte_carlo
+    result = run_monte_carlo()
+    return f"Monte Carlo complete: {result['config']['n_simulations']} simulations"
+
+
+monte_carlo_task = PythonOperator(
+    task_id="monte_carlo",
+    python_callable=run_monte_carlo_task,
+    dag=dag,
+)
+
+# =============================================================================
+# DAG dependencies — two parallel branches + monte carlo
+# =============================================================================
+
+# Crypto: ingest → transform → optimize → frontier → backtest → monte_carlo
+ingest_task >> transform_task >> optimize_task >> frontier_task >> backtest_task >> monte_carlo_task
 
 # Traditional: ingest_trad → transform_trad → optimize_trad → frontier_trad → backtest_trad
 ingest_trad_task >> transform_trad_task >> optimize_trad_task >> frontier_trad_task >> backtest_trad_task

@@ -2276,6 +2276,101 @@ def _render_sidebar_last_updated() -> None:
         pass
 
 
+def page_monte_carlo() -> None:
+    """Render the Monte Carlo simulation page."""
+    st.title("Monte Carlo Simulation")
+
+    mc_data = fetch_api("/portfolio/monte-carlo")
+    if not mc_data:
+        st.warning(
+            "No Monte Carlo data available. Run: "
+            '`python -c "from src.pipeline.monte_carlo import run_monte_carlo; run_monte_carlo()"`'
+        )
+        return
+
+    config = mc_data.get("config", {})
+    percentiles = mc_data.get("percentiles", {})
+    final_values = mc_data.get("final_values", [])
+    var_95 = mc_data.get("var_95", 0)
+    cvar_95 = mc_data.get("cvar_95", 0)
+
+    st.info(
+        f"Simulations: **{config.get('n_simulations', 'N/A')}** | "
+        f"Horizon: **{config.get('n_days', 'N/A')}** days"
+    )
+
+    # KPI cards
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("VaR (95%)", f"{var_95:.2%}")
+    col2.metric("CVaR (95%)", f"{cvar_95:.2%}")
+    if final_values:
+        median_final = sorted(final_values)[len(final_values) // 2]
+        col3.metric("Median Final Value", f"{median_final:.4f}")
+        mean_final = sum(final_values) / len(final_values)
+        col4.metric("Mean Final Value", f"{mean_final:.4f}")
+
+    st.markdown("---")
+
+    # Fan chart
+    if percentiles:
+        n_days = len(percentiles.get("p50", []))
+        days = list(range(1, n_days + 1))
+
+        fig = go.Figure()
+        # 5-95 band
+        fig.add_trace(go.Scatter(
+            x=days, y=percentiles.get("p95", []),
+            mode="lines", line={"width": 0}, showlegend=False,
+        ))
+        fig.add_trace(go.Scatter(
+            x=days, y=percentiles.get("p5", []),
+            mode="lines", line={"width": 0}, fill="tonexty",
+            fillcolor="rgba(44,160,44,0.15)", name="5th-95th percentile",
+        ))
+        # 25-75 band
+        fig.add_trace(go.Scatter(
+            x=days, y=percentiles.get("p75", []),
+            mode="lines", line={"width": 0}, showlegend=False,
+        ))
+        fig.add_trace(go.Scatter(
+            x=days, y=percentiles.get("p25", []),
+            mode="lines", line={"width": 0}, fill="tonexty",
+            fillcolor="rgba(44,160,44,0.3)", name="25th-75th percentile",
+        ))
+        # Median
+        fig.add_trace(go.Scatter(
+            x=days, y=percentiles.get("p50", []),
+            mode="lines", name="Median",
+            line={"color": COLORS["strategy"], "width": 2},
+        ))
+        fig.add_hline(y=1.0, line_dash="dash", line_color="gray", opacity=0.5)
+        styled_layout(
+            fig, title="Simulated Portfolio Value (Fan Chart)",
+            xaxis_title="Trading Days", yaxis_title="Portfolio Value",
+            hovermode="x unified",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown("---")
+
+    # Histogram of final values
+    if final_values:
+        fig_hist = go.Figure(go.Histogram(
+            x=final_values, nbinsx=50,
+            marker_color=COLORS["equal"], opacity=0.75,
+        ))
+        fig_hist.add_vline(x=1.0, line_dash="dash", line_color="gray", opacity=0.5,
+                           annotation_text="Initial")
+        var_line = 1.0 + var_95
+        fig_hist.add_vline(x=var_line, line_dash="dash", line_color=COLORS["danger"],
+                           annotation_text=f"VaR 95%: {var_95:.1%}")
+        styled_layout(
+            fig_hist, title="Distribution of Final Portfolio Values",
+            xaxis_title="Final Value", yaxis_title="Count",
+        )
+        st.plotly_chart(fig_hist, use_container_width=True)
+
+
 def main() -> None:
     """Main dashboard entry point."""
     st.set_page_config(
@@ -2287,7 +2382,7 @@ def main() -> None:
     st.sidebar.title("Navigation")
     page = st.sidebar.radio(
         "Select Page",
-        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest"],
+        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo"],
     )
 
     st.sidebar.markdown("---")
@@ -2328,6 +2423,8 @@ def main() -> None:
         page_frontier()
     elif page == "Backtest":
         page_backtest()
+    elif page == "Monte Carlo":
+        page_monte_carlo()
 
     if auto_refresh:
         time.sleep(30)

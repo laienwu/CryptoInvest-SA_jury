@@ -143,6 +143,7 @@ uv run streamlit run src/dashboard/app.py
 | `GET /portfolio/trad` | Portefeuille traditionnel (actions, ETF, matières premières) |
 | `GET /portfolio/trad/frontier` | Frontière efficiente actifs traditionnels |
 | `GET /portfolio/trad/backtest` | Backtest actifs traditionnels (benchmark SPY) |
+| `GET /portfolio/monte-carlo` | Simulation Monte Carlo (VaR, CVaR, percentiles) |
 
 ## Tableau de bord
 
@@ -153,6 +154,7 @@ Le tableau de bord Streamlit fournit :
 - **Graphiques de prix** - Données OHLCV par symbole
 - **Carte thermique de corrélation** - Matrice de corrélation des actifs
 - **Comparaison de volatilité** - Graphique à barres par symbole
+- **Monte Carlo** - Fan chart des simulations, histogramme des valeurs finales, VaR/CVaR
 
 ## Test
 
@@ -180,6 +182,7 @@ src/
 │   ├── transform.py        # Financial metrics calculation
 │   ├── optimize.py         # Markowitz optimization + efficient frontier
 │   ├── backtest.py         # Walk-forward backtesting engine
+│   ├── monte_carlo.py      # Monte Carlo simulation (VaR/CVaR)
 │   ├── stream_producer.py  # Binance WebSocket → Kafka producer
 │   ├── stream_consumer.py  # Kafka → micro-batch Parquet consumer
 │   └── validation.py       # Data quality validation (bronze/silver/gold)

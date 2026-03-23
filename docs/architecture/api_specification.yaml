@@ -292,6 +292,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /portfolio/monte-carlo:
+    get:
+      tags:
+        - Analytics
+      summary: Get Monte Carlo Simulation
+      description: |
+        Returns Monte Carlo simulation results with percentile bands,
+        final value distribution, and risk metrics (VaR, CVaR).
+      operationId: getMonteCarlo
+      responses:
+        '200':
+          description: Monte Carlo simulation results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonteCarloResponse'
+        '404':
+          description: Simulation not yet computed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /portfolio/trad:
     get:
       tags:
@@ -706,6 +729,47 @@ components:
         calmar_ratio:
           type: number
           format: double
+
+    MonteCarloResponse:
+      type: object
+      required:
+        - percentiles
+        - final_values
+        - var_95
+        - cvar_95
+        - config
+      properties:
+        percentiles:
+          type: object
+          description: Percentile bands (p5, p25, p50, p75, p95)
+          additionalProperties:
+            type: array
+            items:
+              type: number
+        final_values:
+          type: array
+          description: Final portfolio values for each simulation
+          items:
+            type: number
+        var_95:
+          type: number
+          format: double
+          description: Value at Risk (95%) as return from 1.0
+        cvar_95:
+          type: number
+          format: double
+          description: Conditional VaR (expected shortfall, 95%)
+        symbols:
+          type: array
+          items:
+            type: string
+        config:
+          type: object
+          properties:
+            n_simulations:
+              type: integer
+            n_days:
+              type: integer
 
     Error:
       type: object

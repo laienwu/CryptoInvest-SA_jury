@@ -82,3 +82,14 @@ class BacktestResponse(BaseModel):
     metrics: dict[str, Any]
     symbols: list[str] | None = None
     config: dict[str, Any]
+
+
+class MonteCarloResponse(BaseModel):
+    """Monte Carlo simulation results."""
+
+    percentiles: dict[str, list[float]]
+    final_values: list[float]
+    var_95: float
+    cvar_95: float
+    symbols: list[str] | None = None
+    config: dict[str, Any]
