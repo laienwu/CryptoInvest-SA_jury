@@ -5,3 +5,9 @@ period_days = 30
 risk_free_rate = 0.05
 trading_days_per_year = 365
 storage_backend = "parquet"
+
+[yfinance]
+symbols = ["SPY", "EFA", "GLD", "SLV", "TLT", "AAPL", "MSFT", "ASML.AS", "MC.PA", "SAP.DE"]
+trading_days_per_year = 252
+period_days = 365
+risk_free_rate = 0.05

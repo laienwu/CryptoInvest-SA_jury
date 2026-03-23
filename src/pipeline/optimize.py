@@ -25,7 +25,7 @@ import logging
 import math
 from typing import Any
 
-from src.config import load_config
+from src.config import load_config, load_yfinance_config
 from src.storage import Storage, get_storage
 
 logger = logging.getLogger(__name__)
@@ -769,3 +769,138 @@ def calculate_equal_weight_portfolio(
         "sharpe_ratio": sharpe_ratio,
     }
 
+
+# =============================================================================
+# Traditional Asset Portfolio (yfinance)
+# =============================================================================
+
+
+def _load_trad_optimization_inputs(
+    storage: Storage | None = None,
+) -> tuple[list[str], list[list[float]], list[float], Storage]:
+    """Load covariance and mean returns for traditional assets."""
+    if storage is None:
+        cfg = load_config()
+        storage = get_storage(cfg.storage_backend)
+
+    try:
+        covariance_data = storage.load_processed("covariance_trad")
+        mean_returns_data = storage.load_processed("mean_returns_trad")
+    except Exception as e:
+        raise OptimizeError(
+            f"Failed to load trad processed data: {e}. "
+            "Ensure transform_yfinance_data() has been run first.",
+            operation="load",
+        ) from e
+
+    symbols: list[str] = covariance_data["symbols"]
+    cov_matrix: list[list[float]] = covariance_data["matrix"]
+    mean_returns: list[float] = mean_returns_data["values"]
+
+    logger.info(f"Loaded trad data for {len(symbols)} symbols: {symbols}")
+    return symbols, cov_matrix, mean_returns, storage
+
+
+def optimize_yfinance_portfolio(
+    storage: Storage | None = None,
+    save: bool = True,
+) -> dict[str, Any]:
+    """
+    Optimize traditional asset portfolio (yfinance symbols).
+
+    Same Markowitz optimization as crypto, but uses ``_trad`` metrics
+    and saves to ``weights_trad.json``.
+
+    Args:
+        storage: Storage instance. If None, resolves from config.
+        save: Whether to save results.
+
+    Returns:
+        Optimal portfolio weights for traditional assets.
+    """
+    logger.info("Starting traditional portfolio optimization")
+
+    yf_cfg = load_yfinance_config()
+    risk_free_rate = yf_cfg.risk_free_rate
+
+    symbols, cov_matrix, mean_returns, storage = _load_trad_optimization_inputs(storage)
+
+    optimal_weights = _scipy_max_sharpe(mean_returns, cov_matrix, risk_free_rate)
+
+    expected_return = calculate_portfolio_return(optimal_weights, mean_returns)
+    volatility = calculate_portfolio_volatility(optimal_weights, cov_matrix)
+    sharpe_ratio = calculate_sharpe_ratio(
+        optimal_weights, mean_returns, cov_matrix, risk_free_rate
+    )
+
+    weights_dict = {
+        symbol: round(weight, 6) for symbol, weight in zip(symbols, optimal_weights)
+    }
+
+    result: dict[str, Any] = {
+        "symbols": symbols,
+        "weights": weights_dict,
+        "weights_list": [round(w, 6) for w in optimal_weights],
+        "expected_return": round(expected_return, 6),
+        "volatility": round(volatility, 6),
+        "sharpe_ratio": round(sharpe_ratio, 6),
+        "risk_free_rate": risk_free_rate,
+        "method": "scipy",
+    }
+
+    logger.info("OPTIMAL TRADITIONAL PORTFOLIO")
+    for symbol, weight in weights_dict.items():
+        logger.info(f"  {symbol}: {weight:.2%}")
+    logger.info(f"Expected Return: {expected_return:.2%}")
+    logger.info(f"Sharpe Ratio: {sharpe_ratio:.4f}")
+
+    if save:
+        try:
+            storage.save_output(result, "weights_trad")
+        except Exception as e:
+            raise OptimizeError(
+                f"Failed to save trad results: {e}", operation="save"
+            ) from e
+
+    return result
+
+
+def compute_and_save_frontier_trad(
+    storage: Storage | None = None,
+    n_points: int = 50,
+    save: bool = True,
+) -> dict[str, Any]:
+    """
+    Compute efficient frontier for traditional assets and save to ``frontier_trad.json``.
+
+    Args:
+        storage: Storage instance. If None, resolves from config.
+        n_points: Number of frontier points.
+        save: Whether to save results.
+
+    Returns:
+        Frontier data for traditional assets.
+    """
+    logger.info("Computing efficient frontier (traditional assets)")
+
+    yf_cfg = load_yfinance_config()
+    risk_free_rate = yf_cfg.risk_free_rate
+
+    symbols, cov_matrix, mean_returns, storage = _load_trad_optimization_inputs(storage)
+
+    result = compute_efficient_frontier(
+        mean_returns, cov_matrix, n_points, risk_free_rate
+    )
+    result["symbols"] = symbols
+
+    logger.info(f"Trad frontier points: {len(result['frontier'])}")
+
+    if save:
+        try:
+            storage.save_output(result, "frontier_trad")
+        except Exception as e:
+            raise OptimizeError(
+                f"Failed to save trad frontier: {e}", operation="save"
+            ) from e
+
+    return result

@@ -2,7 +2,8 @@
 # ORCHESTRATION ARCHITECTURE
 # =============================================================================
 # AIRFLOW  = single authoritative orchestrator for all scheduled/daily runs.
-#            DAG: ingest_incremental → transform → optimize → frontier → backtest
+#            DAG: two parallel branches (crypto + traditional/yfinance)
+#            Each: ingest_incremental → transform → optimize → frontier → backtest
 #            Runs daily at 00:00. Do NOT add cron jobs or extra pipeline
 #            services that duplicate this work.
 #
@@ -15,7 +16,7 @@
 #
 # Profiles quick reference:
 #   (no profile)        api + streamlit (default runtime)
-#   --profile pipeline  one-shot bootstrap (full ingest → transform → optimize → frontier → backtest)
+#   --profile pipeline  one-shot bootstrap (crypto + trad: ingest → transform → optimize → frontier → backtest)
 #   --profile airflow   Airflow scheduler + webserver + postgres metadata DB
 #   --profile benchmarks postgres-benchmarks only
 #   --profile streaming  Redpanda (Kafka-compatible) + producer + consumer
@@ -115,7 +116,7 @@ services:
 
   # ===========================================================================
   # AIRFLOW — single orchestrator for daily scheduled runs (--profile airflow)
-  # DAG: ingest_incremental → transform → optimize → frontier → backtest @ 00:00
+  # DAG: crypto + trad branches (ingest → transform → optimize → frontier → backtest) @ 00:00
   # ===========================================================================
 
   postgres:

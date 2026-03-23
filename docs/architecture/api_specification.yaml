@@ -292,6 +292,75 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /portfolio/trad:
+    get:
+      tags:
+        - Analytics
+      summary: Get Traditional Asset Portfolio
+      description: |
+        Returns optimized portfolio weights for traditional assets (stocks, ETFs,
+        commodities) using Markowitz mean-variance optimization with 252 trading days.
+      operationId: getTradPortfolio
+      responses:
+        '200':
+          description: Traditional portfolio allocation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortfolioResponse'
+        '404':
+          description: Traditional portfolio not computed yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/trad/frontier:
+    get:
+      tags:
+        - Analytics
+      summary: Get Traditional Asset Efficient Frontier
+      description: |
+        Returns the efficient frontier for traditional assets showing optimal
+        risk-return tradeoffs with 252 trading days per year.
+      operationId: getTradFrontier
+      responses:
+        '200':
+          description: Traditional efficient frontier data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrontierResponse'
+        '404':
+          description: Traditional frontier not yet computed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/trad/backtest:
+    get:
+      tags:
+        - Analytics
+      summary: Get Traditional Asset Backtest Results
+      description: |
+        Returns walk-forward backtest results for traditional assets comparing
+        the optimized strategy against equal-weight and SPY-only benchmarks.
+      operationId: getTradBacktest
+      responses:
+        '200':
+          description: Traditional backtest results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BacktestResponse'
+        '404':
+          description: Traditional backtest not yet computed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   schemas:
     HealthResponse:

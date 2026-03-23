@@ -146,6 +146,82 @@ def load_config(config_path: Path | None = None) -> PipelineConfig:
 
 
 # =============================================================================
+# yfinance configuration (traditional assets — stocks, ETFs, commodities)
+# =============================================================================
+
+_DEFAULT_YFINANCE_SYMBOLS = [
+    "SPY",      # S&P 500 (US)
+    "EFA",      # MSCI EAFE (Europe/Asia)
+    "GLD",      # Gold
+    "SLV",      # Silver
+    "TLT",      # US Treasury Bonds 20y
+    "AAPL",     # Apple (US)
+    "MSFT",     # Microsoft (US)
+    "ASML.AS",  # ASML (Europe/Amsterdam)
+    "MC.PA",    # LVMH (Europe/Paris)
+    "SAP.DE",   # SAP (Europe/Frankfurt)
+]
+
+
+@dataclass(frozen=True)
+class YFinanceConfig:
+    """Immutable configuration for traditional asset tracking via yfinance."""
+
+    symbols: list[str] = field(default_factory=lambda: list(_DEFAULT_YFINANCE_SYMBOLS))
+    trading_days_per_year: int = 252
+    period_days: int = 365
+    risk_free_rate: float = 0.05
+
+
+@functools.lru_cache(maxsize=4)
+def load_yfinance_config(config_path: Path | None = None) -> YFinanceConfig:
+    """
+    Load yfinance configuration from ``[yfinance]`` section of config.toml.
+
+    Precedence (highest wins):
+        1. Environment variables (YFINANCE_SYMBOLS, YFINANCE_PERIOD_DAYS)
+        2. config.toml ``[yfinance]`` values
+        3. YFinanceConfig defaults
+
+    Args:
+        config_path: Path to config.toml. Defaults to project root.
+
+    Returns:
+        Frozen YFinanceConfig dataclass.
+    """
+    if config_path is None:
+        config_path = _PROJECT_ROOT / "config.toml"
+
+    toml_data = _read_toml(config_path)
+    yfinance = toml_data.get("yfinance", {})
+
+    kwargs: dict[str, Any] = {}
+
+    if "symbols" in yfinance:
+        kwargs["symbols"] = yfinance["symbols"]
+    if "trading_days_per_year" in yfinance:
+        kwargs["trading_days_per_year"] = yfinance["trading_days_per_year"]
+    if "period_days" in yfinance:
+        kwargs["period_days"] = yfinance["period_days"]
+    if "risk_free_rate" in yfinance:
+        kwargs["risk_free_rate"] = yfinance["risk_free_rate"]
+
+    env_symbols = os.environ.get("YFINANCE_SYMBOLS")
+    if env_symbols:
+        kwargs["symbols"] = [s.strip() for s in env_symbols.split(",")]
+
+    env_period = os.environ.get("YFINANCE_PERIOD_DAYS")
+    if env_period:
+        kwargs["period_days"] = int(env_period)
+
+    env_risk_free = os.environ.get("YFINANCE_RISK_FREE_RATE")
+    if env_risk_free:
+        kwargs["risk_free_rate"] = float(env_risk_free)
+
+    return YFinanceConfig(**kwargs)
+
+
+# =============================================================================
 # Database configuration (infrastructure, separate from pipeline parameters)
 # =============================================================================
 
