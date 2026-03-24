@@ -95,6 +95,41 @@ class MonteCarloResponse(BaseModel):
     config: dict[str, Any]
 
 
+class RebalanceAlertItem(BaseModel):
+    symbol: str
+    current_weight: float
+    target_weight: float
+    drift: float
+    drift_pct: float
+    action: str
+
+
+class RebalanceTradeItem(BaseModel):
+    symbol: str
+    action: str
+    amount_usd: float
+    weight_change: float
+
+
+class RebalanceSummary(BaseModel):
+    total_drift: float
+    max_drift: float
+    n_alerts: int
+    n_symbols: int
+    drift_threshold: float
+    portfolio_value: float
+    needs_rebalance: bool
+
+
+class RebalanceResponse(BaseModel):
+    """Rebalancing alerts and suggested trades."""
+
+    alerts: list[RebalanceAlertItem]
+    trades: list[RebalanceTradeItem]
+    summary: RebalanceSummary
+    portfolio_key: str
+
+
 class CombinedPortfolioResponse(BaseModel):
     """Combined crypto + traditional portfolio."""
 

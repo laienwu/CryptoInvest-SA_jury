@@ -19,6 +19,7 @@ from src.api.metrics import pipeline_last_run, portfolio_sharpe, records_ingeste
 from src.api.schemas import (
     BacktestResponse,
     CombinedPortfolioResponse,
+    RebalanceResponse,
     FrontierResponse,
     HealthResponse,
     KlinesResponse,
@@ -311,6 +312,36 @@ def get_combined_portfolio(
         raise HTTPException(404, e.message) from e
     except Exception as e:
         logger.error("Failed to compute combined portfolio: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Rebalancing Alerts — /portfolio/rebalance
+# =============================================================================
+
+
+@app.get("/portfolio/rebalance", response_model=RebalanceResponse)
+def get_rebalance_alerts(
+    drift_threshold: float = 0.05,
+    portfolio_value: float = 10000.0,
+    portfolio_key: str = "weights",
+    storage: Storage = Depends(get_storage_dep),
+) -> dict[str, Any]:
+    """Get rebalancing alerts comparing current vs optimal weights."""
+    from src.pipeline.rebalance import RebalanceError, compute_rebalance_alerts
+
+    try:
+        return compute_rebalance_alerts(
+            drift_threshold=drift_threshold,
+            portfolio_value=portfolio_value,
+            portfolio_key=portfolio_key,
+            storage=storage,
+            save=False,
+        )
+    except RebalanceError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed to compute rebalance alerts: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 

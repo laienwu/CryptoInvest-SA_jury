@@ -349,6 +349,50 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /portfolio/rebalance:
+    get:
+      tags:
+        - Analytics
+      summary: Get Rebalancing Alerts
+      description: |
+        Compares current portfolio weights against optimal allocation and
+        flags symbols that have drifted beyond the threshold. Suggests trades.
+      operationId: getRebalanceAlerts
+      parameters:
+        - name: drift_threshold
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+            default: 0.05
+        - name: portfolio_value
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+            default: 10000.0
+        - name: portfolio_key
+          in: query
+          required: false
+          schema:
+            type: string
+            default: weights
+      responses:
+        '200':
+          description: Rebalancing alerts and suggested trades
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RebalanceResponse'
+        '404':
+          description: Optimal portfolio not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /portfolio/trad:
     get:
       tags:
@@ -804,6 +848,75 @@ components:
               type: integer
             n_days:
               type: integer
+
+    RebalanceResponse:
+      type: object
+      required:
+        - alerts
+        - trades
+        - summary
+        - portfolio_key
+      properties:
+        alerts:
+          type: array
+          items:
+            type: object
+            properties:
+              symbol:
+                type: string
+              current_weight:
+                type: number
+                format: double
+              target_weight:
+                type: number
+                format: double
+              drift:
+                type: number
+                format: double
+              drift_pct:
+                type: number
+                format: double
+              action:
+                type: string
+                enum: [BUY, SELL]
+        trades:
+          type: array
+          items:
+            type: object
+            properties:
+              symbol:
+                type: string
+              action:
+                type: string
+              amount_usd:
+                type: number
+                format: double
+              weight_change:
+                type: number
+                format: double
+        summary:
+          type: object
+          properties:
+            total_drift:
+              type: number
+              format: double
+            max_drift:
+              type: number
+              format: double
+            n_alerts:
+              type: integer
+            n_symbols:
+              type: integer
+            drift_threshold:
+              type: number
+              format: double
+            portfolio_value:
+              type: number
+              format: double
+            needs_rebalance:
+              type: boolean
+        portfolio_key:
+          type: string
 
     CombinedPortfolioResponse:
       type: object
