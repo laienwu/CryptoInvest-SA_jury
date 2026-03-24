@@ -2378,6 +2378,50 @@ def page_monte_carlo() -> None:
         st.plotly_chart(fig_hist, use_container_width=True)
 
 
+def page_live_ticker() -> None:
+    """Live price ticker page."""
+    st.header("Live Price Ticker")
+
+    data = fetch_api("/prices/live")
+    if not data:
+        st.warning("Could not fetch live prices. Is the API running?")
+        return
+
+    tickers = data.get("crypto", []) + data.get("trad", [])
+    if not tickers:
+        st.info("No live price data available.")
+        return
+
+    st.caption(f"Last updated: {data.get('timestamp', 'N/A')}")
+
+    # Price cards in columns
+    cols = st.columns(min(len(tickers), 4))
+    for i, t in enumerate(tickers):
+        col = cols[i % len(cols)]
+        change = t.get("change_24h", 0)
+        arrow = "+" if change >= 0 else ""
+        color = "green" if change >= 0 else "red"
+        col.metric(
+            label=t["symbol"],
+            value=f"${t['price']:,.2f}",
+            delta=f"{arrow}{change:.2f}%",
+        )
+
+    # Detailed table
+    st.subheader("24h Summary")
+    table_data = []
+    for t in tickers:
+        table_data.append({
+            "Symbol": t["symbol"],
+            "Price": f"${t['price']:,.2f}",
+            "24h Change": f"{t['change_24h']:+.2f}%",
+            "24h High": f"${t.get('high_24h', 0):,.2f}",
+            "24h Low": f"${t.get('low_24h', 0):,.2f}",
+            "24h Volume": f"${t.get('volume_24h', 0):,.0f}",
+        })
+    st.dataframe(table_data, use_container_width=True, hide_index=True)
+
+
 def main() -> None:
     """Main dashboard entry point."""
     st.set_page_config(
@@ -2389,7 +2433,7 @@ def main() -> None:
     st.sidebar.title("Navigation")
     page = st.sidebar.radio(
         "Select Page",
-        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo"],
+        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Live Ticker"],
     )
 
     st.sidebar.markdown("---")
@@ -2432,6 +2476,8 @@ def main() -> None:
         page_backtest()
     elif page == "Monte Carlo":
         page_monte_carlo()
+    elif page == "Live Ticker":
+        page_live_ticker()
 
     if auto_refresh:
         time.sleep(30)

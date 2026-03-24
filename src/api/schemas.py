@@ -130,6 +130,25 @@ class RebalanceResponse(BaseModel):
     portfolio_key: str
 
 
+class TickerItem(BaseModel):
+    symbol: str
+    price: float
+    change_24h: float
+    volume_24h: float
+    high_24h: float
+    low_24h: float
+
+
+class LivePricesResponse(BaseModel):
+    """Live price ticker data."""
+
+    crypto: list[TickerItem]
+    trad: list[TickerItem]
+    timestamp: str
+    n_crypto: int
+    n_trad: int
+
+
 class CombinedPortfolioResponse(BaseModel):
     """Combined crypto + traditional portfolio."""
 

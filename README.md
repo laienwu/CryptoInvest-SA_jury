@@ -147,6 +147,7 @@ uv run streamlit run src/dashboard/app.py
 | `GET /portfolio/combined?crypto_weight=0.6` | Portefeuille combiné crypto + traditionnel |
 | `GET /portfolio/rebalance?drift_threshold=0.05` | Alertes de rééquilibrage et trades suggérés |
 | `GET /portfolio/report?portfolio_key=weights` | Télécharger rapport PDF du portefeuille |
+| `GET /prices/live` | Prix en temps réel (Binance 24h ticker) |
 
 ## Tableau de bord
 
@@ -158,6 +159,7 @@ Le tableau de bord Streamlit fournit :
 - **Carte thermique de corrélation** - Matrice de corrélation des actifs
 - **Comparaison de volatilité** - Graphique à barres par symbole
 - **Monte Carlo** - Fan chart des simulations, histogramme des valeurs finales, VaR/CVaR
+- **Live Ticker** - Prix en temps réel avec variation 24h, volume, high/low
 
 ## Test
 

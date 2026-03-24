@@ -22,6 +22,7 @@ from src.api.metrics import pipeline_last_run, portfolio_sharpe, records_ingeste
 from src.api.schemas import (
     BacktestResponse,
     CombinedPortfolioResponse,
+    LivePricesResponse,
     RebalanceResponse,
     FrontierResponse,
     HealthResponse,
@@ -378,6 +379,23 @@ def get_portfolio_report(
         raise HTTPException(404, e.message) from e
     except Exception as e:
         logger.error("Failed to generate PDF report: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Live Prices — /prices/live
+# =============================================================================
+
+
+@app.get("/prices/live", response_model=LivePricesResponse)
+def get_live_prices() -> dict[str, Any]:
+    """Get live prices for portfolio symbols from Binance."""
+    from src.pipeline.live_prices import fetch_live_prices
+
+    try:
+        return fetch_live_prices()
+    except Exception as e:
+        logger.error("Failed to fetch live prices: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 

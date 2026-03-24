@@ -349,6 +349,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /prices/live:
+    get:
+      tags:
+        - Data
+      summary: Get Live Prices
+      description: |
+        Fetches current 24h ticker data from Binance for crypto symbols
+        and optionally from yfinance for traditional assets.
+      operationId: getLivePrices
+      responses:
+        '200':
+          description: Live price ticker data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivePricesResponse'
+
   /portfolio/report:
     get:
       tags:
@@ -879,6 +896,59 @@ components:
               type: integer
             n_days:
               type: integer
+
+    TickerItem:
+      type: object
+      required:
+        - symbol
+        - price
+        - change_24h
+        - volume_24h
+        - high_24h
+        - low_24h
+      properties:
+        symbol:
+          type: string
+        price:
+          type: number
+          format: double
+        change_24h:
+          type: number
+          format: double
+        volume_24h:
+          type: number
+          format: double
+        high_24h:
+          type: number
+          format: double
+        low_24h:
+          type: number
+          format: double
+
+    LivePricesResponse:
+      type: object
+      required:
+        - crypto
+        - trad
+        - timestamp
+        - n_crypto
+        - n_trad
+      properties:
+        crypto:
+          type: array
+          items:
+            $ref: '#/components/schemas/TickerItem'
+        trad:
+          type: array
+          items:
+            $ref: '#/components/schemas/TickerItem'
+        timestamp:
+          type: string
+          format: date-time
+        n_crypto:
+          type: integer
+        n_trad:
+          type: integer
 
     RebalanceResponse:
       type: object
