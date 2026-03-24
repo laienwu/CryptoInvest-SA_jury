@@ -125,8 +125,15 @@ def _is_trad_mode() -> bool:
     return st.session_state.get("portfolio_mode") == "Traditional"
 
 
+def _is_combined_mode() -> bool:
+    """Return True when the sidebar toggle is set to Combined."""
+    return st.session_state.get("portfolio_mode") == "Combined"
+
+
 def _portfolio_endpoint() -> str:
-    """Return /portfolio or /portfolio/trad based on toggle."""
+    """Return /portfolio, /portfolio/trad, or /portfolio/combined based on toggle."""
+    if _is_combined_mode():
+        return "/portfolio/combined"
     return "/portfolio/trad" if _is_trad_mode() else "/portfolio"
 
 
@@ -2388,7 +2395,7 @@ def main() -> None:
     st.sidebar.markdown("---")
     st.sidebar.radio(
         "Portfolio",
-        ["Crypto", "Traditional"],
+        ["Crypto", "Traditional", "Combined"],
         key="portfolio_mode",
         horizontal=True,
     )

@@ -93,3 +93,17 @@ class MonteCarloResponse(BaseModel):
     cvar_95: float
     symbols: list[str] | None = None
     config: dict[str, Any]
+
+
+class CombinedPortfolioResponse(BaseModel):
+    """Combined crypto + traditional portfolio."""
+
+    weights: dict[str, float]
+    allocation: dict[str, float]
+    expected_return: float
+    volatility: float
+    sharpe_ratio: float
+    crypto_symbols: list[str]
+    trad_symbols: list[str]
+    crypto_metrics: dict[str, Any]
+    trad_metrics: dict[str, Any]

@@ -18,6 +18,7 @@ from src.api.cache import _CACHE_TTL_SECONDS, RedisCache, cached_response, get_c
 from src.api.metrics import pipeline_last_run, portfolio_sharpe, records_ingested  # noqa: F401
 from src.api.schemas import (
     BacktestResponse,
+    CombinedPortfolioResponse,
     FrontierResponse,
     HealthResponse,
     KlinesResponse,
@@ -280,6 +281,36 @@ def get_monte_carlo(
         raise HTTPException(404, "Monte Carlo results not found") from e
     except Exception as e:
         logger.error("Failed to load Monte Carlo results: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Combined Portfolio — /portfolio/combined
+# =============================================================================
+
+
+@app.get("/portfolio/combined", response_model=CombinedPortfolioResponse)
+def get_combined_portfolio(
+    crypto_weight: float = 0.6,
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Get combined crypto + traditional portfolio with configurable split."""
+    from src.pipeline.combine import CombineError, combine_portfolios
+
+    try:
+        return cached_response(
+            cache,
+            f"portfolio:combined:{crypto_weight}",
+            _CACHE_TTL_SECONDS,
+            lambda: combine_portfolios(
+                crypto_weight=crypto_weight, storage=storage, save=False
+            ),
+        )
+    except CombineError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed to compute combined portfolio: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 
