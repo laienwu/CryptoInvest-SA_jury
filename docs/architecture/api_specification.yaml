@@ -349,6 +349,37 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /portfolio/report:
+    get:
+      tags:
+        - Analytics
+      summary: Download Portfolio PDF Report
+      description: |
+        Generates and returns a PDF report with portfolio weights,
+        key metrics, and allocation table.
+      operationId: getPortfolioReport
+      parameters:
+        - name: portfolio_key
+          in: query
+          required: false
+          schema:
+            type: string
+            default: weights
+      responses:
+        '200':
+          description: PDF file download
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Portfolio not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /portfolio/rebalance:
     get:
       tags:

@@ -8,9 +8,12 @@ Run with: uvicorn src.api.main:app --reload
 
 import logging
 import os
+import tempfile
+from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -342,6 +345,39 @@ def get_rebalance_alerts(
         raise HTTPException(404, e.message) from e
     except Exception as e:
         logger.error("Failed to compute rebalance alerts: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# PDF Export — /portfolio/report
+# =============================================================================
+
+
+@app.get("/portfolio/report", response_class=FileResponse)
+def get_portfolio_report(
+    portfolio_key: str = "weights",
+    storage: Storage = Depends(get_storage_dep),
+) -> FileResponse:
+    """Download a PDF report of portfolio optimization results."""
+    from src.pipeline.pdf_export import PDFExportError, generate_portfolio_report
+
+    try:
+        tmp_dir = tempfile.mkdtemp()
+        output_path = Path(tmp_dir) / "portfolio_report.pdf"
+        generate_portfolio_report(
+            output_path=output_path,
+            portfolio_key=portfolio_key,
+            storage=storage,
+        )
+        return FileResponse(
+            path=str(output_path),
+            filename="portfolio_report.pdf",
+            media_type="application/pdf",
+        )
+    except PDFExportError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed to generate PDF report: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 

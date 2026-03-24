@@ -146,6 +146,7 @@ uv run streamlit run src/dashboard/app.py
 | `GET /portfolio/monte-carlo` | Simulation Monte Carlo (VaR, CVaR, percentiles) |
 | `GET /portfolio/combined?crypto_weight=0.6` | Portefeuille combiné crypto + traditionnel |
 | `GET /portfolio/rebalance?drift_threshold=0.05` | Alertes de rééquilibrage et trades suggérés |
+| `GET /portfolio/report?portfolio_key=weights` | Télécharger rapport PDF du portefeuille |
 
 ## Tableau de bord
 
