@@ -216,6 +216,33 @@ class LivePricesResponse(BaseModel):
     n_trad: int
 
 
+class CustomPortfolioRequest(BaseModel):
+    """Request body for custom portfolio evaluation."""
+
+    weights: dict[str, float]
+    risk_free_rate: float = 0.0
+
+
+class CustomPortfolioContribution(BaseModel):
+    symbol: str
+    weight: float
+    expected_return: float
+    mctr: float
+    risk_contribution: float
+
+
+class CustomPortfolioResponse(BaseModel):
+    """Custom portfolio evaluation result."""
+
+    weights: dict[str, float]
+    expected_return: float
+    volatility: float
+    sharpe_ratio: float
+    risk_free_rate: float
+    contributions: list[CustomPortfolioContribution]
+    n_assets: int
+
+
 class AttributionItem(BaseModel):
     symbol: str
     weight: float

@@ -22,6 +22,8 @@ from src.api.metrics import pipeline_last_run, portfolio_sharpe, records_ingeste
 from src.api.schemas import (
     AttributionResponse,
     BacktestResponse,
+    CustomPortfolioRequest,
+    CustomPortfolioResponse,
     CombinedPortfolioResponse,
     DrawdownResponse,
     LivePricesResponse,
@@ -60,7 +62,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:8501"],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -574,6 +576,32 @@ def get_attribution(
         raise HTTPException(404, e.message) from e
     except Exception as e:
         logger.error("Failed to compute attribution: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Custom Portfolio Evaluation — POST /portfolio/custom
+# =============================================================================
+
+
+@app.post("/portfolio/custom", response_model=CustomPortfolioResponse)
+def evaluate_custom(
+    body: CustomPortfolioRequest,
+    storage: Storage = Depends(get_storage_dep),
+) -> dict[str, Any]:
+    """Evaluate custom portfolio weights against current market data."""
+    from src.pipeline.evaluate import EvaluateError, evaluate_custom_portfolio
+
+    try:
+        return evaluate_custom_portfolio(
+            weights=body.weights,
+            risk_free_rate=body.risk_free_rate,
+            storage=storage,
+        )
+    except EvaluateError as e:
+        raise HTTPException(400, e.message) from e
+    except Exception as e:
+        logger.error("Failed to evaluate custom portfolio: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 

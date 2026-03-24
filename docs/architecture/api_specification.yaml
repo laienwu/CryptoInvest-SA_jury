@@ -561,6 +561,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /portfolio/custom:
+    post:
+      tags:
+        - Analytics
+      summary: Evaluate Custom Portfolio
+      description: |
+        Evaluates user-provided portfolio weights against current market data.
+        Returns expected return, volatility, Sharpe ratio, and per-asset risk
+        contribution.
+      operationId: evaluateCustomPortfolio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomPortfolioRequest'
+      responses:
+        '200':
+          description: Custom portfolio evaluation results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomPortfolioResponse'
+        '400':
+          description: Invalid weights or unknown symbols
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /portfolio/attribution:
     get:
       tags:
@@ -1426,6 +1456,78 @@ components:
           type: integer
         portfolio_key:
           type: string
+
+    CustomPortfolioRequest:
+      type: object
+      required:
+        - weights
+      properties:
+        weights:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+          description: Portfolio weights by symbol (must sum to ~1.0)
+        risk_free_rate:
+          type: number
+          format: double
+          default: 0.0
+
+    CustomPortfolioResponse:
+      type: object
+      required:
+        - weights
+        - expected_return
+        - volatility
+        - sharpe_ratio
+        - risk_free_rate
+        - contributions
+        - n_assets
+      properties:
+        weights:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        expected_return:
+          type: number
+          format: double
+        volatility:
+          type: number
+          format: double
+        sharpe_ratio:
+          type: number
+          format: double
+        risk_free_rate:
+          type: number
+          format: double
+        contributions:
+          type: array
+          items:
+            type: object
+            required:
+              - symbol
+              - weight
+              - expected_return
+              - mctr
+              - risk_contribution
+            properties:
+              symbol:
+                type: string
+              weight:
+                type: number
+                format: double
+              expected_return:
+                type: number
+                format: double
+              mctr:
+                type: number
+                format: double
+              risk_contribution:
+                type: number
+                format: double
+        n_assets:
+          type: integer
 
     AttributionResponse:
       type: object
