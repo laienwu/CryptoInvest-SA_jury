@@ -148,6 +148,7 @@ uv run streamlit run src/dashboard/app.py
 | `GET /portfolio/rebalance?drift_threshold=0.05` | Alertes de rééquilibrage et trades suggérés |
 | `GET /portfolio/report?portfolio_key=weights` | Télécharger rapport PDF du portefeuille |
 | `GET /portfolio/risk-contribution` | Contribution marginale au risque par actif |
+| `GET /portfolio/rolling-correlation?window=30` | Corrélation glissante entre paires d'actifs |
 | `GET /prices/live` | Prix en temps réel (Binance 24h ticker) |
 
 ## Tableau de bord

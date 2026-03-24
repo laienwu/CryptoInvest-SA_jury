@@ -130,6 +130,22 @@ class RebalanceResponse(BaseModel):
     portfolio_key: str
 
 
+class RollingCorrelationPair(BaseModel):
+    pair: str
+    symbol_a: str
+    symbol_b: str
+    correlations: list[float | None]
+
+
+class RollingCorrelationResponse(BaseModel):
+    """Rolling pairwise correlation data."""
+
+    pairs: list[RollingCorrelationPair]
+    window: int
+    n_periods: int
+    n_pairs: int
+
+
 class RiskContributionItem(BaseModel):
     symbol: str
     weight: float

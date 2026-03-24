@@ -349,6 +349,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /portfolio/rolling-correlation:
+    get:
+      tags:
+        - Analytics
+      summary: Get Rolling Correlation
+      description: |
+        Computes rolling pairwise Pearson correlation between all asset
+        pairs over a configurable sliding window.
+      operationId: getRollingCorrelation
+      parameters:
+        - name: window
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 30
+            minimum: 2
+      responses:
+        '200':
+          description: Rolling correlation time series per pair
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RollingCorrelationResponse'
+        '400':
+          description: Invalid window parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Returns data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /portfolio/risk-contribution:
     get:
       tags:
@@ -926,6 +963,43 @@ components:
               type: integer
             n_days:
               type: integer
+
+    RollingCorrelationResponse:
+      type: object
+      required:
+        - pairs
+        - window
+        - n_periods
+        - n_pairs
+      properties:
+        pairs:
+          type: array
+          items:
+            type: object
+            required:
+              - pair
+              - symbol_a
+              - symbol_b
+              - correlations
+            properties:
+              pair:
+                type: string
+              symbol_a:
+                type: string
+              symbol_b:
+                type: string
+              correlations:
+                type: array
+                items:
+                  type: number
+                  format: double
+                  nullable: true
+        window:
+          type: integer
+        n_periods:
+          type: integer
+        n_pairs:
+          type: integer
 
     RiskContributionResponse:
       type: object

@@ -360,6 +360,70 @@ def calculate_mean_returns(
 
 
 # =============================================================================
+# Rolling Correlation
+# =============================================================================
+
+
+def compute_rolling_correlation(
+    returns: list[list[float]],
+    symbols: list[str],
+    window: int = 30,
+) -> dict[str, Any]:
+    """
+    Compute rolling pairwise correlation between assets over a sliding window.
+
+    For each pair (i, j) where i < j, computes Pearson correlation at each
+    time step using the last `window` returns.
+
+    Args:
+        returns: 2D list [n_symbols][n_periods] of daily returns.
+        symbols: Symbol names corresponding to rows of returns.
+        window: Rolling window size in periods.
+
+    Returns:
+        Dictionary with pairs, rolling correlations, and metadata.
+    """
+    n_symbols = len(returns)
+    n_periods = len(returns[0]) if returns else 0
+
+    if window < 2:
+        raise TransformError("Rolling window must be >= 2", operation="rolling_corr")
+    if window > n_periods:
+        raise TransformError(
+            f"Window {window} exceeds available periods {n_periods}",
+            operation="rolling_corr",
+        )
+
+    pairs: list[dict[str, Any]] = []
+
+    for i in range(n_symbols):
+        for j in range(i + 1, n_symbols):
+            correlations: list[float | None] = []
+            for t in range(n_periods):
+                if t < window - 1:
+                    correlations.append(None)
+                else:
+                    x_slice = returns[i][t - window + 1 : t + 1]
+                    y_slice = returns[j][t - window + 1 : t + 1]
+                    corr = calculate_correlation(x_slice, y_slice)
+                    correlations.append(round(corr, 4))
+
+            pairs.append({
+                "pair": f"{symbols[i]}/{symbols[j]}",
+                "symbol_a": symbols[i],
+                "symbol_b": symbols[j],
+                "correlations": correlations,
+            })
+
+    return {
+        "pairs": pairs,
+        "window": window,
+        "n_periods": n_periods,
+        "n_pairs": len(pairs),
+    }
+
+
+# =============================================================================
 # Main Transform Function
 # =============================================================================
 

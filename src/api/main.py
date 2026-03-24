@@ -25,6 +25,7 @@ from src.api.schemas import (
     LivePricesResponse,
     RebalanceResponse,
     RiskContributionResponse,
+    RollingCorrelationResponse,
     FrontierResponse,
     HealthResponse,
     KlinesResponse,
@@ -287,6 +288,42 @@ def get_monte_carlo(
         raise HTTPException(404, "Monte Carlo results not found") from e
     except Exception as e:
         logger.error("Failed to load Monte Carlo results: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Rolling Correlation — /portfolio/rolling-correlation
+# =============================================================================
+
+
+@app.get("/portfolio/rolling-correlation", response_model=RollingCorrelationResponse)
+def get_rolling_correlation(
+    window: int = 30,
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Get rolling pairwise correlation between portfolio assets."""
+    from src.pipeline.transform import TransformError, compute_rolling_correlation
+
+    try:
+        def _compute() -> dict[str, Any]:
+            returns_data = storage.load_processed("returns")
+            symbols = returns_data["symbols"]
+            returns = returns_data["values"]
+            return compute_rolling_correlation(returns, symbols, window=window)
+
+        return cached_response(
+            cache,
+            f"portfolio:rolling_corr:{window}",
+            _CACHE_TTL_SECONDS,
+            _compute,
+        )
+    except TransformError as e:
+        raise HTTPException(400, e.message) from e
+    except (StorageError, FileNotFoundError) as e:
+        raise HTTPException(404, "Returns data not found") from e
+    except Exception as e:
+        logger.error("Failed to compute rolling correlation: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 
