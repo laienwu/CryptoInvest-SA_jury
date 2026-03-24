@@ -1,10 +1,25 @@
 """Tests for Kafka streaming producer and consumer."""
 
 import json
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+
+# ---------------------------------------------------------------------------
+# Mock optional dependencies at sys.modules level so the modules can import
+# ---------------------------------------------------------------------------
+
+def _ensure_streaming_mocks():
+    """Inject mock modules for websocket and kafka if not installed."""
+    for mod_name in ("websocket", "kafka"):
+        if mod_name not in sys.modules:
+            sys.modules[mod_name] = MagicMock()
+
+
+_ensure_streaming_mocks()
 
 
 class TestProducer:

@@ -2,6 +2,7 @@
 
 import io
 import json
+import sys
 from unittest.mock import MagicMock, patch
 
 import pyarrow as pa
@@ -9,6 +10,36 @@ import pyarrow.parquet as pq
 import pytest
 
 from src.storage.base import StorageError
+
+
+# ---------------------------------------------------------------------------
+# Mock the minio pip package at sys.modules level if not installed.
+# This allows `from minio import Minio` and `from minio.error import S3Error`
+# inside src.storage.minio to resolve without the real package.
+# ---------------------------------------------------------------------------
+
+class _MockS3Error(Exception):
+    """Fake S3Error that matches the real constructor signature."""
+    def __init__(self, code="", message="", resource="", request_id="", host_id="", response=""):
+        super().__init__(message)
+        self.code = code
+
+
+def _ensure_minio_mocks():
+    """Inject mock minio modules if the real package is not installed."""
+    if "minio" not in sys.modules or isinstance(sys.modules["minio"], MagicMock):
+        minio_mod = MagicMock()
+        error_mod = MagicMock()
+        error_mod.S3Error = _MockS3Error
+        minio_mod.error = error_mod
+        sys.modules["minio"] = minio_mod
+        sys.modules["minio.error"] = error_mod
+
+
+_ensure_minio_mocks()
+
+# Now S3Error resolves from our mock
+from minio.error import S3Error  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +140,7 @@ class TestLoadRaw:
 
         parquet_bytes = _make_klines_parquet(SAMPLE_RECORDS)
 
-        # stat_object succeeds → object exists
+        # stat_object succeeds -> object exists
         client.stat_object.return_value = MagicMock()
 
         # get_object returns response with .read()
@@ -124,8 +155,6 @@ class TestLoadRaw:
         assert result["BTCUSDT"][0]["close"] == 105.0
 
     def test_load_raw_missing_symbol_skipped(self):
-        from minio.error import S3Error
-
         client = _mock_minio_client()
         storage = _make_storage(client)
 
@@ -222,8 +251,6 @@ class TestSaveLoadProcessed:
             storage.save_processed({}, "test")
 
     def test_load_processed_not_found_raises(self):
-        from minio.error import S3Error
-
         client = _mock_minio_client()
         storage = _make_storage(client)
 
@@ -266,8 +293,6 @@ class TestSaveLoadOutput:
             storage.save_output({}, "test")
 
     def test_load_output_not_found_raises(self):
-        from minio.error import S3Error
-
         client = _mock_minio_client()
         storage = _make_storage(client)
 
@@ -326,13 +351,15 @@ class TestListOperations:
 
 class TestRegistration:
     def test_minio_registered_in_factory(self):
-        from src.storage import get_storage, list_available_backends
+        import importlib
+        import src.storage as storage_pkg
 
-        assert "minio" in list_available_backends()
+        # Re-import after minio mock is in sys.modules
+        importlib.reload(storage_pkg)
+        assert "minio" in storage_pkg.list_available_backends()
 
     def test_config_has_minio_fields(self):
         from src.config import load_config
-        import functools
 
         load_config.cache_clear()
         cfg = load_config()
