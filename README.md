@@ -152,6 +152,7 @@ uv run streamlit run src/dashboard/app.py
 | `GET /portfolio/scenarios` | Liste des scénarios de stress test disponibles |
 | `GET /portfolio/stress-test?scenario=crypto_crash` | Test de stress du portefeuille (5 scénarios prédéfinis + custom) |
 | `GET /portfolio/drawdown?portfolio_key=backtest` | Analyse des drawdowns (séries, périodes, récupération) |
+| `GET /portfolio/attribution?portfolio_key=weights` | Attribution de performance par actif (poids × rendement) |
 | `GET /prices/live` | Prix en temps réel (Binance 24h ticker) |
 
 ## Tableau de bord

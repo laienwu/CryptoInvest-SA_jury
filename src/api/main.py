@@ -20,6 +20,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from src.api.cache import _CACHE_TTL_SECONDS, RedisCache, cached_response, get_cache
 from src.api.metrics import pipeline_last_run, portfolio_sharpe, records_ingested  # noqa: F401
 from src.api.schemas import (
+    AttributionResponse,
     BacktestResponse,
     CombinedPortfolioResponse,
     DrawdownResponse,
@@ -540,6 +541,39 @@ def get_drawdown_analysis(
         raise HTTPException(404, e.message) from e
     except Exception as e:
         logger.error("Failed to compute drawdown analysis: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Performance Attribution — /portfolio/attribution
+# =============================================================================
+
+
+@app.get("/portfolio/attribution", response_model=AttributionResponse)
+def get_attribution(
+    portfolio_key: str = "weights",
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Get per-asset performance attribution analysis."""
+    from src.pipeline.attribution import (
+        AttributionError,
+        analyze_performance_attribution,
+    )
+
+    try:
+        return cached_response(
+            cache,
+            f"portfolio:attribution:{portfolio_key}",
+            _CACHE_TTL_SECONDS,
+            lambda: analyze_performance_attribution(
+                portfolio_key=portfolio_key, storage=storage, save=False
+            ),
+        )
+    except AttributionError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed to compute attribution: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 

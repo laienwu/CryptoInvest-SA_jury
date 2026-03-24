@@ -216,6 +216,25 @@ class LivePricesResponse(BaseModel):
     n_trad: int
 
 
+class AttributionItem(BaseModel):
+    symbol: str
+    weight: float
+    asset_return: float
+    contribution: float
+    pct_contribution: float
+
+
+class AttributionResponse(BaseModel):
+    """Performance attribution analysis."""
+
+    contributions: list[AttributionItem]
+    portfolio_return: float
+    n_assets: int
+    top_contributors: list[str]
+    bottom_contributors: list[str]
+    portfolio_key: str
+
+
 class DrawdownSummary(BaseModel):
     max_drawdown: float
     avg_drawdown: float

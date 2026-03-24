@@ -561,6 +561,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /portfolio/attribution:
+    get:
+      tags:
+        - Analytics
+      summary: Get Performance Attribution
+      description: |
+        Decomposes portfolio return into per-asset contributions using
+        weight × return. Identifies top and bottom contributors.
+      operationId: getAttribution
+      parameters:
+        - name: portfolio_key
+          in: query
+          required: false
+          schema:
+            type: string
+            default: weights
+      responses:
+        '200':
+          description: Performance attribution results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttributionResponse'
+        '404':
+          description: Portfolio or returns data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /portfolio/drawdown:
     get:
       tags:
@@ -1394,6 +1424,57 @@ components:
           nullable: true
         n_assets:
           type: integer
+        portfolio_key:
+          type: string
+
+    AttributionResponse:
+      type: object
+      required:
+        - contributions
+        - portfolio_return
+        - n_assets
+        - top_contributors
+        - bottom_contributors
+        - portfolio_key
+      properties:
+        contributions:
+          type: array
+          items:
+            type: object
+            required:
+              - symbol
+              - weight
+              - asset_return
+              - contribution
+              - pct_contribution
+            properties:
+              symbol:
+                type: string
+              weight:
+                type: number
+                format: double
+              asset_return:
+                type: number
+                format: double
+              contribution:
+                type: number
+                format: double
+              pct_contribution:
+                type: number
+                format: double
+        portfolio_return:
+          type: number
+          format: double
+        n_assets:
+          type: integer
+        top_contributors:
+          type: array
+          items:
+            type: string
+        bottom_contributors:
+          type: array
+          items:
+            type: string
         portfolio_key:
           type: string
 
