@@ -90,7 +90,7 @@ class DuckDBStorage(Storage):
                         timestamp,
                         open, high, low, close, volume
                     FROM read_parquet('{f.as_posix()}')
-                """)
+                """)  # nosec B608
 
             union_sql = " UNION ALL ".join(unions)
             self.conn.execute(f"""
@@ -176,7 +176,7 @@ class DuckDBStorage(Storage):
         """Load raw data via SQL query."""
         if symbols:
             placeholders = ", ".join("?" for _ in symbols)
-            sql = f"SELECT * FROM fact_prices WHERE symbol IN ({placeholders})"
+            sql = f"SELECT * FROM fact_prices WHERE symbol IN ({placeholders})"  # nosec B608
             rows = self._query_params(sql, symbols)
         else:
             rows = self._query_params("SELECT * FROM fact_prices", [])
@@ -237,7 +237,7 @@ class DuckDBStorage(Storage):
             raise StorageError(f"Not found: {name}", operation="load_processed")
 
         # Query the parquet file directly
-        rows = self.query(f"SELECT * FROM read_parquet('{file_path.as_posix()}')")
+        rows = self.query(f"SELECT * FROM read_parquet('{file_path.as_posix()}')")  # nosec B608
 
         if not rows:
             raise StorageError(f"Empty: {name}", operation="load_processed")

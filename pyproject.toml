@@ -27,6 +27,8 @@ dev = [
     "pyyaml>=6.0",
     "ruff>=0.3.0",
     "mypy>=1.10.0",
+    "bandit>=1.7.0",
+    "pip-audit>=2.7.0",
 ]
 optimize = [
     "scipy>=1.11.0",
@@ -113,3 +115,7 @@ module = [
     "yfinance.*",
 ]
 ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = ["tests", "dags"]
+skips = ["B101"]  # assert used in tests only (tests excluded anyway)

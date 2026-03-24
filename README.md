@@ -22,7 +22,7 @@ Plate-forme d'ingénierie de données prête pour la production pour l'optimisat
 - **Cache API** - Redis avec TTL et fallback gracieux
 - **Monitoring** - Prometheus + Grafana (métriques, alertes)
 - **Qualité des données** - Validation bronze/silver/gold (contrats de données)
-- **CI/CD** - GitHub Actions (ruff, mypy, pytest, coverage)
+- **CI/CD** - GitHub Actions (ruff, mypy, pytest, coverage, bandit, pip-audit)
 
 ## Architecture
 
