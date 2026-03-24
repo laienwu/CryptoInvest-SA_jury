@@ -2,7 +2,7 @@
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-green.svg)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/tests-342%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-531%20passed-brightgreen.svg)]()
 [![CI](https://github.com/yourusername/binance-portfolio/actions/workflows/ci.yml/badge.svg)]()
 [![Couverture](https://img.shields.io/badge/coverage-55%25-yellow.svg)]()
 
