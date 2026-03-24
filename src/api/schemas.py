@@ -130,6 +130,22 @@ class RebalanceResponse(BaseModel):
     portfolio_key: str
 
 
+class RiskContributionItem(BaseModel):
+    symbol: str
+    weight: float
+    mctr: float
+    risk_contribution: float
+    pct_contribution: float
+
+
+class RiskContributionResponse(BaseModel):
+    """Per-asset risk contribution analysis."""
+
+    contributions: list[RiskContributionItem]
+    portfolio_volatility: float
+    n_assets: int
+
+
 class TickerItem(BaseModel):
     symbol: str
     price: float

@@ -189,6 +189,64 @@ def calculate_sharpe_ratio(
 
 
 # =============================================================================
+# Risk Contribution
+# =============================================================================
+
+
+def compute_risk_contribution(
+    weights: list[float],
+    cov_matrix: list[list[float]],
+    symbols: list[str] | None = None,
+) -> dict[str, Any]:
+    """
+    Compute each asset's marginal and percentage contribution to portfolio risk.
+
+    MCTR_i = (Σw)_i / σ_p   (marginal contribution to total risk)
+    RC_i = w_i * MCTR_i       (risk contribution)
+    PCT_i = RC_i / σ_p        (percentage of total risk)
+
+    Args:
+        weights: Portfolio weights [n].
+        cov_matrix: Annualized covariance matrix [n x n].
+        symbols: Optional symbol names for labeling.
+
+    Returns:
+        Dictionary with per-asset risk contributions and portfolio volatility.
+    """
+    n = len(weights)
+    if symbols is None:
+        symbols = [f"asset_{i}" for i in range(n)]
+
+    # Σw
+    cov_w = matrix_vector_multiply(cov_matrix, weights)
+    # σ_p
+    portfolio_var = dot_product(weights, cov_w)
+    portfolio_vol = math.sqrt(portfolio_var) if portfolio_var > 0 else 0.0
+
+    contributions: list[dict[str, Any]] = []
+    for i in range(n):
+        mctr = cov_w[i] / portfolio_vol if portfolio_vol > 0 else 0.0
+        rc = weights[i] * mctr
+        pct = rc / portfolio_vol if portfolio_vol > 0 else 0.0
+        contributions.append({
+            "symbol": symbols[i],
+            "weight": round(weights[i], 6),
+            "mctr": round(mctr, 6),
+            "risk_contribution": round(rc, 6),
+            "pct_contribution": round(pct, 4),
+        })
+
+    # Sort by absolute risk contribution descending
+    contributions.sort(key=lambda x: abs(x["risk_contribution"]), reverse=True)
+
+    return {
+        "contributions": contributions,
+        "portfolio_volatility": round(portfolio_vol, 6),
+        "n_assets": n,
+    }
+
+
+# =============================================================================
 # Optimization Methods
 # =============================================================================
 

@@ -24,6 +24,7 @@ from src.api.schemas import (
     CombinedPortfolioResponse,
     LivePricesResponse,
     RebalanceResponse,
+    RiskContributionResponse,
     FrontierResponse,
     HealthResponse,
     KlinesResponse,
@@ -286,6 +287,43 @@ def get_monte_carlo(
         raise HTTPException(404, "Monte Carlo results not found") from e
     except Exception as e:
         logger.error("Failed to load Monte Carlo results: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Risk Contribution — /portfolio/risk-contribution
+# =============================================================================
+
+
+@app.get("/portfolio/risk-contribution", response_model=RiskContributionResponse)
+def get_risk_contribution(
+    portfolio_key: str = "weights",
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Get per-asset marginal risk contribution analysis."""
+    from src.pipeline.optimize import compute_risk_contribution
+
+    try:
+        def _compute() -> dict[str, Any]:
+            portfolio = storage.load_output(portfolio_key)
+            weights_dict = portfolio.get("weights", {})
+            symbols = list(weights_dict.keys())
+            weights = list(weights_dict.values())
+            cov_data = storage.load_processed("covariance")
+            cov_matrix = cov_data["matrix"]
+            return compute_risk_contribution(weights, cov_matrix, symbols)
+
+        return cached_response(
+            cache,
+            f"portfolio:risk_contribution:{portfolio_key}",
+            _CACHE_TTL_SECONDS,
+            _compute,
+        )
+    except (StorageError, FileNotFoundError) as e:
+        raise HTTPException(404, "Portfolio or covariance data not found") from e
+    except Exception as e:
+        logger.error("Failed to compute risk contribution: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 
