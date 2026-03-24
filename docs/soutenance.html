@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soutenance — Optimisation de Portefeuille Crypto & Traditionnel</title>
+
+    <!-- Fonts: Cormorant for display elegance + Outfit for clean body -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,400;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES — DARK BLUE/GOLD THEME
+           =========================================== */
+        :root {
+            /* Colors */
+            --bg-primary: #0b0e17;
+            --bg-secondary: #111627;
+            --bg-card: #161b2e;
+            --bg-card-hover: #1c2240;
+            --text-primary: #e8eaf0;
+            --text-secondary: #8892a8;
+            --text-muted: #5a6478;
+            --accent-blue: #4a7cff;
+            --accent-blue-glow: rgba(74, 124, 255, 0.25);
+            --accent-gold: #d4a54a;
+            --accent-gold-glow: rgba(212, 165, 74, 0.25);
+            --accent-green: #34d399;
+            --accent-red: #f87171;
+            --border-subtle: rgba(255, 255, 255, 0.06);
+
+            /* Typography */
+            --font-display: 'Cormorant', Georgia, serif;
+            --font-body: 'Outfit', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --title-size: clamp(2rem, 6vw, 4.5rem);
+            --h2-size: clamp(1.4rem, 3.5vw, 2.5rem);
+            --h3-size: clamp(1rem, 2.2vw, 1.5rem);
+            --body-size: clamp(0.75rem, 1.4vw, 1.05rem);
+            --small-size: clamp(0.65rem, 1vw, 0.85rem);
+            --mono-size: clamp(0.6rem, 0.9vw, 0.8rem);
+
+            /* Spacing */
+            --slide-padding: clamp(1.5rem, 4vw, 4rem);
+            --content-gap: clamp(0.75rem, 2vw, 2rem);
+            --element-gap: clamp(0.25rem, 1vw, 1rem);
+
+            /* Animation */
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.7s;
+        }
+
+        /* ===========================================
+           RESET & BASE
+           =========================================== */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ===========================================
+           VIEWPORT FITTING: MANDATORY BASE STYLES
+           =========================================== */
+        html, body { height: 100%; overflow-x: hidden; }
+        html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .slide-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-height: 100%;
+            overflow: hidden;
+            padding: var(--slide-padding);
+        }
+
+        .card, .container, .content-box {
+            max-width: min(90vw, 1000px);
+            max-height: min(80vh, 700px);
+        }
+
+        .feature-list, .bullet-list { gap: clamp(0.4rem, 1vh, 1rem); }
+        .feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.4; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1rem);
+        }
+
+        img, .image-container {
+            max-width: 100%;
+            max-height: min(50vh, 400px);
+            object-fit: contain;
+        }
+
+        @media (max-height: 700px) {
+            :root {
+                --slide-padding: clamp(0.75rem, 3vw, 2rem);
+                --content-gap: clamp(0.4rem, 1.5vw, 1rem);
+                --title-size: clamp(1.25rem, 4.5vw, 2.5rem);
+                --h2-size: clamp(1rem, 3vw, 1.75rem);
+            }
+        }
+
+        @media (max-height: 600px) {
+            :root {
+                --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem);
+                --content-gap: clamp(0.3rem, 1vw, 0.75rem);
+                --title-size: clamp(1.1rem, 4vw, 2rem);
+                --body-size: clamp(0.7rem, 1.2vw, 0.95rem);
+            }
+            .nav-dots, .keyboard-hint, .decorative { display: none; }
+        }
+
+        @media (max-height: 500px) {
+            :root {
+                --slide-padding: clamp(0.4rem, 2vw, 1rem);
+                --title-size: clamp(1rem, 3.5vw, 1.5rem);
+                --h2-size: clamp(0.9rem, 2.5vw, 1.25rem);
+                --body-size: clamp(0.65rem, 1vw, 0.85rem);
+            }
+        }
+
+        @media (max-width: 600px) {
+            :root { --title-size: clamp(1.25rem, 7vw, 2.5rem); }
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+            html { scroll-behavior: auto; }
+        }
+
+        /* ===========================================
+           PROGRESS BAR
+           =========================================== */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-gold));
+            z-index: 9999;
+            transition: width 0.3s ease;
+        }
+
+        /* ===========================================
+           NAV DOTS
+           =========================================== */
+        .nav-dots {
+            position: fixed;
+            right: clamp(0.5rem, 1.5vw, 1.5rem);
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: clamp(4px, 0.6vh, 8px);
+            z-index: 9998;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 0;
+        }
+
+        .nav-dot.active {
+            background: var(--accent-gold);
+            box-shadow: 0 0 8px var(--accent-gold-glow);
+            transform: scale(1.3);
+        }
+
+        /* ===========================================
+           SLIDE NUMBER
+           =========================================== */
+        .slide-number {
+            position: absolute;
+            top: clamp(0.75rem, 2vw, 1.5rem);
+            right: clamp(2.5rem, 4vw, 4rem);
+            font-family: var(--font-mono);
+            font-size: var(--small-size);
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(25px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+
+        .reveal-left {
+            opacity: 0;
+            transform: translateX(-40px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+
+        .reveal-scale {
+            opacity: 0;
+            transform: scale(0.92);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+
+        .slide.visible .reveal,
+        .slide.visible .reveal-left,
+        .slide.visible .reveal-scale {
+            opacity: 1;
+            transform: translateY(0) translateX(0) scale(1);
+        }
+
+        .reveal:nth-child(1) { transition-delay: 0.05s; }
+        .reveal:nth-child(2) { transition-delay: 0.15s; }
+        .reveal:nth-child(3) { transition-delay: 0.25s; }
+        .reveal:nth-child(4) { transition-delay: 0.35s; }
+        .reveal:nth-child(5) { transition-delay: 0.45s; }
+        .reveal:nth-child(6) { transition-delay: 0.55s; }
+
+        /* ===========================================
+           BACKGROUND EFFECTS
+           =========================================== */
+        .gradient-mesh {
+            background:
+                radial-gradient(ellipse at 15% 85%, rgba(74, 124, 255, 0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 85% 15%, rgba(212, 165, 74, 0.08) 0%, transparent 50%),
+                var(--bg-primary);
+        }
+
+        .grid-bg::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+
+        /* ===========================================
+           SHARED COMPONENTS
+           =========================================== */
+
+        /* Section label */
+        .section-label {
+            font-family: var(--font-mono);
+            font-size: var(--small-size);
+            color: var(--accent-gold);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: clamp(0.25rem, 0.5vw, 0.5rem);
+        }
+
+        /* Slide title */
+        .slide-title {
+            font-family: var(--font-display);
+            font-size: var(--h2-size);
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: var(--content-gap);
+        }
+
+        /* Accent line */
+        .accent-line {
+            width: clamp(30px, 5vw, 60px);
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-gold));
+            margin-bottom: var(--content-gap);
+            border: none;
+        }
+
+        /* Feature grid */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+            gap: clamp(0.5rem, 1.2vw, 1rem);
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: clamp(0.6rem, 1.5vw, 1.25rem);
+            transition: border-color 0.3s ease, background 0.3s ease;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(74, 124, 255, 0.2);
+            background: var(--bg-card-hover);
+        }
+
+        .feature-card .icon {
+            font-size: clamp(1rem, 2vw, 1.5rem);
+            margin-bottom: clamp(0.2rem, 0.5vw, 0.5rem);
+        }
+
+        .feature-card h4 {
+            font-family: var(--font-body);
+            font-weight: 600;
+            font-size: clamp(0.7rem, 1.2vw, 0.95rem);
+            color: var(--text-primary);
+            margin-bottom: clamp(0.15rem, 0.3vw, 0.3rem);
+        }
+
+        .feature-card p {
+            font-size: var(--small-size);
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: clamp(0.55rem, 0.8vw, 0.7rem);
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: rgba(74, 124, 255, 0.15);
+            color: var(--accent-blue);
+            border: 1px solid rgba(74, 124, 255, 0.25);
+        }
+
+        .badge.gold {
+            background: rgba(212, 165, 74, 0.15);
+            color: var(--accent-gold);
+            border-color: rgba(212, 165, 74, 0.25);
+        }
+
+        .badge.green {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--accent-green);
+            border-color: rgba(52, 211, 153, 0.25);
+        }
+
+        /* Stat row */
+        .stat-row {
+            display: flex;
+            gap: clamp(1rem, 3vw, 3rem);
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: var(--font-display);
+            font-size: clamp(1.5rem, 4vw, 3rem);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.1;
+        }
+
+        .stat-label {
+            font-size: var(--small-size);
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* Two-col layout */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--content-gap);
+            align-items: start;
+        }
+
+        @media (max-width: 700px) {
+            .two-col { grid-template-columns: 1fr; }
+        }
+
+        /* Bullet list */
+        .bullets {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: clamp(0.3rem, 0.8vh, 0.7rem);
+        }
+
+        .bullets li {
+            font-size: var(--body-size);
+            color: var(--text-secondary);
+            padding-left: 1.2em;
+            position: relative;
+            line-height: 1.5;
+        }
+
+        .bullets li::before {
+            content: '›';
+            position: absolute;
+            left: 0;
+            color: var(--accent-gold);
+            font-weight: 700;
+        }
+
+        /* Code inline */
+        code {
+            font-family: var(--font-mono);
+            font-size: var(--mono-size);
+            background: rgba(74, 124, 255, 0.1);
+            color: var(--accent-blue);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        /* ===========================================
+           TITLE SLIDE — SPECIAL LAYOUT
+           =========================================== */
+        .title-slide {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background:
+                radial-gradient(ellipse at 30% 70%, rgba(74, 124, 255, 0.15) 0%, transparent 55%),
+                radial-gradient(ellipse at 70% 30%, rgba(212, 165, 74, 0.1) 0%, transparent 55%),
+                radial-gradient(ellipse at 50% 50%, rgba(74, 124, 255, 0.05) 0%, transparent 70%),
+                var(--bg-primary);
+        }
+
+        .title-slide .main-title {
+            font-family: var(--font-display);
+            font-size: var(--title-size);
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: clamp(0.5rem, 1.5vw, 1rem);
+        }
+
+        .title-slide .main-title .gold {
+            background: linear-gradient(135deg, var(--accent-gold), #e8c36a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .title-slide .subtitle {
+            font-size: clamp(0.8rem, 1.8vw, 1.2rem);
+            color: var(--text-secondary);
+            font-weight: 300;
+            margin-bottom: clamp(1rem, 3vw, 2rem);
+        }
+
+        .title-slide .meta {
+            font-family: var(--font-mono);
+            font-size: var(--small-size);
+            color: var(--text-muted);
+        }
+
+        /* ===========================================
+           ARCHITECTURE DIAGRAM (CSS ART)
+           =========================================== */
+        .arch-diagram {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: clamp(0.3rem, 0.6vh, 0.5rem);
+            width: 100%;
+            max-width: min(90vw, 800px);
+            margin: 0 auto;
+        }
+
+        .arch-layer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(0.3rem, 0.8vw, 0.6rem);
+            width: 100%;
+            padding: clamp(0.4rem, 0.8vh, 0.7rem) clamp(0.5rem, 1vw, 1rem);
+            border-radius: 6px;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-card);
+            font-size: var(--small-size);
+            text-align: center;
+            position: relative;
+        }
+
+        .arch-layer .layer-label {
+            font-family: var(--font-mono);
+            font-size: clamp(0.5rem, 0.7vw, 0.65rem);
+            color: var(--accent-gold);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            min-width: clamp(40px, 6vw, 70px);
+            text-align: right;
+            margin-right: clamp(0.3rem, 0.5vw, 0.5rem);
+        }
+
+        .arch-box {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: clamp(2px, 0.3vh, 4px) clamp(6px, 0.8vw, 10px);
+            border-radius: 4px;
+            font-size: clamp(0.55rem, 0.85vw, 0.75rem);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .arch-box.blue { background: rgba(74, 124, 255, 0.15); color: var(--accent-blue); border: 1px solid rgba(74, 124, 255, 0.3); }
+        .arch-box.gold { background: rgba(212, 165, 74, 0.15); color: var(--accent-gold); border: 1px solid rgba(212, 165, 74, 0.3); }
+        .arch-box.green { background: rgba(52, 211, 153, 0.15); color: var(--accent-green); border: 1px solid rgba(52, 211, 153, 0.3); }
+        .arch-box.muted { background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--border-subtle); }
+
+        .arch-arrow {
+            color: var(--text-muted);
+            font-size: clamp(0.6rem, 1vw, 0.9rem);
+            line-height: 1;
+        }
+
+        /* ===========================================
+           COMPETENCY TABLE
+           =========================================== */
+        .comp-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: var(--small-size);
+        }
+
+        .comp-table th {
+            font-family: var(--font-mono);
+            font-size: clamp(0.5rem, 0.7vw, 0.65rem);
+            color: var(--accent-gold);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            text-align: left;
+            padding: clamp(0.2rem, 0.4vh, 0.4rem) clamp(0.3rem, 0.5vw, 0.5rem);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .comp-table td {
+            padding: clamp(0.2rem, 0.35vh, 0.35rem) clamp(0.3rem, 0.5vw, 0.5rem);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: var(--text-secondary);
+        }
+
+        .comp-table td:first-child {
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .check { color: var(--accent-green); }
+
+        /* ===========================================
+           PIPELINE FLOW (HORIZONTAL)
+           =========================================== */
+        .pipeline-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(0.2rem, 0.5vw, 0.5rem);
+            flex-wrap: wrap;
+        }
+
+        .pipeline-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: clamp(0.4rem, 0.8vh, 0.6rem) clamp(0.5rem, 1vw, 0.8rem);
+            border-radius: 6px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            min-width: clamp(60px, 8vw, 90px);
+        }
+
+        .pipeline-step .step-icon { font-size: clamp(0.9rem, 1.5vw, 1.3rem); }
+        .pipeline-step .step-name { font-size: clamp(0.5rem, 0.8vw, 0.7rem); font-weight: 600; color: var(--text-primary); }
+        .pipeline-step .step-detail { font-size: clamp(0.45rem, 0.6vw, 0.55rem); color: var(--text-muted); }
+
+        .pipeline-arrow {
+            font-size: clamp(0.6rem, 1vw, 0.9rem);
+            color: var(--accent-blue);
+        }
+
+        /* ===========================================
+           ENDPOINT LIST
+           =========================================== */
+        .endpoint-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+            gap: clamp(0.2rem, 0.4vh, 0.4rem);
+        }
+
+        .endpoint {
+            display: flex;
+            align-items: center;
+            gap: clamp(0.3rem, 0.5vw, 0.5rem);
+            padding: clamp(0.2rem, 0.4vh, 0.35rem) 0;
+        }
+
+        .method-badge {
+            font-family: var(--font-mono);
+            font-size: clamp(0.45rem, 0.6vw, 0.55rem);
+            font-weight: 600;
+            padding: 1px 5px;
+            border-radius: 3px;
+            min-width: clamp(28px, 3vw, 36px);
+            text-align: center;
+        }
+
+        .method-badge.get { background: rgba(52, 211, 153, 0.15); color: var(--accent-green); }
+        .method-badge.post { background: rgba(74, 124, 255, 0.15); color: var(--accent-blue); }
+
+        .endpoint-path {
+            font-family: var(--font-mono);
+            font-size: clamp(0.5rem, 0.75vw, 0.7rem);
+            color: var(--text-secondary);
+        }
+
+        /* ===========================================
+           CLOSING SLIDE
+           =========================================== */
+        .closing-slide {
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+            background:
+                radial-gradient(ellipse at 50% 50%, rgba(212, 165, 74, 0.1) 0%, transparent 60%),
+                radial-gradient(ellipse at 20% 80%, rgba(74, 124, 255, 0.1) 0%, transparent 50%),
+                var(--bg-primary);
+        }
+    </style>
+</head>
+<body>
+    <!-- Progress bar -->
+    <div class="progress-bar" id="progressBar"></div>
+
+    <!-- Navigation dots -->
+    <nav class="nav-dots" id="navDots"></nav>
+
+    <!-- ===============================================
+         SLIDE 1: TITLE
+         =============================================== -->
+    <section class="slide title-slide" data-title="Titre">
+        <div class="slide-content" style="align-items:center;">
+            <p class="reveal section-label" style="margin-bottom:0.5em;">Soutenance — RNCP Niveau 7</p>
+            <h1 class="reveal main-title">
+                Optimisation de<br>Portefeuille <span class="gold">Crypto &amp; Traditionnel</span>
+            </h1>
+            <p class="reveal subtitle">Plateforme d'ingénierie de données pour l'optimisation Markowitz<br>avec données Binance et yfinance</p>
+            <div class="reveal meta">
+                <span>Laien Wu</span> &nbsp;·&nbsp;
+                <span>Expert en Infrastructures de Données Massives</span> &nbsp;·&nbsp;
+                <span>2026</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===============================================
+         SLIDE 2: PROJET & CONTEXTE
+         =============================================== -->
+    <section class="slide gradient-mesh grid-bg" data-title="Projet">
+        <div class="slide-content">
+            <span class="slide-number">01</span>
+            <span class="reveal section-label">Projet &amp; Contexte</span>
+            <h2 class="reveal slide-title">Le Cas Métier</h2>
+            <hr class="reveal accent-line">
+            <div class="reveal two-col">
+                <div>
+                    <ul class="bullets">
+                        <li>Construire un <strong>portefeuille optimisé</strong> crypto + actifs traditionnels</li>
+                        <li>Données en temps réel via <strong>Binance API</strong> et <strong>yfinance</strong></li>
+                        <li>Optimisation <strong>Markowitz</strong> (maximisation Sharpe ratio)</li>
+                        <li>Pipeline ETL complet avec <strong>orchestration Airflow</strong></li>
+                        <li>Exposition via <strong>API REST</strong> et <strong>dashboard interactif</strong></li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="stat-row" style="flex-direction:column; gap:clamp(0.5rem,1vh,1rem);">
+                        <div class="stat"><span class="stat-value">21</span><span class="stat-label">Compétences validées</span></div>
+                        <div class="stat"><span class="stat-value">6</span><span class="stat-label">Sources de données</span></div>
+                        <div class="stat"><span class="stat-value">25+</span><span class="stat-label">Endpoints API</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===============================================
+         SLIDE 3: ARCHITECTURE
+         =============================================== -->
+    <section class="slide gradient-mesh grid-bg" data-title="Architecture">
+        <div class="slide-content">
+            <span class="slide-number">02</span>
+            <span class="reveal section-label">Architecture</span>
+            <h2 class="reveal slide-title">Vue d'Ensemble du Système</h2>
+            <hr class="reveal accent-line">
+            <div class="reveal arch-diagram">
+                <!-- Sources -->
+                <div class="arch-layer">
+                    <span class="layer-label">Sources</span>
+                    <span class="arch-box blue">Binance API</span>
+                    <span class="arch-box blue">yfinance</span>
+                    <span class="arch-box muted">CSV</span>
+                    <span class="arch-box muted">JSON</span>
+                    <span class="arch-box muted">Scraping</span>
+                    <span class="arch-box muted">PostgreSQL</span>
+                </div>
+                <div class="arch-arrow">▼</div>
+                <!-- Streaming -->
+                <div class="arch-layer">
+                    <span class="layer-label">Streaming</span>
+                    <span class="arch-box gold">WebSocket</span>
+                    <span style="color:var(--text-muted)">→</span>
+                    <span class="arch-box gold">Kafka (Redpanda)</span>
+                    <span style="color:var(--text-muted)">→</span>
+                    <span class="arch-box gold">Consumer</span>
+                </div>
+                <div class="arch-arrow">▼</div>
+                <!-- Data Lake -->
+                <div class="arch-layer">
+                    <span class="layer-label">Data Lake</span>
+                    <span class="arch-box muted">Bronze (raw/)</span>
+                    <span style="color:var(--text-muted)">→</span>
+                    <span class="arch-box blue">Silver (processed/)</span>
+                    <span style="color:var(--text-muted)">→</span>
+                    <span class="arch-box green">Gold (output/)</span>
+                </div>
+                <div class="arch-arrow">▼</div>
+                <!-- DWH -->
+                <div class="arch-layer">
+                    <span class="layer-label">DWH</span>
+                    <span class="arch-box blue">fact_prices</span>
+                    <span class="arch-box blue">dim_symbol</span>
+                    <span class="arch-box blue">dim_date</span>
+                    <span style="color:var(--text-muted); font-size:var(--small-size);">DuckDB — Star Schema</span>
+                </div>
+                <div class="arch-arrow">▼</div>
+                <!-- Exposure -->
+                <div class="arch-layer">
+                    <span class="layer-label">Exposure</span>
+                    <span class="arch-box green">FastAPI :8000</span>
+                    <span class="arch-box green">Streamlit :8501</span>
+                    <span class="arch-box gold">Airflow :8081</span>
+                    <span class="arch-box muted">Prometheus</span>
+                    <span class="arch-box muted">Grafana</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===============================================
+         SLIDE 4: STACK TECHNIQUE
+         =============================================== -->
+    <section class="slide gradient-mesh grid-bg" data-title="Stack">
+        <div class="slide-content">
+            <span class="slide-number">03</span>
+            <span class="reveal section-label">Stack Technique</span>
+            <h2 class="reveal slide-title">Technologies Clés</h2>
+            <hr class="reveal accent-line">
+            <div class="reveal feature-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));">
+                <div class="feature-card">
+                    <div class="icon">🐍</div>
+                    <h4>Python 3.13+</h4>
+                    <p>PyArrow (pas pandas), typing strict</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">🦆</div>
+                    <h4>DuckDB</h4>
+                    <p>OLAP intégré, star schema, SQL analytique</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">⚡</div>
+                    <h4>FastAPI</h4>
+                    <p>25+ endpoints, OpenAPI auto, Redis cache</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">📊</div>
+                    <h4>Streamlit</h4>
+                    <p>8 pages, Plotly interactif, KPI cards</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">🔄</div>
+                    <h4>Airflow</h4>
+                    <p>Orchestration DAG, scheduling crypto + trad</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">🐳</div>
+                    <h4>Docker</h4>
+                    <p>Compose multi-profils, CI GitHub Actions</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===============================================
+         SLIDE 5: PIPELINE DE DONNÉES
+         =============================================== -->
+    <section class="slide gradient-mesh grid-bg" data-title="Pipeline">
+        <div class="slide-content">
+            <span class="slide-number">04</span>
+            <span class="reveal section-label">Pipeline ETL</span>
+            <h2 class="reveal slide-title">6 Sources → Optimisation</h2>
+            <hr class="reveal accent-line">
+            <div class="reveal pipeline-flow" style="margin-bottom:var(--content-gap);">
+                <div class="pipeline-step">
+                    <span class="step-icon">📥</span>
+                    <span class="step-name">Ingest</span>
+                    <span class="step-detail">6 sources</span>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">
+                    <span class="step-icon">🔄</span>
+                    <span class="step-name">Transform</span>
+                    <span class="step-detail">returns/vol/cov</span>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">
+                    <span class="step-icon">📐</span>
+                    <span class="step-name">Optimize</span>
+                    <span class="step-detail">Markowitz</span>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">
+                    <span class="step-icon">📈</span>
+                    <span class="step-name">Frontier</span>
+                    <span class="step-detail">efficient</span>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">
+                    <span class="step-icon">🧪</span>
+                    <span class="step-name">Backtest</span>
+                    <span class="step-detail">walk-forward</span>
+                </div>
+            </div>
+            <div class="reveal two-col">
+                <div>
+                    <h4 style="font-size:var(--body-size); color:var(--accent-blue); margin-bottom:0.3em;">Sources (C8)</h4>
+                    <ul class="bullets">
+                        <li><strong>Binance API</strong> — OHLCV klines crypto</li>
+                        <li><strong>yfinance</strong> — Actions, ETF, commodités</li>
+                        <li><strong>CSV / JSON</strong> — Données de référence</li>
+                        <li><strong>Web Scraping</strong> — CoinGecko market cap</li>
+                        <li><strong>PostgreSQL</strong> — Benchmarks historiques</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 style="font-size:var(--body-size); color:var(--accent-gold); margin-bottom:0.3em;">Architecture DataSource</h4>
+                    <ul class="bullets">
+                        <li><strong>ABC pattern</strong> — Interface commune pour chaque source</li>
+                        <li><strong>Factory</strong> — Enregistrement via registre</li>
+                        <li><strong>Incrémental</strong> — Fetch delta uniquement</li>
+                        <li><strong>Validation</strong> — Contrats de données bronze/silver/gold</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===============================================
+         SLIDE 6: OPTIMISATION MARKOWITZ
+         =============================================== -->
+    <section class="slide gradient-mesh grid-bg" data-title="Optimisation">
+        <div class="slide-content">
+            <span class="slide-number">05</span>
+            <span class="reveal section-label">Optimisation</span>
+            <h2 class="reveal slide-title">Portefeuille Markowitz</h2>
+            <hr class="reveal accent-line">
+            <div class="reveal two-col">
+                <div>
+                    <ul class="bullets">
+                        <li><strong>Maximisation Sharpe ratio</strong> — rendement ajusté au risque</li>
+                        <li><strong>Frontière efficiente</strong> — trade-off risque/rendement optimal</li>
+                        <li><strong>Solution forme fermée</strong> — Σ⁻¹ (pas d'optimiseur numérique)</li>
+                        <li><strong>Walk-forward backtest</strong> — validation out-of-sample</li>
+                        <li><strong>Monte Carlo</strong> — VaR 95%, CVaR, fan chart</li>
+                    </ul>
+                    <div style="margin-top:var(--element-gap);">
+                        <span class="badge">Crypto</span>
+                        <span class="badge gold">Traditionnel</span>
+                        <span class="badge green">Combiné</span>
+                    </div>
+                </div>
+                <div>
+                    <h4 style="font-size:var(--body-size); color:var(--accent-blue); margin-bottom:0.5em;">Analyses avancées</h4>
+                    <div class="feature-grid" style="grid-template-columns:1fr 1fr; gap:clamp(0.3rem,0.6vw,0.5rem);">
+                        <div class="feature-card">
+                            <h4>Stress Test</h4>
+                            <p>5 scénarios prédéfinis + custom</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Drawdown</h4>
+                            <p>Séries, périodes, récupération</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Attribution</h4>
+                            <p>Décomposition poids × rendement</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Rééquilibrage</h4>
+                            <p>Alertes drift + trades suggérés</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===============================================
+         SLIDE 7: API REST
+         =============================================== -->
+    <section class="slide gradient-mesh grid-bg" data-title="API">
+        <div class="slide-content">
+            <span class="slide-number">06</span>
+            <span class="reveal section-label">Exposition (C12)</span>
+            <h2 class="reveal slide-title">API REST — 25+ Endpoints</h2>
+            <hr class="reveal accent-line">
+            <div class="reveal endpoint-list">
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/portfolio</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/portfolio/frontier</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/portfolio/backtest</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/portfolio/monte-carlo</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/portfolio/trad</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/portfolio/trad/frontier</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/portfolio/combined</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/portfolio/rebalance</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/portfolio/stress-test</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/portfolio/drawdown</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/portfolio/attribution</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/portfolio/risk-contribution</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/portfolio/rolling-correlation</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/portfolio/report</span></div>
+                <div class="endpoint"><span class="method-badge post">POST</span><span class="endpoint-path">/portfolio/custom</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/prices/live</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/symbols</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/metrics/{name}</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/klines/{symbol}</span></div>
+                <div class="endpoint"><span class="method-badge get">GET</span><span class="endpoint-path">/prom/metrics</span></div>
+            </div>
+            <div class="reveal" style="margin-top:var(--element-gap); display:flex; gap:0.5rem; flex-wrap:wrap;">
+                <span class="badge">Pydantic schemas</span>
+                <span class="badge">Redis cache</span>
+                <span class="badge gold">OpenAPI auto</span>
+                <span class="badge green">Depends() injection</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===============================================
+         SLIDE 8: DASHBOARD & MONITORING
+         =============================================== -->
+    <section class="slide gradient-mesh grid-bg" data-title="Dashboard">
+        <div class="slide-content">
+            <span class="slide-number">07</span>
+            <span class="reveal section-label">Visualisation</span>
+            <h2 class="reveal slide-title">Dashboard &amp; Monitoring</h2>
+            <hr class="reveal accent-line">
+            <div class="reveal two-col">
+                <div>
+                    <h4 style="font-size:var(--body-size); color:var(--accent-blue); margin-bottom:0.5em;">Streamlit — 8 pages</h4>
+                    <div class="feature-grid" style="grid-template-columns:1fr 1fr; gap:clamp(0.3rem,0.6vw,0.5rem);">
+                        <div class="feature-card">
+                            <h4>Dashboard</h4>
+                            <p>KPI cards, allocation pie, corrélation</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Symbols</h4>
+                            <p>OHLCV, SMA, Bollinger, RSI</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Frontier</h4>
+                            <p>Scatter risque/rendement, iso-Sharpe</p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Backtest</h4>
+                            <p>Cumulative, drawdown, per-window</p>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h4 style="font-size:var(--body-size); color:var(--accent-gold); margin-bottom:0.5em;">Monitoring</h4>
+                    <ul class="bullets">
+                        <li><strong>Prometheus</strong> — métriques API + métier</li>
+                        <li><strong>Grafana</strong> — dashboards latence, taux d'erreur</li>
+                        <li><strong>Alertes</strong> — seuils SLA, incidents</li>
+                        <li><strong>Métriques custom</strong> — Sharpe, records ingérés</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===============================================
+         SLIDE 9: TESTS & CI/CD
+         =============================================== -->
+    <section class="slide gradient-mesh grid-bg" data-title="Tests">
+        <div class="slide-content">
+            <span class="slide-number">08</span>
+            <span class="reveal section-label">Qualité</span>
+            <h2 class="reveal slide-title">Tests &amp; CI/CD</h2>
+            <hr class="reveal accent-line">
+            <div class="reveal stat-row" style="margin-bottom:var(--content-gap); justify-content:center;">
+                <div class="stat"><span class="stat-value">530+</span><span class="stat-label">Tests</span></div>
+                <div class="stat"><span class="stat-value">25</span><span class="stat-label">Fichiers test</span></div>
+                <div class="stat"><span class="stat-value">0</span><span class="stat-label">Failures</span></div>
+            </div>
+            <div class="reveal two-col">
+                <div>
+                    <h4 style="font-size:var(--body-size); color:var(--accent-blue); margin-bottom:0.3em;">Pipeline CI (GitHub Actions)</h4>
+                    <ul class="bullets">
+                        <li><strong>ruff</strong> — Linting (E/F/W/I/UP/B/SIM)</li>
+                        <li><strong>mypy</strong> — Type checking strict</li>
+                        <li><strong>pytest</strong> — Tests unitaires + intégration</li>
+                        <li><strong>coverage</strong> — Seuil minimal 50%</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 style="font-size:var(--body-size); color:var(--accent-gold); margin-bottom:0.3em;">Sécurité</h4>
+                    <ul class="bullets">
+                        <li><strong>bandit</strong> — Analyse statique sécurité</li>
+                        <li><strong>pip-audit</strong> — Audit dépendances</li>
+                        <li><strong>OpenAPI drift test</strong> — Sync spec/code</li>
+                        <li><strong>Docker multi-stage</strong> — Images minimales</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===============================================
+         SLIDE 10: COMPÉTENCES & RGPD
+         =============================================== -->
+    <section class="slide gradient-mesh grid-bg" data-title="Compétences">
+        <div class="slide-content">
+            <span class="slide-number">09</span>
+            <span class="reveal section-label">Certification</span>
+            <h2 class="reveal slide-title">21 Compétences &amp; RGPD</h2>
+            <hr class="reveal accent-line">
+            <div class="reveal two-col" style="align-items:start;">
+                <div>
+                    <table class="comp-table">
+                        <tr><th>Bloc</th><th>Compétences</th><th></th></tr>
+                        <tr><td>Bloc 1</td><td>C1–C7 Pilotage projet</td><td class="check">✓</td></tr>
+                        <tr><td>Bloc 2</td><td>C8 Automatiser extraction (6 sources)</td><td class="check">✓</td></tr>
+                        <tr><td></td><td>C9 Requêtes SQL (DuckDB)</td><td class="check">✓</td></tr>
+                        <tr><td></td><td>C10 Règles d'agrégation</td><td class="check">✓</td></tr>
+                        <tr><td></td><td>C11 Base de données (MERISE)</td><td class="check">✓</td></tr>
+                        <tr><td></td><td>C12 API REST (FastAPI)</td><td class="check">✓</td></tr>
+                        <tr><td>Bloc 3</td><td>C13–C17 Data Warehouse</td><td class="check">✓</td></tr>
+                        <tr><td>Bloc 4</td><td>C18–C21 Data Lake &amp; RGPD</td><td class="check">✓</td></tr>
+                    </table>
+                </div>
+                <div>
+                    <h4 style="font-size:var(--body-size); color:var(--accent-gold); margin-bottom:0.5em;">Conformité RGPD (C21)</h4>
+                    <ul class="bullets">
+                        <li><strong>Données publiques</strong> — pas de données personnelles</li>
+                        <li><strong>Minimisation</strong> — collecte strictement nécessaire</li>
+                        <li><strong>Droit à l'oubli</strong> — suppression de données possible</li>
+                        <li><strong>Documentation</strong> — registre de traitements</li>
+                    </ul>
+                    <div style="margin-top:var(--element-gap);">
+                        <span class="badge green">SCD Type 1/2</span>
+                        <span class="badge">MCD/MLD/MPD</span>
+                        <span class="badge gold">Catalogue</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===============================================
+         SLIDE 11: DÉMO
+         =============================================== -->
+    <section class="slide gradient-mesh grid-bg" data-title="Démo">
+        <div class="slide-content">
+            <span class="slide-number">10</span>
+            <span class="reveal section-label">Démonstration</span>
+            <h2 class="reveal slide-title">Scénario de Démo</h2>
+            <hr class="reveal accent-line">
+            <div class="reveal pipeline-flow" style="margin-bottom:var(--content-gap);">
+                <div class="pipeline-step" style="border-color:rgba(74,124,255,0.3);">
+                    <span class="step-icon">🐳</span>
+                    <span class="step-name">Docker Up</span>
+                    <span class="step-detail">full stack</span>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step" style="border-color:rgba(74,124,255,0.3);">
+                    <span class="step-icon">📥</span>
+                    <span class="step-name">Ingest</span>
+                    <span class="step-detail">6 sources</span>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step" style="border-color:rgba(212,165,74,0.3);">
+                    <span class="step-icon">📐</span>
+                    <span class="step-name">Optimize</span>
+                    <span class="step-detail">Markowitz</span>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step" style="border-color:rgba(52,211,153,0.3);">
+                    <span class="step-icon">🌐</span>
+                    <span class="step-name">API</span>
+                    <span class="step-detail">curl endpoints</span>
+                </div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step" style="border-color:rgba(52,211,153,0.3);">
+                    <span class="step-icon">📊</span>
+                    <span class="step-name">Dashboard</span>
+                    <span class="step-detail">Streamlit</span>
+                </div>
+            </div>
+            <div class="reveal" style="display:grid; grid-template-columns:1fr 1fr; gap:var(--element-gap);">
+                <div class="feature-card" style="border-left:2px solid var(--accent-blue);">
+                    <h4>1. Infrastructure</h4>
+                    <p><code>docker compose --profile full up -d</code></p>
+                </div>
+                <div class="feature-card" style="border-left:2px solid var(--accent-blue);">
+                    <h4>2. Pipeline</h4>
+                    <p><code>ingest_all_sources()</code> → <code>transform</code> → <code>optimize</code></p>
+                </div>
+                <div class="feature-card" style="border-left:2px solid var(--accent-gold);">
+                    <h4>3. API REST</h4>
+                    <p><code>curl localhost:8000/portfolio</code>, frontière, backtest, stress-test</p>
+                </div>
+                <div class="feature-card" style="border-left:2px solid var(--accent-green);">
+                    <h4>4. Visualisation</h4>
+                    <p>Dashboard KPI, graphiques, Monte Carlo, Live Ticker</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===============================================
+         SLIDE 12: CLOSING
+         =============================================== -->
+    <section class="slide closing-slide" data-title="Merci">
+        <div class="slide-content" style="align-items:center; text-align:center;">
+            <p class="reveal section-label">Merci</p>
+            <h2 class="reveal main-title" style="font-size:var(--h2-size);">
+                Questions <span class="gold">&amp; Discussion</span>
+            </h2>
+            <hr class="reveal accent-line" style="margin:0 auto var(--content-gap) auto;">
+            <div class="reveal stat-row" style="justify-content:center;">
+                <div class="stat"><span class="stat-value">21</span><span class="stat-label">Compétences</span></div>
+                <div class="stat"><span class="stat-value">530+</span><span class="stat-label">Tests</span></div>
+                <div class="stat"><span class="stat-value">25+</span><span class="stat-label">Endpoints</span></div>
+                <div class="stat"><span class="stat-value">6</span><span class="stat-label">Sources</span></div>
+            </div>
+            <p class="reveal" style="font-size:var(--body-size); color:var(--text-secondary); margin-top:var(--content-gap);">
+                Laien Wu &nbsp;·&nbsp; Expert en Infrastructures de Données Massives &nbsp;·&nbsp; 2026
+            </p>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         JAVASCRIPT — SLIDE CONTROLLER
+         =========================================== -->
+    <script>
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupProgressBar();
+                this.setupNavDots();
+                this.setupWheelNav();
+            }
+
+            /* Intersection Observer — triggers .visible for animations */
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            const idx = Array.from(this.slides).indexOf(entry.target);
+                            if (idx !== -1) {
+                                this.currentSlide = idx;
+                                this.updateProgressBar();
+                                this.updateNavDots();
+                            }
+                        }
+                    });
+                }, { threshold: 0.5 });
+
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            /* Keyboard: arrows, space, page up/down */
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    switch(e.key) {
+                        case 'ArrowDown':
+                        case 'ArrowRight':
+                        case ' ':
+                        case 'PageDown':
+                            e.preventDefault();
+                            this.goToSlide(this.currentSlide + 1);
+                            break;
+                        case 'ArrowUp':
+                        case 'ArrowLeft':
+                        case 'PageUp':
+                            e.preventDefault();
+                            this.goToSlide(this.currentSlide - 1);
+                            break;
+                        case 'Home':
+                            e.preventDefault();
+                            this.goToSlide(0);
+                            break;
+                        case 'End':
+                            e.preventDefault();
+                            this.goToSlide(this.slides.length - 1);
+                            break;
+                    }
+                });
+            }
+
+            /* Touch/swipe */
+            setupTouchNav() {
+                let startY = 0;
+                document.addEventListener('touchstart', (e) => {
+                    startY = e.touches[0].clientY;
+                }, { passive: true });
+
+                document.addEventListener('touchend', (e) => {
+                    const diff = startY - e.changedTouches[0].clientY;
+                    if (Math.abs(diff) > 50) {
+                        this.goToSlide(this.currentSlide + (diff > 0 ? 1 : -1));
+                    }
+                }, { passive: true });
+            }
+
+            /* Mouse wheel — debounced */
+            setupWheelNav() {
+                document.addEventListener('wheel', (e) => {
+                    if (this.isScrolling) return;
+                    this.isScrolling = true;
+                    setTimeout(() => { this.isScrolling = false; }, 800);
+
+                    if (e.deltaY > 0) {
+                        this.goToSlide(this.currentSlide + 1);
+                    } else if (e.deltaY < 0) {
+                        this.goToSlide(this.currentSlide - 1);
+                    }
+                }, { passive: true });
+            }
+
+            /* Progress bar */
+            setupProgressBar() {
+                this.progressBar = document.getElementById('progressBar');
+                this.updateProgressBar();
+            }
+
+            updateProgressBar() {
+                if (!this.progressBar) return;
+                const pct = ((this.currentSlide + 1) / this.slides.length) * 100;
+                this.progressBar.style.width = pct + '%';
+            }
+
+            /* Navigation dots */
+            setupNavDots() {
+                const container = document.getElementById('navDots');
+                if (!container) return;
+
+                this.slides.forEach((slide, i) => {
+                    const dot = document.createElement('button');
+                    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                    dot.setAttribute('aria-label', slide.dataset.title || `Slide ${i + 1}`);
+                    dot.addEventListener('click', () => this.goToSlide(i));
+                    container.appendChild(dot);
+                });
+            }
+
+            updateNavDots() {
+                const dots = document.querySelectorAll('.nav-dot');
+                dots.forEach((dot, i) => {
+                    dot.classList.toggle('active', i === this.currentSlide);
+                });
+            }
+
+            /* Navigate to slide */
+            goToSlide(index) {
+                if (index < 0 || index >= this.slides.length) return;
+                this.currentSlide = index;
+                this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                this.updateProgressBar();
+                this.updateNavDots();
+            }
+        }
+
+        /* Initialize on DOM ready */
+        document.addEventListener('DOMContentLoaded', () => {
+            new SlidePresentation();
+        });
+    </script>
+</body>
+</html>
