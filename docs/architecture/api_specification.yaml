@@ -561,6 +561,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /portfolio/drawdown:
+    get:
+      tags:
+        - Analytics
+      summary: Get Drawdown Analysis
+      description: |
+        Computes full drawdown time series for all backtest strategies,
+        identifies drawdown periods with recovery times, and ranks strategies.
+      operationId: getDrawdownAnalysis
+      parameters:
+        - name: portfolio_key
+          in: query
+          required: false
+          schema:
+            type: string
+            default: backtest
+      responses:
+        '200':
+          description: Drawdown analysis results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DrawdownResponse'
+        '404':
+          description: Backtest data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /portfolio/trad:
     get:
       tags:
@@ -1363,6 +1393,76 @@ components:
           type: string
           nullable: true
         n_assets:
+          type: integer
+        portfolio_key:
+          type: string
+
+    DrawdownResponse:
+      type: object
+      required:
+        - analyses
+        - comparison
+        - n_strategies
+        - portfolio_key
+      properties:
+        analyses:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              strategy:
+                type: string
+              drawdown_series:
+                type: array
+                items:
+                  type: number
+                  format: double
+              dates:
+                type: array
+                items:
+                  type: string
+                nullable: true
+              periods:
+                type: array
+                items:
+                  type: object
+              summary:
+                type: object
+                required:
+                  - max_drawdown
+                  - avg_drawdown
+                  - n_periods
+                  - longest_duration
+                  - current_drawdown
+                  - time_in_drawdown_pct
+                properties:
+                  max_drawdown:
+                    type: number
+                    format: double
+                  avg_drawdown:
+                    type: number
+                    format: double
+                  n_periods:
+                    type: integer
+                  longest_duration:
+                    type: integer
+                  current_drawdown:
+                    type: number
+                    format: double
+                  time_in_drawdown_pct:
+                    type: number
+                    format: double
+        comparison:
+          type: array
+          items:
+            type: object
+            properties:
+              strategy:
+                type: string
+              max_drawdown:
+                type: number
+                format: double
+        n_strategies:
           type: integer
         portfolio_key:
           type: string

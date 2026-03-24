@@ -216,6 +216,37 @@ class LivePricesResponse(BaseModel):
     n_trad: int
 
 
+class DrawdownSummary(BaseModel):
+    max_drawdown: float
+    avg_drawdown: float
+    n_periods: int
+    longest_duration: int
+    current_drawdown: float
+    time_in_drawdown_pct: float
+
+
+class DrawdownAnalysisItem(BaseModel):
+    strategy: str
+    drawdown_series: list[float]
+    dates: list[str] | None = None
+    periods: list[dict[str, Any]]
+    summary: DrawdownSummary
+
+
+class DrawdownComparisonItem(BaseModel):
+    strategy: str
+    max_drawdown: float
+
+
+class DrawdownResponse(BaseModel):
+    """Full drawdown analysis across strategies."""
+
+    analyses: dict[str, DrawdownAnalysisItem]
+    comparison: list[DrawdownComparisonItem]
+    n_strategies: int
+    portfolio_key: str
+
+
 class CombinedPortfolioResponse(BaseModel):
     """Combined crypto + traditional portfolio."""
 

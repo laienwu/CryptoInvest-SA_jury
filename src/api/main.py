@@ -22,6 +22,7 @@ from src.api.metrics import pipeline_last_run, portfolio_sharpe, records_ingeste
 from src.api.schemas import (
     BacktestResponse,
     CombinedPortfolioResponse,
+    DrawdownResponse,
     LivePricesResponse,
     RebalanceResponse,
     RiskContributionResponse,
@@ -509,6 +510,36 @@ def get_stress_test(
         raise HTTPException(400, e.message) from e
     except Exception as e:
         logger.error("Failed to run stress test: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Drawdown Analysis — /portfolio/drawdown
+# =============================================================================
+
+
+@app.get("/portfolio/drawdown", response_model=DrawdownResponse)
+def get_drawdown_analysis(
+    portfolio_key: str = "backtest",
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Get drawdown analysis for all backtest strategies."""
+    from src.pipeline.drawdown import DrawdownError, analyze_portfolio_drawdowns
+
+    try:
+        return cached_response(
+            cache,
+            f"portfolio:drawdown:{portfolio_key}",
+            _CACHE_TTL_SECONDS,
+            lambda: analyze_portfolio_drawdowns(
+                portfolio_key=portfolio_key, storage=storage, save=False
+            ),
+        )
+    except DrawdownError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed to compute drawdown analysis: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 
