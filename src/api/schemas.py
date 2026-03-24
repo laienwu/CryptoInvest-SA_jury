@@ -130,6 +130,41 @@ class RebalanceResponse(BaseModel):
     portfolio_key: str
 
 
+class StressTestAssetImpact(BaseModel):
+    symbol: str
+    weight: float
+    shock: float
+    impact: float
+    stressed_weight: float
+
+
+class StressTestPortfolioImpact(BaseModel):
+    total_return_impact: float
+    original_return: float
+    stressed_return: float
+    original_volatility: float
+    stressed_volatility: float
+    value_at_risk_1pct: float
+
+
+class StressTestResponse(BaseModel):
+    """Stress test results."""
+
+    scenario: dict[str, Any]
+    asset_impacts: list[StressTestAssetImpact]
+    portfolio_impact: StressTestPortfolioImpact
+    worst_hit: str | None
+    best_performer: str | None
+    n_assets: int
+    portfolio_key: str
+
+
+class ScenarioListResponse(BaseModel):
+    """Available stress test scenarios."""
+
+    scenarios: list[dict[str, str]]
+
+
 class RollingCorrelationPair(BaseModel):
     pair: str
     symbol_a: str

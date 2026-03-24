@@ -26,6 +26,8 @@ from src.api.schemas import (
     RebalanceResponse,
     RiskContributionResponse,
     RollingCorrelationResponse,
+    ScenarioListResponse,
+    StressTestResponse,
     FrontierResponse,
     HealthResponse,
     KlinesResponse,
@@ -471,6 +473,42 @@ def get_live_prices() -> dict[str, Any]:
         return fetch_live_prices()
     except Exception as e:
         logger.error("Failed to fetch live prices: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Stress Testing — /portfolio/stress-test
+# =============================================================================
+
+
+@app.get("/portfolio/scenarios", response_model=ScenarioListResponse)
+def get_scenarios() -> dict[str, Any]:
+    """List available stress test scenarios."""
+    from src.pipeline.stress_test import list_scenarios
+
+    return {"scenarios": list_scenarios()}
+
+
+@app.get("/portfolio/stress-test", response_model=StressTestResponse)
+def get_stress_test(
+    scenario: str = "crypto_crash",
+    portfolio_key: str = "weights",
+    storage: Storage = Depends(get_storage_dep),
+) -> dict[str, Any]:
+    """Run a stress test scenario against the portfolio."""
+    from src.pipeline.stress_test import StressTestError, run_stress_test
+
+    try:
+        return run_stress_test(
+            scenario_name=scenario,
+            portfolio_key=portfolio_key,
+            storage=storage,
+            save=False,
+        )
+    except StressTestError as e:
+        raise HTTPException(400, e.message) from e
+    except Exception as e:
+        logger.error("Failed to run stress test: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 
