@@ -216,6 +216,32 @@ class LivePricesResponse(BaseModel):
     n_trad: int
 
 
+class SignalItem(BaseModel):
+    symbol: str
+    sma_crossover: str | None = None
+    rsi: str | None = None
+    macd: str | None = None
+    bollinger: str | None = None
+    combined: str | None = None
+    rsi_value: float | None = None
+    n_periods: int
+
+
+class SignalSummary(BaseModel):
+    buy_count: int
+    sell_count: int
+    hold_count: int
+    total: int
+
+
+class SignalsResponse(BaseModel):
+    """Trading signals for all portfolio assets."""
+
+    signals: list[SignalItem]
+    summary: SignalSummary
+    n_assets: int
+
+
 class CustomPortfolioRequest(BaseModel):
     """Request body for custom portfolio evaluation."""
 

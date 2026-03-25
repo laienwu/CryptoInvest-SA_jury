@@ -31,6 +31,7 @@ from src.api.schemas import (
     RiskContributionResponse,
     RollingCorrelationResponse,
     ScenarioListResponse,
+    SignalsResponse,
     StressTestResponse,
     FrontierResponse,
     HealthResponse,
@@ -602,6 +603,33 @@ def evaluate_custom(
         raise HTTPException(400, e.message) from e
     except Exception as e:
         logger.error("Failed to evaluate custom portfolio: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Trading Signals — /portfolio/signals
+# =============================================================================
+
+
+@app.get("/portfolio/signals", response_model=SignalsResponse)
+def get_signals(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Get trading signals (SMA crossover, RSI, MACD, Bollinger) for all assets."""
+    from src.pipeline.signals import SignalError, generate_portfolio_signals
+
+    try:
+        return cached_response(
+            cache,
+            "portfolio:signals",
+            _CACHE_TTL_SECONDS,
+            lambda: generate_portfolio_signals(storage=storage, save=False),
+        )
+    except SignalError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed to generate signals: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 

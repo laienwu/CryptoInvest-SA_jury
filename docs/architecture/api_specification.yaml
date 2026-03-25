@@ -561,6 +561,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /portfolio/signals:
+    get:
+      tags:
+        - Analytics
+      summary: Get Trading Signals
+      description: |
+        Generates technical indicator signals (SMA crossover, RSI, MACD,
+        Bollinger breakout) for all portfolio assets with majority-vote
+        combined signal.
+      operationId: getSignals
+      responses:
+        '200':
+          description: Per-asset trading signals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignalsResponse'
+        '404':
+          description: Price data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /portfolio/custom:
     post:
       tags:
@@ -1456,6 +1480,64 @@ components:
           type: integer
         portfolio_key:
           type: string
+
+    SignalsResponse:
+      type: object
+      required:
+        - signals
+        - summary
+        - n_assets
+      properties:
+        signals:
+          type: array
+          items:
+            type: object
+            required:
+              - symbol
+              - combined
+              - n_periods
+            properties:
+              symbol:
+                type: string
+              sma_crossover:
+                type: string
+                nullable: true
+              rsi:
+                type: string
+                nullable: true
+              macd:
+                type: string
+                nullable: true
+              bollinger:
+                type: string
+                nullable: true
+              combined:
+                type: string
+                nullable: true
+              rsi_value:
+                type: number
+                format: double
+                nullable: true
+              n_periods:
+                type: integer
+        summary:
+          type: object
+          required:
+            - buy_count
+            - sell_count
+            - hold_count
+            - total
+          properties:
+            buy_count:
+              type: integer
+            sell_count:
+              type: integer
+            hold_count:
+              type: integer
+            total:
+              type: integer
+        n_assets:
+          type: integer
 
     CustomPortfolioRequest:
       type: object
