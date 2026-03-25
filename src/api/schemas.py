@@ -216,6 +216,25 @@ class LivePricesResponse(BaseModel):
     n_trad: int
 
 
+class PositionItem(BaseModel):
+    symbol: str
+    original_weight: float
+    adjusted_weight: float
+    amount_usd: float
+
+
+class PositionSizingResponse(BaseModel):
+    """Position sizing results."""
+
+    positions: list[PositionItem]
+    total_allocated: float
+    portfolio_value: float
+    method: str
+    target_volatility: float | None = None
+    risk_per_trade: float | None = None
+    n_assets: int
+
+
 class RiskParityContribution(BaseModel):
     symbol: str
     weight: float

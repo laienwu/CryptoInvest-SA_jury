@@ -30,6 +30,7 @@ from src.api.schemas import (
     RebalanceResponse,
     RiskContributionResponse,
     RollingCorrelationResponse,
+    PositionSizingResponse,
     RiskParityResponse,
     ScenarioListResponse,
     SignalsResponse,
@@ -658,6 +659,47 @@ def get_risk_parity(
         raise HTTPException(404, e.message) from e
     except Exception as e:
         logger.error("Failed to compute risk parity: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Position Sizing — /portfolio/position-sizing
+# =============================================================================
+
+
+@app.get("/portfolio/position-sizing", response_model=PositionSizingResponse)
+def get_position_sizing(
+    portfolio_value: float = 10000.0,
+    method: str = "weight",
+    target_volatility: float = 0.15,
+    portfolio_key: str = "weights",
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Compute position sizes (weight, vol-target, or fixed-fractional)."""
+    from src.pipeline.position_sizing import (
+        PositionSizingError,
+        analyze_position_sizing,
+    )
+
+    try:
+        return cached_response(
+            cache,
+            f"portfolio:position-sizing:{portfolio_key}:{method}:{portfolio_value}",
+            _CACHE_TTL_SECONDS,
+            lambda: analyze_position_sizing(
+                portfolio_key=portfolio_key,
+                portfolio_value=portfolio_value,
+                method=method,
+                target_volatility=target_volatility,
+                storage=storage,
+                save=False,
+            ),
+        )
+    except PositionSizingError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed to compute position sizing: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 

@@ -156,6 +156,7 @@ uv run streamlit run src/dashboard/app.py
 | `POST /portfolio/custom` | Évaluation de portefeuille personnalisé (poids définis par l'utilisateur) |
 | `GET /portfolio/signals` | Signaux de trading (SMA crossover, RSI, MACD, Bollinger) |
 | `GET /portfolio/risk-parity` | Portefeuille risk parity (contribution égale au risque) |
+| `GET /portfolio/position-sizing?method=vol_target` | Dimensionnement des positions (Kelly, vol-target, fractional) |
 | `GET /prices/live` | Prix en temps réel (Binance 24h ticker) |
 
 ## Tableau de bord
