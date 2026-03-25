@@ -233,7 +233,7 @@ def analyze_portfolio_drawdowns(
     }
 
     if save:
-        storage.save_output("drawdown", result)
+        storage.save_output(result, "drawdown")
         logger.info(
             "Drawdown analysis complete for %d strategies", len(strategies)
         )

@@ -152,7 +152,7 @@ def run_monte_carlo(
     }
 
     if save:
-        storage.save_output("monte_carlo", result)
+        storage.save_output(result, "monte_carlo")
         logger.info("Monte Carlo results saved to storage")
 
     return result

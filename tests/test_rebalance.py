@@ -120,7 +120,7 @@ class TestRebalanceAlerts:
     def test_save_to_storage(self, mock_storage):
         compute_rebalance_alerts(storage=mock_storage, save=True)
         mock_storage.save_output.assert_called_once()
-        assert mock_storage.save_output.call_args[0][0] == "rebalance_alerts"
+        assert mock_storage.save_output.call_args[0][1] == "rebalance_alerts"
 
     def test_missing_optimal_portfolio(self):
         storage = MagicMock()

@@ -236,7 +236,7 @@ def analyze_constrained(
     )
 
     if save:
-        storage.save_output("weights_constrained", result)
+        storage.save_output(result, "weights_constrained")
         logger.info(
             "Constrained optimization: %d active assets, Sharpe %.4f",
             result["n_assets"], result["sharpe_ratio"],

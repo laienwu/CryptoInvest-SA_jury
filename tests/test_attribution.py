@@ -125,7 +125,7 @@ class TestAnalyzePerformanceAttribution:
     def test_save_to_storage(self, mock_storage):
         analyze_performance_attribution(storage=mock_storage, save=True)
         mock_storage.save_output.assert_called_once()
-        assert mock_storage.save_output.call_args[0][0] == "attribution"
+        assert mock_storage.save_output.call_args[0][1] == "attribution"
 
     def test_missing_portfolio_raises(self):
         storage = MagicMock()

@@ -92,7 +92,7 @@ class TestCombinePortfolios:
         combine_portfolios(storage=mock_storage, save=True)
         mock_storage.save_output.assert_called_once()
         args = mock_storage.save_output.call_args
-        assert args[0][0] == "weights_combined"
+        assert args[0][1] == "weights_combined"
 
     def test_invalid_crypto_weight_negative(self, mock_storage):
         with pytest.raises(CombineError, match="between 0 and 1"):

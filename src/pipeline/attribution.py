@@ -157,7 +157,7 @@ def analyze_performance_attribution(
     }
 
     if save:
-        storage.save_output("attribution", result)
+        storage.save_output(result, "attribution")
         logger.info(
             "Attribution analysis: portfolio return %.2f%%, %d assets",
             attribution["portfolio_return"] * 100,

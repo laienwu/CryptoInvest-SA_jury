@@ -130,7 +130,7 @@ def compute_rebalance_alerts(
     }
 
     if save:
-        storage.save_output("rebalance_alerts", result)
+        storage.save_output(result, "rebalance_alerts")
         logger.info(
             "Rebalance analysis: %d alerts out of %d symbols (threshold=%.1f%%)",
             len(alerts),

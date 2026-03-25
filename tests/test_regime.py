@@ -148,7 +148,7 @@ class TestAnalyzeRegimes:
                     raise FileNotFoundError("no data")
                 return self._raw
 
-            def save_output(self, key, data):
+            def save_output(self, data, key):
                 self._saved[key] = data
 
         if raw_data is None:

@@ -125,7 +125,7 @@ def combine_portfolios(
     }
 
     if save:
-        storage.save_output("weights_combined", result)
+        storage.save_output(result, "weights_combined")
         logger.info(
             "Combined portfolio saved: %.0f%% crypto / %.0f%% trad, %d assets",
             crypto_weight * 100,

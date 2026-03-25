@@ -245,7 +245,7 @@ def analyze_position_sizing(
     )
 
     if save:
-        storage.save_output("position_sizing", result)
+        storage.save_output(result, "position_sizing")
         logger.info(
             "Position sizing (%s): %d assets, $%.2f allocated",
             method, result["n_assets"], result["total_allocated"],

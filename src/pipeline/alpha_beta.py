@@ -256,7 +256,7 @@ def analyze_alpha_beta(
     }
 
     if save:
-        storage.save_output("alpha_beta", result)
+        storage.save_output(result, "alpha_beta")
         logger.info(
             "Alpha/beta: β=%.4f, α=%.6f, R²=%.4f, IR=%.4f",
             analysis["beta"],

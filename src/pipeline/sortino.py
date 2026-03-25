@@ -314,7 +314,7 @@ def analyze_sortino(
     }
 
     if save:
-        storage.save_output("sortino", result)
+        storage.save_output(result, "sortino")
         logger.info(
             "Sortino: %.4f, downside dev: %.6f, gain/pain: %.4f",
             metrics["sortino_ratio"],

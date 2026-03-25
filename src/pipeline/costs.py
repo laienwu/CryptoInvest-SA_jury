@@ -221,7 +221,7 @@ def analyze_costs(
     }
 
     if save:
-        storage.save_output("cost_analysis", result)
+        storage.save_output(result, "cost_analysis")
         logger.info(
             "Cost analysis: %.4f%% per rebalance, net Sharpe %.4f (drag %.4f)",
             cost_pct * 100, adjusted["net_sharpe"], adjusted["sharpe_drag"],

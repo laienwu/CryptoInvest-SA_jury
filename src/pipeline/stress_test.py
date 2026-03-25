@@ -245,7 +245,7 @@ def run_stress_test(
     }
 
     if save:
-        storage.save_output("stress_test", result)
+        storage.save_output(result, "stress_test")
         logger.info(
             "Stress test '%s': portfolio impact %.2f%%",
             scenario_info["name"],

@@ -113,7 +113,7 @@ class TestRunStressTest:
             scenario_name="crypto_crash", storage=mock_storage, save=True
         )
         mock_storage.save_output.assert_called_once()
-        assert mock_storage.save_output.call_args[0][0] == "stress_test"
+        assert mock_storage.save_output.call_args[0][1] == "stress_test"
 
     def test_unknown_scenario_raises(self, mock_storage):
         with pytest.raises(StressTestError, match="Unknown scenario"):

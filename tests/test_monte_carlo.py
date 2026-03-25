@@ -100,7 +100,7 @@ class TestRunMonteCarlo:
 
         storage.save_output.assert_called_once()
         call_args = storage.save_output.call_args
-        assert call_args[0][0] == "monte_carlo"
+        assert call_args[0][1] == "monte_carlo"
 
     def test_missing_weights_raises_error(self):
         storage = _mock_storage()

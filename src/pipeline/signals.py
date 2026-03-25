@@ -408,7 +408,7 @@ def generate_portfolio_signals(
     }
 
     if save:
-        storage.save_output("signals", result)
+        storage.save_output(result, "signals")
         logger.info(
             "Signals generated: %d BUY, %d SELL, %d HOLD",
             buy_count, sell_count, hold_count,

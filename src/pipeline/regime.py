@@ -250,7 +250,7 @@ def analyze_regimes(
     }
 
     if save:
-        storage.save_output("regime", result)
+        storage.save_output(result, "regime")
         logger.info(
             "Regime detection: %s (bull=%d, bear=%d, sideways=%d)",
             market_regime, bull_count, bear_count, sideways_count,

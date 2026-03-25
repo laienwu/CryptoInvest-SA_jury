@@ -201,7 +201,7 @@ class TestAnalyzeAlphaBeta:
                     raise FileNotFoundError(f"Key {key} not found")
                 return self._processed[key]
 
-            def save_output(self, key, data):
+            def save_output(self, data, key):
                 self._saved[key] = data
 
         if portfolio is None:
