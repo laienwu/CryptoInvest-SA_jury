@@ -9,7 +9,7 @@ WORKDIR /app
 
 # Copy dependency files and install
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --extra yfinance
+RUN uv sync --frozen --no-dev --extra yfinance --extra optimize
 
 # Copy source code
 COPY src/ ./src/
