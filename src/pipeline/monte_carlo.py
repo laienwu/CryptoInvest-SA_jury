@@ -89,19 +89,22 @@ def run_monte_carlo(
     # Build arrays
     w = np.array([weights_dict[s] for s in symbols])
 
+    # Mean returns and covariance are annualized — convert to daily
+    trading_days = cfg.trading_days_per_year
+
     mean_ret_map = mean_returns_data.get("mean_returns", {})
-    daily_means = np.array([mean_ret_map.get(s, 0.0) for s in symbols])
+    daily_means = np.array([mean_ret_map.get(s, 0.0) / trading_days for s in symbols])
 
     cov_symbols = cov_data.get("symbols", [])
     cov_matrix_raw = cov_data.get("matrix", [])
 
-    # Reorder covariance to match weights symbol order
+    # Reorder covariance to match weights symbol order and de-annualize
     sym_idx = {s: i for i, s in enumerate(cov_symbols)}
     cov_matrix = np.zeros((n_assets, n_assets))
     for i, si in enumerate(symbols):
         for j, sj in enumerate(symbols):
             if si in sym_idx and sj in sym_idx:
-                cov_matrix[i, j] = cov_matrix_raw[sym_idx[si]][sym_idx[sj]]
+                cov_matrix[i, j] = cov_matrix_raw[sym_idx[si]][sym_idx[sj]] / trading_days
 
     logger.info(
         f"Running Monte Carlo: {n_simulations} simulations, {n_days} days, {n_assets} assets"
