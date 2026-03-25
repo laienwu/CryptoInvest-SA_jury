@@ -156,7 +156,7 @@ def calculate_portfolio_volatility(
         Portfolio volatility (annualized).
     """
     variance = calculate_portfolio_variance(weights, cov_matrix)
-    return math.sqrt(variance)
+    return math.sqrt(max(0.0, variance))
 
 
 def calculate_sharpe_ratio(
