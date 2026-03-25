@@ -166,15 +166,28 @@ uv run streamlit run src/dashboard/app.py
 
 ## Tableau de bord
 
-Le tableau de bord Streamlit fournit :
+Le tableau de bord Streamlit fournit 20 pages :
 
-- **Cartes KPI** - Rendement attendu, volatilité, ratio de Sharpe
-- **Tableau d'allocation** - Graphique des pondérations du portefeuille chart
-- **Graphiques de prix** - Données OHLCV par symbole
-- **Carte thermique de corrélation** - Matrice de corrélation des actifs
-- **Comparaison de volatilité** - Graphique à barres par symbole
-- **Monte Carlo** - Fan chart des simulations, histogramme des valeurs finales, VaR/CVaR
-- **Live Ticker** - Prix en temps réel avec variation 24h, volume, high/low
+- **Dashboard** - Cartes KPI, allocation pie chart, corrélation heatmap
+- **Symbols** - Graphiques OHLCV par symbole
+- **Metrics** - Exploration des métriques brutes
+- **Frontier** - Frontière efficiente interactive
+- **Backtest** - Résultats du walk-forward backtesting
+- **Monte Carlo** - Fan chart des simulations, histogramme, VaR/CVaR
+- **Live Prices** - Prix en temps réel avec variation 24h
+- **Rebalancing** - Alertes et suggestions de rééquilibrage
+- **Signals** - Signaux de trading (SMA, RSI, MACD, Bollinger)
+- **Regime** - Détection de régime de marché (bull/bear/sideways)
+- **Cost Analysis** - Modèle de coûts de transaction (frais, slippage)
+- **Alpha/Beta** - Analyse CAPM vs benchmarks
+- **Sortino Risk** - Métriques de risque baissier (Sortino, downside deviation)
+- **Comparison** - Comparaison crypto vs traditionnel
+- **Constrained** - Optimisation sous contraintes (min/max poids, groupes)
+- **Correlation Network** - Corrélations glissantes par paires
+- **Position Sizing** - Kelly, vol-target, fixed-fractional
+- **Stress Test** - Scénarios de stress du portefeuille
+- **Drawdown** - Analyse des drawdowns et récupération
+- **Attribution** - Décomposition de la performance par actif
 
 ## Test
 

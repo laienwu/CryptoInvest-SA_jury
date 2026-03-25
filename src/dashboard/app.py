@@ -2422,6 +2422,592 @@ def page_live_ticker() -> None:
     st.dataframe(table_data, use_container_width=True, hide_index=True)
 
 
+# =============================================================================
+# Page: Trading Signals
+# =============================================================================
+
+
+def page_signals() -> None:
+    """Trading signals page — SMA, RSI, MACD, Bollinger indicators."""
+    st.header("Trading Signals")
+    data = fetch_api("/portfolio/signals")
+    if not data:
+        st.warning("No signal data available.")
+        return
+
+    signals = data.get("signals", [])
+    if not signals:
+        st.warning("No signals returned from the API.")
+        return
+
+    # Summary KPIs
+    n_buy = sum(1 for s in signals if s.get("combined", "").upper() == "BUY")
+    n_sell = sum(1 for s in signals if s.get("combined", "").upper() == "SELL")
+    n_hold = len(signals) - n_buy - n_sell
+    c1, c2, c3 = st.columns(3)
+    c1.metric("BUY Signals", n_buy)
+    c2.metric("SELL Signals", n_sell)
+    c3.metric("HOLD Signals", n_hold)
+
+    st.markdown("---")
+
+    # Signals table
+    df = pd.DataFrame(signals)
+    display_cols = ["symbol", "sma", "rsi", "macd", "bollinger", "combined"]
+    present_cols = [c for c in display_cols if c in df.columns]
+    if present_cols:
+        st.dataframe(
+            df[present_cols].style.map(
+                lambda v: (
+                    "color: #2ca02c" if str(v).upper() == "BUY"
+                    else "color: #d62728" if str(v).upper() == "SELL"
+                    else "color: gray"
+                ),
+                subset=[c for c in present_cols if c != "symbol"],
+            ),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+
+# =============================================================================
+# Page: Market Regime
+# =============================================================================
+
+
+def page_regime() -> None:
+    """Market regime detection — bull, bear, or sideways per asset."""
+    st.header("Market Regime Detection")
+    data = fetch_api("/portfolio/regime")
+    if not data:
+        st.warning("No regime data available.")
+        return
+
+    regimes = data.get("regimes", [])
+    if not regimes:
+        st.warning("No regime information returned.")
+        return
+
+    # Summary KPIs
+    market_regime = data.get("market_regime", "N/A")
+    bull = sum(1 for r in regimes if r.get("regime", "").lower() == "bull")
+    bear = sum(1 for r in regimes if r.get("regime", "").lower() == "bear")
+    sideways = len(regimes) - bull - bear
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Market Regime", market_regime)
+    c2.metric("Bull", bull)
+    c3.metric("Bear", bear)
+    c4.metric("Sideways", sideways)
+
+    st.markdown("---")
+
+    # Per-asset cards
+    cols = st.columns(min(len(regimes), 4))
+    for i, r in enumerate(regimes):
+        col = cols[i % len(cols)]
+        regime = r.get("regime", "unknown").lower()
+        color = (
+            "#2ca02c" if regime == "bull"
+            else "#d62728" if regime == "bear"
+            else "#ff7f0e"
+        )
+        confidence = r.get("confidence", 0)
+        col.markdown(
+            f"**{r.get('symbol', '?')}** — "
+            f":{color}[{regime.upper()}]"
+        )
+        col.progress(min(confidence, 1.0), text=f"Confidence: {confidence:.0%}")
+
+
+# =============================================================================
+# Page: Cost Analysis
+# =============================================================================
+
+
+def page_cost_analysis() -> None:
+    """Transaction cost analysis — fees, slippage, net returns."""
+    st.header("Cost Analysis")
+    data = fetch_api("/portfolio/cost-analysis")
+    if not data:
+        st.warning("No cost analysis data available.")
+        return
+
+    # KPIs
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Total Cost", f"${data.get('total_cost_usd', 0):,.2f}")
+    c2.metric("Cost % of Portfolio", fmt_pct(data.get("cost_pct_of_portfolio")))
+    c3.metric("Net Return", fmt_pct(data.get("net_return")))
+    c4.metric("Sharpe Drag", fmt_ratio(data.get("sharpe_drag")))
+
+    st.markdown("---")
+
+    # Per-trade cost bar chart
+    trades = data.get("rebalance_costs", {}).get("trades", [])
+    if trades:
+        symbols = [t.get("symbol", "") for t in trades]
+        costs = [t.get("cost", 0) for t in trades]
+        fig = go.Figure(go.Bar(x=symbols, y=costs, marker_color=COLORS["accent"]))
+        styled_layout(fig, title="Per-Trade Rebalancing Costs", yaxis_title="Cost ($)")
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Gross vs Net Sharpe
+    gross_sharpe = data.get("gross_sharpe")
+    net_sharpe = data.get("net_sharpe")
+    if gross_sharpe is not None and net_sharpe is not None:
+        fig2 = go.Figure(go.Bar(
+            x=["Gross Sharpe", "Net Sharpe"],
+            y=[gross_sharpe, net_sharpe],
+            marker_color=[COLORS["strategy"], COLORS["danger"]],
+        ))
+        styled_layout(fig2, title="Sharpe Ratio: Gross vs Net of Costs")
+        st.plotly_chart(fig2, use_container_width=True)
+
+
+# =============================================================================
+# Page: Alpha / Beta (CAPM)
+# =============================================================================
+
+
+def page_alpha_beta() -> None:
+    """CAPM alpha/beta analysis vs benchmarks."""
+    st.header("Alpha / Beta Analysis")
+    data = fetch_api("/portfolio/alpha-beta")
+    if not data:
+        st.warning("No alpha/beta data available.")
+        return
+
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("Beta", fmt_ratio(data.get("beta")))
+    c2.metric("Alpha (ann.)", fmt_pct(data.get("alpha_annual")))
+    c3.metric("R-squared", fmt_ratio(data.get("r_squared")))
+    c4.metric("Tracking Error", fmt_pct(data.get("tracking_error")))
+    c5.metric("Info Ratio", fmt_ratio(data.get("information_ratio")))
+
+
+# =============================================================================
+# Page: Sortino & Downside Risk
+# =============================================================================
+
+
+def page_sortino_risk() -> None:
+    """Sortino ratio and downside risk metrics."""
+    st.header("Sortino & Downside Risk")
+    data = fetch_api("/portfolio/sortino")
+    if not data:
+        st.warning("No Sortino data available.")
+        return
+
+    # KPIs
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("Sortino Ratio", fmt_ratio(data.get("sortino_ratio")))
+    c2.metric("Downside Dev.", fmt_pct(data.get("downside_deviation")))
+    c3.metric("Gain-to-Pain", fmt_ratio(data.get("gain_to_pain")))
+    c4.metric("Upside Capture", fmt_pct(data.get("upside_capture")))
+    c5.metric("Downside Capture", fmt_pct(data.get("downside_capture")))
+
+    st.markdown("---")
+
+    # Upside vs Downside deviation bar
+    up_dev = data.get("upside_deviation", 0)
+    down_dev = data.get("downside_deviation", 0)
+    if up_dev or down_dev:
+        fig = go.Figure(go.Bar(
+            x=["Upside Deviation", "Downside Deviation"],
+            y=[up_dev, down_dev],
+            marker_color=[COLORS["strategy"], COLORS["danger"]],
+        ))
+        styled_layout(fig, title="Upside vs Downside Deviation")
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Return stats
+    st.markdown("---")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Positive Days", data.get("n_positive", "N/A"))
+    c2.metric("Negative Days", data.get("n_negative", "N/A"))
+    c3.metric("Best Return", fmt_pct(data.get("best_return")))
+    c4.metric("Worst Return", fmt_pct(data.get("worst_return")))
+
+
+# =============================================================================
+# Page: Strategy Comparison
+# =============================================================================
+
+
+def page_comparison() -> None:
+    """Side-by-side comparison of Max Sharpe, Risk Parity, and Equal Weight."""
+    st.header("Strategy Comparison")
+
+    portfolio = fetch_api("/portfolio")
+    risk_parity = fetch_api("/portfolio/risk-parity")
+
+    strategies: dict[str, dict[str, Any]] = {}
+
+    if portfolio:
+        strategies["Max Sharpe"] = portfolio
+    if risk_parity:
+        strategies["Risk Parity"] = risk_parity
+
+    # Build equal-weight from portfolio symbols
+    if portfolio:
+        weights = portfolio.get("weights", {})
+        n = len(weights) if weights else 1
+        eq_weights = {s: 1.0 / n for s in weights}
+        strategies["Equal Weight"] = {
+            "weights": eq_weights,
+            "expected_return": portfolio.get("equal_weight_return"),
+            "volatility": portfolio.get("equal_weight_vol"),
+            "sharpe_ratio": portfolio.get("equal_weight_sharpe"),
+        }
+
+    if not strategies:
+        st.warning("No strategy data available.")
+        return
+
+    # Metrics comparison table
+    st.subheader("Performance Metrics")
+    rows = []
+    for name, d in strategies.items():
+        rows.append({
+            "Strategy": name,
+            "Return": fmt_pct(d.get("expected_return")),
+            "Volatility": fmt_pct(d.get("volatility")),
+            "Sharpe": fmt_ratio(d.get("sharpe_ratio")),
+        })
+    st.dataframe(rows, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
+    # Donut charts side by side
+    st.subheader("Allocations")
+    cols = st.columns(len(strategies))
+    strategy_colors = COLORS["assets"]
+    for col, (name, d) in zip(cols, strategies.items()):
+        w = d.get("weights", {})
+        if w:
+            fig = go.Figure(go.Pie(
+                labels=list(w.keys()),
+                values=list(w.values()),
+                hole=0.45,
+                marker={"colors": strategy_colors},
+            ))
+            styled_layout(fig, title=name, showlegend=True)
+            col.plotly_chart(fig, use_container_width=True)
+
+
+# =============================================================================
+# Page: Constrained Optimization
+# =============================================================================
+
+
+def page_constrained() -> None:
+    """Constrained portfolio optimization with user-defined weight bounds."""
+    st.header("Constrained Optimization")
+
+    with st.expander("Constraint Settings", expanded=True):
+        min_weight = st.slider("Min weight per asset", 0.0, 0.5, 0.0, 0.01)
+        max_weight = st.slider("Max weight per asset", 0.1, 1.0, 0.5, 0.01)
+
+    # Build constraints body — apply same bounds to all assets
+    unconstrained = fetch_api("/portfolio")
+    if not unconstrained:
+        st.warning("Cannot fetch portfolio data for constraint comparison.")
+        return
+
+    symbols = list(unconstrained.get("weights", {}).keys())
+    constraints = {s: {"min": min_weight, "max": max_weight} for s in symbols}
+    body = {"constraints": constraints}
+
+    try:
+        resp = requests.post(
+            f"{API_URL}/portfolio/constrained", json=body, timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.RequestException:
+        st.error("Failed to compute constrained portfolio.")
+        return
+
+    # Results
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Return", fmt_pct(data.get("expected_return")))
+    c2.metric("Volatility", fmt_pct(data.get("volatility")))
+    c3.metric("Sharpe", fmt_ratio(data.get("sharpe_ratio")))
+
+    st.markdown("---")
+
+    # Allocation bar chart
+    weights = data.get("weights", {})
+    if weights:
+        fig = go.Figure(go.Bar(
+            x=list(weights.keys()),
+            y=list(weights.values()),
+            marker_color=COLORS["strategy"],
+        ))
+        styled_layout(fig, title="Constrained Allocation", yaxis_title="Weight")
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Comparison vs unconstrained
+    st.subheader("vs Unconstrained")
+    comp = pd.DataFrame([
+        {
+            "Portfolio": "Unconstrained",
+            "Return": fmt_pct(unconstrained.get("expected_return")),
+            "Volatility": fmt_pct(unconstrained.get("volatility")),
+            "Sharpe": fmt_ratio(unconstrained.get("sharpe_ratio")),
+        },
+        {
+            "Portfolio": "Constrained",
+            "Return": fmt_pct(data.get("expected_return")),
+            "Volatility": fmt_pct(data.get("volatility")),
+            "Sharpe": fmt_ratio(data.get("sharpe_ratio")),
+        },
+    ])
+    st.dataframe(comp, use_container_width=True, hide_index=True)
+
+
+# =============================================================================
+# Page: Correlation Network
+# =============================================================================
+
+
+def page_correlation_network() -> None:
+    """Interactive correlation network — nodes are assets, edges are correlations."""
+    st.header("Correlation Network")
+    data = fetch_api("/metrics/correlation")
+    if not data:
+        st.warning("No correlation data available.")
+        return
+
+    matrix = data.get("correlation", {})
+    symbols = list(matrix.keys())
+    if len(symbols) < 2:
+        st.info("Need at least 2 symbols for a network.")
+        return
+
+    threshold = st.slider("Correlation threshold", 0.0, 1.0, 0.3, 0.05)
+
+    # Arrange nodes in a circle
+    n = len(symbols)
+    angles = [2 * math.pi * i / n for i in range(n)]
+    x_pos = [math.cos(a) for a in angles]
+    y_pos = [math.sin(a) for a in angles]
+
+    fig = go.Figure()
+
+    # Edges
+    for i in range(n):
+        for j in range(i + 1, n):
+            corr = matrix.get(symbols[i], {}).get(symbols[j], 0)
+            if abs(corr) >= threshold:
+                color = "rgba(44,160,44,0.5)" if corr > 0 else "rgba(214,39,40,0.5)"
+                fig.add_trace(go.Scatter(
+                    x=[x_pos[i], x_pos[j], None],
+                    y=[y_pos[i], y_pos[j], None],
+                    mode="lines",
+                    line={"color": color, "width": abs(corr) * 4},
+                    hoverinfo="text",
+                    text=f"{symbols[i]}-{symbols[j]}: {corr:.2f}",
+                    showlegend=False,
+                ))
+
+    # Nodes
+    fig.add_trace(go.Scatter(
+        x=x_pos, y=y_pos, mode="markers+text",
+        text=symbols, textposition="top center",
+        marker={"size": 20, "color": COLORS["accent"]},
+        showlegend=False,
+    ))
+
+    styled_layout(
+        fig, title="Correlation Network",
+        xaxis={"visible": False}, yaxis={"visible": False},
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# =============================================================================
+# Page: Position Sizing
+# =============================================================================
+
+
+def page_position_sizing() -> None:
+    """Position sizing calculator — Kelly, vol-target, fixed-fractional."""
+    st.header("Position Sizing")
+
+    portfolio_value = st.number_input(
+        "Portfolio Value ($)", min_value=100.0, value=10000.0, step=500.0,
+    )
+    method = st.selectbox("Sizing Method", ["weight", "vol_target", "fractional"])
+
+    data = fetch_api(
+        f"/portfolio/position-sizing?portfolio_value={portfolio_value}&method={method}",
+    )
+    if not data:
+        st.warning("No position sizing data available.")
+        return
+
+    positions = data.get("positions", [])
+    if not positions:
+        st.info("No positions returned.")
+        return
+
+    # Bar chart of dollar amounts
+    symbols = [p.get("symbol", "") for p in positions]
+    amounts = [p.get("dollar_amount", 0) for p in positions]
+    fig = go.Figure(go.Bar(
+        x=symbols, y=amounts, marker_color=COLORS["assets"][: len(symbols)],
+    ))
+    styled_layout(fig, title=f"Position Sizes ({method})", yaxis_title="Amount ($)")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Detail table
+    st.subheader("Position Details")
+    st.dataframe(positions, use_container_width=True, hide_index=True)
+
+
+# =============================================================================
+# Page: Stress Test
+# =============================================================================
+
+
+def page_stress_test() -> None:
+    """Portfolio stress testing with predefined or custom scenarios."""
+    st.header("Stress Test")
+
+    scenarios_data = fetch_api("/portfolio/scenarios")
+    scenarios = scenarios_data.get("scenarios", []) if scenarios_data else []
+
+    if not scenarios:
+        st.warning("No stress scenarios available.")
+        return
+
+    scenario = st.selectbox("Select Scenario", scenarios)
+
+    data = fetch_api(f"/portfolio/stress-test?scenario={scenario}")
+    if not data:
+        st.warning(f"No results for scenario: {scenario}")
+        return
+
+    # Impact KPIs
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Portfolio Impact", fmt_pct(data.get("portfolio_impact")))
+    c2.metric("Portfolio Value After", f"${data.get('value_after', 0):,.2f}")
+    c3.metric("Scenario", scenario)
+
+    st.markdown("---")
+
+    # Per-asset waterfall
+    impacts = data.get("asset_impacts", {})
+    if impacts:
+        sorted_items = sorted(impacts.items(), key=lambda x: x[1])
+        fig = go.Figure(go.Waterfall(
+            x=[s for s, _ in sorted_items],
+            y=[v for _, v in sorted_items],
+            connector={"line": {"color": "rgba(128,128,128,0.3)"}},
+            increasing={"marker": {"color": COLORS["strategy"]}},
+            decreasing={"marker": {"color": COLORS["danger"]}},
+        ))
+        styled_layout(fig, title=f"Per-Asset Impact: {scenario}", yaxis_title="Impact")
+        st.plotly_chart(fig, use_container_width=True)
+
+
+# =============================================================================
+# Page: Drawdown Analysis
+# =============================================================================
+
+
+def page_drawdown() -> None:
+    """Drawdown time series and period analysis."""
+    st.header("Drawdown Analysis")
+    data = fetch_api("/portfolio/drawdown")
+    if not data:
+        st.warning("No drawdown data available.")
+        return
+
+    # Max drawdown KPI
+    max_dd = data.get("max_drawdown", 0)
+    st.metric("Max Drawdown", fmt_pct(max_dd))
+
+    st.markdown("---")
+
+    # Drawdown time series
+    series = data.get("drawdown_series", {})
+    dates = series.get("dates", [])
+    values = series.get("values", [])
+    if dates and values:
+        fig = go.Figure(go.Scatter(
+            x=dates, y=values, fill="tozeroy",
+            fillcolor="rgba(214,39,40,0.25)",
+            line={"color": COLORS["danger"], "width": 1.5},
+            name="Drawdown",
+        ))
+        fig.add_hline(y=max_dd, line_dash="dash", line_color="gray", opacity=0.5)
+        styled_layout(
+            fig, title="Drawdown Over Time",
+            xaxis_title="Date", yaxis_title="Drawdown",
+            hovermode="x unified",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Drawdown periods table
+    periods = data.get("drawdown_periods", [])
+    if periods:
+        st.subheader("Drawdown Periods")
+        df = pd.DataFrame(periods)
+        display_cols = ["start", "trough", "recovery", "depth", "duration"]
+        present = [c for c in display_cols if c in df.columns]
+        st.dataframe(df[present], use_container_width=True, hide_index=True)
+
+
+# =============================================================================
+# Page: Performance Attribution
+# =============================================================================
+
+
+def page_attribution() -> None:
+    """Performance attribution — per-asset contribution decomposition."""
+    st.header("Performance Attribution")
+    data = fetch_api("/portfolio/attribution")
+    if not data:
+        st.warning("No attribution data available.")
+        return
+
+    items = data.get("attributions", [])
+    if not items:
+        st.warning("No attribution items returned.")
+        return
+
+    # KPIs
+    total_return = data.get("total_return", 0)
+    sorted_items = sorted(items, key=lambda x: x.get("contribution", 0), reverse=True)
+    top = sorted_items[0] if sorted_items else {}
+    bottom = sorted_items[-1] if sorted_items else {}
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total Return", fmt_pct(total_return))
+    c2.metric("Top Contributor", f"{top.get('symbol', 'N/A')} ({fmt_pct(top.get('contribution'))})")
+    c3.metric("Bottom Contributor", f"{bottom.get('symbol', 'N/A')} ({fmt_pct(bottom.get('contribution'))})")
+
+    st.markdown("---")
+
+    # Bar chart of contributions
+    symbols = [a.get("symbol", "") for a in sorted_items]
+    contributions = [a.get("contribution", 0) for a in sorted_items]
+    bar_colors = [COLORS["strategy"] if c >= 0 else COLORS["danger"] for c in contributions]
+    fig = go.Figure(go.Bar(
+        x=symbols, y=contributions, marker_color=bar_colors,
+    ))
+    styled_layout(fig, title="Per-Asset Contribution", yaxis_title="Contribution")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Detail table
+    st.subheader("Attribution Details")
+    display_cols = ["symbol", "weight", "return", "contribution", "pct_contribution"]
+    df = pd.DataFrame(sorted_items)
+    present = [c for c in display_cols if c in df.columns]
+    st.dataframe(df[present], use_container_width=True, hide_index=True)
+
+
 def main() -> None:
     """Main dashboard entry point."""
     st.set_page_config(
@@ -2433,7 +3019,7 @@ def main() -> None:
     st.sidebar.title("Navigation")
     page = st.sidebar.radio(
         "Select Page",
-        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Live Ticker"],
+        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Live Ticker"],
     )
 
     st.sidebar.markdown("---")
@@ -2476,6 +3062,30 @@ def main() -> None:
         page_backtest()
     elif page == "Monte Carlo":
         page_monte_carlo()
+    elif page == "Signals":
+        page_signals()
+    elif page == "Regime":
+        page_regime()
+    elif page == "Costs":
+        page_cost_analysis()
+    elif page == "Alpha/Beta":
+        page_alpha_beta()
+    elif page == "Sortino":
+        page_sortino_risk()
+    elif page == "Comparison":
+        page_comparison()
+    elif page == "Constrained":
+        page_constrained()
+    elif page == "Correlation":
+        page_correlation_network()
+    elif page == "Position Sizing":
+        page_position_sizing()
+    elif page == "Stress Test":
+        page_stress_test()
+    elif page == "Drawdown":
+        page_drawdown()
+    elif page == "Attribution":
+        page_attribution()
     elif page == "Live Ticker":
         page_live_ticker()
 
