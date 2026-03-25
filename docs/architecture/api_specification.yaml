@@ -561,6 +561,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /portfolio/risk-parity:
+    get:
+      tags:
+        - Analytics
+      summary: Get Risk Parity Portfolio
+      description: |
+        Computes risk parity weights where each asset contributes equally
+        to total portfolio risk. Alternative to Markowitz max-Sharpe.
+      operationId: getRiskParity
+      responses:
+        '200':
+          description: Risk parity portfolio allocation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskParityResponse'
+        '404':
+          description: Processed data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /portfolio/signals:
     get:
       tags:
@@ -1479,6 +1502,63 @@ components:
         n_assets:
           type: integer
         portfolio_key:
+          type: string
+
+    RiskParityResponse:
+      type: object
+      required:
+        - weights
+        - expected_return
+        - volatility
+        - sharpe_ratio
+        - contributions
+        - converged
+        - iterations
+        - n_assets
+        - optimization_method
+      properties:
+        weights:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        expected_return:
+          type: number
+          format: double
+        volatility:
+          type: number
+          format: double
+        sharpe_ratio:
+          type: number
+          format: double
+        contributions:
+          type: array
+          items:
+            type: object
+            required:
+              - symbol
+              - weight
+              - risk_contribution
+              - pct_contribution
+            properties:
+              symbol:
+                type: string
+              weight:
+                type: number
+                format: double
+              risk_contribution:
+                type: number
+                format: double
+              pct_contribution:
+                type: number
+                format: double
+        converged:
+          type: boolean
+        iterations:
+          type: integer
+        n_assets:
+          type: integer
+        optimization_method:
           type: string
 
     SignalsResponse:

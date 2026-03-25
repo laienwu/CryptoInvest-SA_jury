@@ -155,6 +155,7 @@ uv run streamlit run src/dashboard/app.py
 | `GET /portfolio/attribution?portfolio_key=weights` | Attribution de performance par actif (poids × rendement) |
 | `POST /portfolio/custom` | Évaluation de portefeuille personnalisé (poids définis par l'utilisateur) |
 | `GET /portfolio/signals` | Signaux de trading (SMA crossover, RSI, MACD, Bollinger) |
+| `GET /portfolio/risk-parity` | Portefeuille risk parity (contribution égale au risque) |
 | `GET /prices/live` | Prix en temps réel (Binance 24h ticker) |
 
 ## Tableau de bord

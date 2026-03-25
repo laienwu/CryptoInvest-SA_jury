@@ -30,6 +30,7 @@ from src.api.schemas import (
     RebalanceResponse,
     RiskContributionResponse,
     RollingCorrelationResponse,
+    RiskParityResponse,
     ScenarioListResponse,
     SignalsResponse,
     StressTestResponse,
@@ -630,6 +631,33 @@ def get_signals(
         raise HTTPException(404, e.message) from e
     except Exception as e:
         logger.error("Failed to generate signals: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Risk Parity — /portfolio/risk-parity
+# =============================================================================
+
+
+@app.get("/portfolio/risk-parity", response_model=RiskParityResponse)
+def get_risk_parity(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Get risk parity portfolio allocation (equal risk contribution)."""
+    from src.pipeline.risk_parity import RiskParityError, optimize_risk_parity
+
+    try:
+        return cached_response(
+            cache,
+            "portfolio:risk-parity",
+            _CACHE_TTL_SECONDS,
+            lambda: optimize_risk_parity(storage=storage, save=False),
+        )
+    except RiskParityError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed to compute risk parity: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 

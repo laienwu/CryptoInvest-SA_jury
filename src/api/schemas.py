@@ -216,6 +216,27 @@ class LivePricesResponse(BaseModel):
     n_trad: int
 
 
+class RiskParityContribution(BaseModel):
+    symbol: str
+    weight: float
+    risk_contribution: float
+    pct_contribution: float
+
+
+class RiskParityResponse(BaseModel):
+    """Risk parity portfolio allocation."""
+
+    weights: dict[str, float]
+    expected_return: float
+    volatility: float
+    sharpe_ratio: float
+    contributions: list[RiskParityContribution]
+    converged: bool
+    iterations: int
+    n_assets: int
+    optimization_method: str
+
+
 class SignalItem(BaseModel):
     symbol: str
     sma_crossover: str | None = None
