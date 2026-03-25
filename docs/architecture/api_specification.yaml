@@ -658,6 +658,223 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /portfolio/constrained:
+    post:
+      tags:
+        - Analytics
+      summary: Constrained Portfolio Optimization
+      description: |
+        Optimizes portfolio with user-defined constraints: per-asset
+        min/max weights and group exposure limits. Maximizes Sharpe
+        ratio subject to constraints.
+      operationId: postConstrainedPortfolio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConstrainedPortfolioRequest'
+      responses:
+        '200':
+          description: Constrained optimization result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConstrainedPortfolioResponse'
+        '404':
+          description: Processed data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Infeasible constraints
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/sortino:
+    get:
+      tags:
+        - Analytics
+      summary: Sortino Ratio and Downside Risk
+      description: |
+        Computes Sortino ratio, downside deviation, gain-to-pain ratio,
+        and upside/downside capture ratios versus a benchmark.
+      operationId: getSortino
+      parameters:
+        - name: portfolio_key
+          in: query
+          required: false
+          schema:
+            type: string
+            default: weights
+        - name: benchmark
+          in: query
+          required: false
+          schema:
+            type: string
+            default: BTCUSDT
+        - name: risk_free_rate
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+            default: 0.0
+        - name: periods_per_year
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 365
+      responses:
+        '200':
+          description: Sortino and downside risk metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SortinoResponse'
+        '404':
+          description: Portfolio or returns data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/regime:
+    get:
+      tags:
+        - Analytics
+      summary: Detect Market Regime
+      description: |
+        Classifies market conditions for each portfolio asset into
+        BULL, BEAR, or SIDEWAYS using SMA crossover trend and
+        realized volatility regime indicators.
+      operationId: getRegime
+      responses:
+        '200':
+          description: Per-asset regime classification and market summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegimeResponse'
+        '404':
+          description: Price data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/alpha-beta:
+    get:
+      tags:
+        - Analytics
+      summary: CAPM Alpha/Beta Analysis
+      description: |
+        Computes CAPM-style alpha and beta of the portfolio versus a
+        benchmark. Returns beta, annualized alpha, R², tracking error,
+        and information ratio.
+      operationId: getAlphaBeta
+      parameters:
+        - name: portfolio_key
+          in: query
+          required: false
+          schema:
+            type: string
+            default: weights
+        - name: benchmark
+          in: query
+          required: false
+          schema:
+            type: string
+            default: BTCUSDT
+        - name: risk_free_rate
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+            default: 0.0
+        - name: periods_per_year
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 365
+      responses:
+        '200':
+          description: Alpha/beta analysis results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlphaBetaResponse'
+        '404':
+          description: Portfolio or benchmark data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/cost-analysis:
+    get:
+      tags:
+        - Analytics
+      summary: Analyze Transaction Costs
+      description: |
+        Models trading costs that eat into portfolio returns: exchange fees
+        (Binance taker/maker tiers), slippage estimates, and computes
+        net-of-cost returns with cost-adjusted Sharpe ratio.
+      operationId: getCostAnalysis
+      parameters:
+        - name: portfolio_key
+          in: query
+          required: false
+          schema:
+            type: string
+            default: weights
+        - name: portfolio_value
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+            default: 10000.0
+        - name: n_rebalances
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 12
+        - name: fee_rate
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+            default: 0.001
+        - name: slippage_bps
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+            default: 5.0
+      responses:
+        '200':
+          description: Transaction cost analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostAnalysisResponse'
+        '404':
+          description: Portfolio data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /portfolio/custom:
     post:
       tags:
@@ -1908,6 +2125,327 @@ components:
                 format: double
         n_strategies:
           type: integer
+        portfolio_key:
+          type: string
+
+    ConstrainedPortfolioRequest:
+      type: object
+      properties:
+        min_weights:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+          nullable: true
+        max_weights:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+          nullable: true
+        group_constraints:
+          type: array
+          items:
+            type: object
+          nullable: true
+        risk_free_rate:
+          type: number
+          format: double
+          default: 0.0
+
+    ConstrainedPortfolioResponse:
+      type: object
+      required:
+        - weights
+        - expected_return
+        - volatility
+        - sharpe_ratio
+        - risk_free_rate
+        - constraints
+        - n_assets
+        - optimization_method
+      properties:
+        weights:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        expected_return:
+          type: number
+          format: double
+        volatility:
+          type: number
+          format: double
+        sharpe_ratio:
+          type: number
+          format: double
+        risk_free_rate:
+          type: number
+          format: double
+        constraints:
+          type: object
+          properties:
+            min_weights:
+              type: object
+              additionalProperties:
+                type: number
+                format: double
+            max_weights:
+              type: object
+              additionalProperties:
+                type: number
+                format: double
+            n_active:
+              type: integer
+            groups:
+              type: array
+              items:
+                type: object
+              nullable: true
+        n_assets:
+          type: integer
+        optimization_method:
+          type: string
+
+    SortinoResponse:
+      type: object
+      required:
+        - portfolio_key
+        - benchmark
+        - sortino_ratio
+        - downside_deviation
+        - upside_deviation
+        - gain_to_pain
+        - n_periods
+        - n_negative
+        - n_positive
+        - worst_return
+        - best_return
+        - periods_per_year
+        - risk_free_rate
+        - upside_capture
+        - downside_capture
+      properties:
+        portfolio_key:
+          type: string
+        benchmark:
+          type: string
+        sortino_ratio:
+          type: number
+          format: double
+        downside_deviation:
+          type: number
+          format: double
+        upside_deviation:
+          type: number
+          format: double
+        gain_to_pain:
+          type: number
+          format: double
+        upside_capture:
+          type: number
+          format: double
+          nullable: true
+        downside_capture:
+          type: number
+          format: double
+          nullable: true
+        n_periods:
+          type: integer
+        n_negative:
+          type: integer
+        n_positive:
+          type: integer
+        worst_return:
+          type: number
+          format: double
+        best_return:
+          type: number
+          format: double
+        periods_per_year:
+          type: integer
+        risk_free_rate:
+          type: number
+          format: double
+
+    RegimeResponse:
+      type: object
+      required:
+        - regimes
+        - summary
+      properties:
+        regimes:
+          type: array
+          items:
+            type: object
+            properties:
+              symbol:
+                type: string
+              regime:
+                type: string
+                enum: [BULL, BEAR, SIDEWAYS]
+              confidence:
+                type: number
+                format: double
+              trend_signal:
+                type: string
+              vol_regime:
+                type: string
+              short_sma:
+                type: number
+                format: double
+                nullable: true
+              long_sma:
+                type: number
+                format: double
+                nullable: true
+              current_vol:
+                type: number
+                format: double
+              median_vol:
+                type: number
+                format: double
+              n_periods:
+                type: integer
+        summary:
+          type: object
+          properties:
+            market_regime:
+              type: string
+              enum: [BULL, BEAR, SIDEWAYS]
+            bull_count:
+              type: integer
+            bear_count:
+              type: integer
+            sideways_count:
+              type: integer
+            n_assets:
+              type: integer
+
+    AlphaBetaResponse:
+      type: object
+      required:
+        - benchmark
+        - portfolio_key
+        - beta
+        - alpha_annual
+        - r_squared
+        - tracking_error
+        - information_ratio
+        - n_periods
+        - periods_per_year
+        - risk_free_rate
+      properties:
+        benchmark:
+          type: string
+        portfolio_key:
+          type: string
+        beta:
+          type: number
+          format: double
+        alpha_annual:
+          type: number
+          format: double
+        r_squared:
+          type: number
+          format: double
+        tracking_error:
+          type: number
+          format: double
+        information_ratio:
+          type: number
+          format: double
+        n_periods:
+          type: integer
+        periods_per_year:
+          type: integer
+        risk_free_rate:
+          type: number
+          format: double
+
+    CostAnalysisResponse:
+      type: object
+      required:
+        - rebalance_costs
+        - cost_adjusted_returns
+        - portfolio_key
+      properties:
+        rebalance_costs:
+          type: object
+          properties:
+            trades:
+              type: array
+              items:
+                type: object
+                properties:
+                  symbol:
+                    type: string
+                  weight_change:
+                    type: number
+                    format: double
+                  trade_value_usd:
+                    type: number
+                    format: double
+                  action:
+                    type: string
+                  fee_cost:
+                    type: number
+                    format: double
+                  slippage_cost:
+                    type: number
+                    format: double
+                  total_cost:
+                    type: number
+                    format: double
+                  cost_pct:
+                    type: number
+                    format: double
+            total_cost_usd:
+              type: number
+              format: double
+            total_turnover_usd:
+              type: number
+              format: double
+            cost_pct_of_portfolio:
+              type: number
+              format: double
+            n_trades:
+              type: integer
+            fee_rate:
+              type: number
+              format: double
+            slippage_bps:
+              type: number
+              format: double
+            portfolio_value:
+              type: number
+              format: double
+        cost_adjusted_returns:
+          type: object
+          properties:
+            gross_return:
+              type: number
+              format: double
+            net_return:
+              type: number
+              format: double
+            annual_cost:
+              type: number
+              format: double
+            gross_sharpe:
+              type: number
+              format: double
+            net_sharpe:
+              type: number
+              format: double
+            sharpe_drag:
+              type: number
+              format: double
+            n_rebalances_per_year:
+              type: integer
+            cost_per_rebalance:
+              type: number
+              format: double
         portfolio_key:
           type: string
 

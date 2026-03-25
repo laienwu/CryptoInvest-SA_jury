@@ -20,8 +20,14 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from src.api.cache import _CACHE_TTL_SECONDS, RedisCache, cached_response, get_cache
 from src.api.metrics import pipeline_last_run, portfolio_sharpe, records_ingested  # noqa: F401
 from src.api.schemas import (
+    AlphaBetaResponse,
     AttributionResponse,
+    ConstrainedPortfolioRequest,
+    ConstrainedPortfolioResponse,
+    RegimeResponse,
+    SortinoResponse,
     BacktestResponse,
+    CostAnalysisResponse,
     CustomPortfolioRequest,
     CustomPortfolioResponse,
     CombinedPortfolioResponse,
@@ -700,6 +706,151 @@ def get_position_sizing(
         raise HTTPException(404, e.message) from e
     except Exception as e:
         logger.error("Failed to compute position sizing: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+@app.get("/portfolio/cost-analysis", response_model=CostAnalysisResponse)
+async def get_cost_analysis(
+    portfolio_key: str = "weights",
+    portfolio_value: float = 10000.0,
+    n_rebalances: int = 12,
+    fee_rate: float = 0.001,
+    slippage_bps: float = 5.0,
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache = Depends(get_cache),
+) -> CostAnalysisResponse:
+    """Analyze transaction costs: fees, slippage, net-of-cost returns."""
+    from src.pipeline.costs import CostError, analyze_costs
+
+    try:
+        return await cached_response(
+            cache,
+            f"cost_analysis:{portfolio_key}:{portfolio_value}:{n_rebalances}:{fee_rate}:{slippage_bps}",
+            lambda: analyze_costs(
+                portfolio_key=portfolio_key,
+                portfolio_value=portfolio_value,
+                n_rebalances=n_rebalances,
+                fee_rate=fee_rate,
+                slippage_bps=slippage_bps,
+                storage=storage,
+                save=False,
+            ),
+        )
+    except CostError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed to compute cost analysis: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+@app.get("/portfolio/alpha-beta", response_model=AlphaBetaResponse)
+async def get_alpha_beta(
+    portfolio_key: str = "weights",
+    benchmark: str = "BTCUSDT",
+    risk_free_rate: float = 0.0,
+    periods_per_year: int = 365,
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache = Depends(get_cache),
+) -> AlphaBetaResponse:
+    """CAPM alpha/beta analysis vs a benchmark (default BTC)."""
+    from src.pipeline.alpha_beta import AlphaBetaError, analyze_alpha_beta
+
+    try:
+        return await cached_response(
+            cache,
+            f"alpha_beta:{portfolio_key}:{benchmark}:{risk_free_rate}:{periods_per_year}",
+            lambda: analyze_alpha_beta(
+                portfolio_key=portfolio_key,
+                benchmark_symbol=benchmark,
+                risk_free_rate=risk_free_rate,
+                periods_per_year=periods_per_year,
+                storage=storage,
+                save=False,
+            ),
+        )
+    except AlphaBetaError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed to compute alpha/beta: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+@app.get("/portfolio/regime", response_model=RegimeResponse)
+async def get_regime(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache = Depends(get_cache),
+) -> RegimeResponse:
+    """Detect market regime (bull/bear/sideways) for each portfolio asset."""
+    from src.pipeline.regime import RegimeError, analyze_regimes
+
+    try:
+        return await cached_response(
+            cache,
+            "regime",
+            lambda: analyze_regimes(storage=storage, save=False),
+        )
+    except RegimeError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed to detect regimes: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+@app.get("/portfolio/sortino", response_model=SortinoResponse)
+async def get_sortino(
+    portfolio_key: str = "weights",
+    benchmark: str = "BTCUSDT",
+    risk_free_rate: float = 0.0,
+    periods_per_year: int = 365,
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache = Depends(get_cache),
+) -> SortinoResponse:
+    """Sortino ratio and downside risk metrics."""
+    from src.pipeline.sortino import SortinoError, analyze_sortino
+
+    try:
+        return await cached_response(
+            cache,
+            f"sortino:{portfolio_key}:{benchmark}:{risk_free_rate}:{periods_per_year}",
+            lambda: analyze_sortino(
+                portfolio_key=portfolio_key,
+                benchmark_symbol=benchmark,
+                risk_free_rate=risk_free_rate,
+                periods_per_year=periods_per_year,
+                storage=storage,
+                save=False,
+            ),
+        )
+    except SortinoError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed to compute Sortino metrics: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+@app.post("/portfolio/constrained", response_model=ConstrainedPortfolioResponse)
+async def post_constrained_portfolio(
+    body: ConstrainedPortfolioRequest,
+    storage: Storage = Depends(get_storage_dep),
+) -> ConstrainedPortfolioResponse:
+    """Optimize portfolio with min/max weight and group constraints."""
+    from src.pipeline.constrained import ConstrainedError, analyze_constrained
+
+    try:
+        return analyze_constrained(
+            min_weights=body.min_weights,
+            max_weights=body.max_weights,
+            group_constraints=body.group_constraints,
+            risk_free_rate=body.risk_free_rate,
+            storage=storage,
+            save=False,
+        )
+    except ConstrainedError as e:
+        raise HTTPException(
+            422 if e.operation == "validate" else 404, e.message
+        ) from e
+    except Exception as e:
+        logger.error("Failed constrained optimization: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 

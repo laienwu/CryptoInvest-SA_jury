@@ -371,3 +371,136 @@ class CombinedPortfolioResponse(BaseModel):
     trad_symbols: list[str]
     crypto_metrics: dict[str, Any]
     trad_metrics: dict[str, Any]
+
+
+class TradeDetail(BaseModel):
+    symbol: str
+    weight_change: float
+    trade_value_usd: float
+    action: str
+    fee_cost: float
+    slippage_cost: float
+    total_cost: float
+    cost_pct: float
+
+
+class RebalanceCosts(BaseModel):
+    trades: list[TradeDetail]
+    total_cost_usd: float
+    total_turnover_usd: float
+    cost_pct_of_portfolio: float
+    n_trades: int
+    fee_rate: float
+    slippage_bps: float
+    portfolio_value: float
+
+
+class CostAdjustedReturns(BaseModel):
+    gross_return: float
+    net_return: float
+    annual_cost: float
+    gross_sharpe: float
+    net_sharpe: float
+    sharpe_drag: float
+    n_rebalances_per_year: int
+    cost_per_rebalance: float
+
+
+class CostAnalysisResponse(BaseModel):
+    """Transaction cost analysis results."""
+
+    rebalance_costs: RebalanceCosts
+    cost_adjusted_returns: CostAdjustedReturns
+    portfolio_key: str
+
+
+class AlphaBetaResponse(BaseModel):
+    """Alpha/beta CAPM analysis results."""
+
+    benchmark: str
+    portfolio_key: str
+    beta: float
+    alpha_annual: float
+    r_squared: float
+    tracking_error: float
+    information_ratio: float
+    n_periods: int
+    periods_per_year: int
+    risk_free_rate: float
+
+
+class SortinoResponse(BaseModel):
+    """Sortino ratio and downside risk metrics."""
+
+    portfolio_key: str
+    benchmark: str
+    sortino_ratio: float
+    downside_deviation: float
+    upside_deviation: float
+    gain_to_pain: float
+    upside_capture: float | None
+    downside_capture: float | None
+    n_periods: int
+    n_negative: int
+    n_positive: int
+    worst_return: float
+    best_return: float
+    periods_per_year: int
+    risk_free_rate: float
+
+
+class ConstrainedPortfolioRequest(BaseModel):
+    """Request body for constrained portfolio optimization."""
+
+    min_weights: dict[str, float] | None = None
+    max_weights: dict[str, float] | None = None
+    group_constraints: list[dict[str, Any]] | None = None
+    risk_free_rate: float = 0.0
+
+
+class ConstraintsApplied(BaseModel):
+    min_weights: dict[str, float]
+    max_weights: dict[str, float]
+    n_active: int
+    groups: list[dict[str, Any]] | None = None
+
+
+class ConstrainedPortfolioResponse(BaseModel):
+    """Constrained portfolio optimization result."""
+
+    weights: dict[str, float]
+    expected_return: float
+    volatility: float
+    sharpe_ratio: float
+    risk_free_rate: float
+    constraints: ConstraintsApplied
+    n_assets: int
+    optimization_method: str
+
+
+class RegimeItem(BaseModel):
+    symbol: str
+    regime: str
+    confidence: float
+    trend_signal: str
+    vol_regime: str
+    short_sma: float | None
+    long_sma: float | None
+    current_vol: float
+    median_vol: float
+    n_periods: int
+
+
+class RegimeSummary(BaseModel):
+    market_regime: str
+    bull_count: int
+    bear_count: int
+    sideways_count: int
+    n_assets: int
+
+
+class RegimeResponse(BaseModel):
+    """Market regime detection results."""
+
+    regimes: list[RegimeItem]
+    summary: RegimeSummary

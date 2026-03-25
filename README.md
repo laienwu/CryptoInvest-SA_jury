@@ -2,7 +2,7 @@
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-green.svg)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/tests-531%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-748%20passed-brightgreen.svg)]()
 [![CI](https://github.com/yourusername/binance-portfolio/actions/workflows/ci.yml/badge.svg)]()
 [![Couverture](https://img.shields.io/badge/coverage-55%25-yellow.svg)]()
 
@@ -157,6 +157,11 @@ uv run streamlit run src/dashboard/app.py
 | `GET /portfolio/signals` | Signaux de trading (SMA crossover, RSI, MACD, Bollinger) |
 | `GET /portfolio/risk-parity` | Portefeuille risk parity (contribution égale au risque) |
 | `GET /portfolio/position-sizing?method=vol_target` | Dimensionnement des positions (Kelly, vol-target, fractional) |
+| `GET /portfolio/cost-analysis?n_rebalances=12` | Analyse des coûts de transaction (frais, slippage, rendement net) |
+| `GET /portfolio/alpha-beta?benchmark=BTCUSDT` | Analyse CAPM alpha/beta vs benchmark (β, α, R², tracking error) |
+| `GET /portfolio/regime` | Détection de régime de marché (bull/bear/sideways par actif) |
+| `GET /portfolio/sortino?benchmark=BTCUSDT` | Ratio de Sortino, risque baissier, capture ratios |
+| `POST /portfolio/constrained` | Optimisation sous contraintes (poids min/max, limites de groupe) |
 | `GET /prices/live` | Prix en temps réel (Binance 24h ticker) |
 
 ## Tableau de bord
@@ -180,7 +185,7 @@ uv run pytest tests/ -v
 # Run with coverage
 uv run pytest tests/ --cov=src --cov-report=term-missing
 
-# Results: 364 tests (100% passing)
+# Results: 748 tests (100% passing)
 ```
 
 ## Structure du projet
