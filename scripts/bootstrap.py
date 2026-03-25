@@ -6,11 +6,13 @@ Use for initial setup or when adding new symbols to config.toml.
 After this completes, Airflow handles daily incremental updates.
 """
 
+from src.config import load_config
 from src.pipeline import ingest_data, optimize_portfolio, transform_data
 from src.pipeline.backtest import run_backtest
 from src.pipeline.optimize import compute_and_save_frontier
 from src.storage import get_storage
 
+cfg = load_config()
 storage = get_storage()
 
 # =========================================================================
@@ -22,7 +24,7 @@ data = ingest_data()
 storage.save_raw(data)
 
 print("=== CRYPTO: transform ===")
-transform_data()
+transform_data(symbols=cfg.symbols)
 
 print("=== CRYPTO: optimize ===")
 optimize_portfolio()
