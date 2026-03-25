@@ -314,6 +314,48 @@ def _scipy_max_sharpe(
     return [w / denom for w in raw]
 
 
+def _scipy_max_sharpe_long_only(
+    mean_returns: list[float],
+    cov_matrix: list[list[float]],
+    risk_free_rate: float = 0.05,
+) -> list[float]:
+    """
+    Long-only max-Sharpe portfolio via scipy SLSQP.
+
+    Maximises (μ_p - r_f) / σ_p subject to:
+    - sum(w) = 1
+    - w >= 0  (no short selling)
+    """
+    from scipy.optimize import minimize
+
+    n = len(mean_returns)
+
+    def neg_sharpe(weights: list[float]) -> float:
+        w = list(weights)
+        port_return = dot_product(w, mean_returns)
+        var = calculate_portfolio_variance(w, cov_matrix)
+        vol = math.sqrt(max(0.0, var)) if var > 0 else 1e-10
+        return -(port_return - risk_free_rate) / vol
+
+    constraints = [{"type": "eq", "fun": lambda w: sum(w) - 1.0}]
+    bounds = [(0.0, 1.0)] * n
+
+    result = minimize(
+        neg_sharpe,
+        [1.0 / n] * n,
+        method="SLSQP",
+        bounds=bounds,
+        constraints=constraints,
+        options={"ftol": 1e-12, "maxiter": 1000},
+    )
+
+    if result.success:
+        return [max(0.0, w) for w in result.x]
+
+    logger.warning("Long-only optimization failed, falling back to equal weights")
+    return [1.0 / n] * n
+
+
 def optimize_minimum_variance(cov_matrix: list[list[float]]) -> list[float]:
     """
     Analytical global minimum variance portfolio.
@@ -698,10 +740,10 @@ def optimize_portfolio(
 
     symbols, cov_matrix, mean_returns, storage = _load_optimization_inputs(storage)
 
-    # Optimization
-    logger.info("Running scipy SLSQP optimization")
-    optimal_weights = _scipy_max_sharpe(mean_returns, cov_matrix, risk_free_rate)
-    method = "scipy"
+    # Optimization (long-only: no short selling)
+    logger.info("Running long-only max-Sharpe optimization")
+    optimal_weights = _scipy_max_sharpe_long_only(mean_returns, cov_matrix, risk_free_rate)
+    method = "scipy_long_only"
 
     # Calculate portfolio metrics
     expected_return = calculate_portfolio_return(optimal_weights, mean_returns)
@@ -883,7 +925,7 @@ def optimize_yfinance_portfolio(
 
     symbols, cov_matrix, mean_returns, storage = _load_trad_optimization_inputs(storage)
 
-    optimal_weights = _scipy_max_sharpe(mean_returns, cov_matrix, risk_free_rate)
+    optimal_weights = _scipy_max_sharpe_long_only(mean_returns, cov_matrix, risk_free_rate)
 
     expected_return = calculate_portfolio_return(optimal_weights, mean_returns)
     volatility = calculate_portfolio_volatility(optimal_weights, cov_matrix)
