@@ -1034,6 +1034,274 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /portfolio/black-litterman:
+    get:
+      tags:
+        - Analytics
+      summary: Black-Litterman Optimization
+      description: |
+        Black-Litterman portfolio optimization with equilibrium returns
+        derived from market-cap weights and investor views.
+      operationId: getBlackLitterman
+      parameters:
+        - name: risk_aversion
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+            default: 2.5
+        - name: tau
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+            default: 0.05
+      responses:
+        '200':
+          description: Black-Litterman optimization result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlackLittermanResponse'
+        '404':
+          description: Processed data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/hrp:
+    get:
+      tags:
+        - Analytics
+      summary: Hierarchical Risk Parity
+      description: |
+        Hierarchical Risk Parity allocation using clustering-based
+        recursive bisection. No optimizer needed.
+      operationId: getHRP
+      responses:
+        '200':
+          description: HRP allocation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HRPResponse'
+        '404':
+          description: Processed data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/var:
+    get:
+      tags:
+        - Analytics
+      summary: Value-at-Risk Comparison
+      description: |
+        Compares three VaR methods: Historical, Parametric (Gaussian),
+        and Cornish-Fisher (skewness/kurtosis adjusted).
+      operationId: getVaR
+      parameters:
+        - name: confidence
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+            default: 0.95
+      responses:
+        '200':
+          description: VaR comparison across methods
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VaRResponse'
+        '404':
+          description: Portfolio or returns data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/shrinkage:
+    get:
+      tags:
+        - Analytics
+      summary: Covariance Shrinkage Analysis
+      description: |
+        Ledoit-Wolf covariance shrinkage: blends sample covariance with
+        constant-correlation target for better estimation.
+      operationId: getShrinkage
+      responses:
+        '200':
+          description: Shrinkage analysis result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShrinkageResponse'
+        '404':
+          description: Returns data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/max-diversification:
+    get:
+      tags:
+        - Analytics
+      summary: Maximum Diversification Portfolio
+      description: |
+        Maximizes the diversification ratio (weighted average volatility
+        divided by portfolio volatility).
+      operationId: getMaxDiversification
+      responses:
+        '200':
+          description: Max diversification portfolio result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaxDiversificationResponse'
+        '404':
+          description: Processed data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/min-variance:
+    get:
+      tags:
+        - Analytics
+      summary: Minimum Variance Portfolio
+      description: |
+        Global minimum variance portfolio via quadratic optimization
+        with long-only constraints.
+      operationId: getMinVariance
+      responses:
+        '200':
+          description: Minimum variance portfolio result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MinVarianceResponse'
+        '404':
+          description: Processed data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/factors:
+    get:
+      tags:
+        - Analytics
+      summary: Factor Exposure Analysis
+      description: |
+        Multi-factor regression: market, momentum, and volatility
+        factor exposures per asset.
+      operationId: getFactorAnalysis
+      responses:
+        '200':
+          description: Factor analysis result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FactorAnalysisResponse'
+        '404':
+          description: Raw data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/tail-risk:
+    get:
+      tags:
+        - Analytics
+      summary: Tail Risk Analysis
+      description: |
+        Higher moments analysis: skewness, excess kurtosis, Jarque-Bera
+        normality test, Omega ratio, Calmar ratio, max drawdown.
+      operationId: getTailRisk
+      responses:
+        '200':
+          description: Tail risk metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TailRiskResponse'
+        '404':
+          description: Portfolio or returns data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/decay:
+    get:
+      tags:
+        - Analytics
+      summary: Portfolio Weight Decay
+      description: |
+        Simulates how portfolio weights drift from target over time
+        without rebalancing. Finds optimal rebalance frequency.
+      operationId: getDecay
+      parameters:
+        - name: max_deviation_threshold
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+            default: 0.05
+      responses:
+        '200':
+          description: Weight decay analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecayResponse'
+        '404':
+          description: Portfolio or returns data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/pairs:
+    get:
+      tags:
+        - Analytics
+      summary: Pair Trading Analysis
+      description: |
+        Engle-Granger cointegration test across all asset pairs.
+        Returns cointegrated pairs with spread z-scores.
+      operationId: getPairs
+      parameters:
+        - name: min_observations
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Pairs analysis result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairsResponse'
+        '404':
+          description: Raw data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   schemas:
     HealthResponse:
@@ -2447,6 +2715,429 @@ components:
               type: number
               format: double
         portfolio_key:
+          type: string
+
+    BlackLittermanResponse:
+      type: object
+      required:
+        - weights
+        - expected_return
+        - volatility
+        - sharpe_ratio
+        - equilibrium_returns
+        - posterior_returns
+        - views
+        - n_assets
+        - method
+      properties:
+        weights:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        expected_return:
+          type: number
+          format: double
+        volatility:
+          type: number
+          format: double
+        sharpe_ratio:
+          type: number
+          format: double
+        equilibrium_returns:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        posterior_returns:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        views:
+          type: array
+          items:
+            type: object
+        n_assets:
+          type: integer
+        method:
+          type: string
+
+    HRPResponse:
+      type: object
+      required:
+        - weights
+        - expected_return
+        - volatility
+        - sharpe_ratio
+        - n_assets
+        - method
+      properties:
+        weights:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        expected_return:
+          type: number
+          format: double
+        volatility:
+          type: number
+          format: double
+        sharpe_ratio:
+          type: number
+          format: double
+        n_assets:
+          type: integer
+        method:
+          type: string
+
+    VaRMethodResult:
+      type: object
+      required:
+        - var
+        - cvar
+      properties:
+        var:
+          type: number
+          format: double
+        cvar:
+          type: number
+          format: double
+
+    VaRResponse:
+      type: object
+      required:
+        - portfolio
+        - per_asset
+        - confidence
+        - n_observations
+        - method
+      properties:
+        portfolio:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/VaRMethodResult'
+        per_asset:
+          type: array
+          items:
+            type: object
+            properties:
+              symbol:
+                type: string
+              historical:
+                $ref: '#/components/schemas/VaRMethodResult'
+              parametric:
+                $ref: '#/components/schemas/VaRMethodResult'
+              cornish_fisher:
+                $ref: '#/components/schemas/VaRMethodResult'
+        confidence:
+          type: number
+          format: double
+        n_observations:
+          type: integer
+        method:
+          type: string
+
+    ShrinkageResponse:
+      type: object
+      required:
+        - intensity
+        - n_assets
+        - n_observations
+        - eigenvalue_comparison
+        - symbols
+        - method
+      properties:
+        intensity:
+          type: number
+          format: double
+        n_assets:
+          type: integer
+        n_observations:
+          type: integer
+        eigenvalue_comparison:
+          type: object
+          properties:
+            sample:
+              type: array
+              items:
+                type: number
+                format: double
+            shrunk:
+              type: array
+              items:
+                type: number
+                format: double
+            condition_number_sample:
+              type: number
+              format: double
+            condition_number_shrunk:
+              type: number
+              format: double
+        symbols:
+          type: array
+          items:
+            type: string
+        method:
+          type: string
+
+    MaxDiversificationResponse:
+      type: object
+      required:
+        - weights
+        - expected_return
+        - volatility
+        - sharpe_ratio
+        - diversification_ratio
+        - n_assets
+        - method
+      properties:
+        weights:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        expected_return:
+          type: number
+          format: double
+        volatility:
+          type: number
+          format: double
+        sharpe_ratio:
+          type: number
+          format: double
+        diversification_ratio:
+          type: number
+          format: double
+        n_assets:
+          type: integer
+        method:
+          type: string
+
+    MinVarianceResponse:
+      type: object
+      required:
+        - weights
+        - expected_return
+        - volatility
+        - sharpe_ratio
+        - equal_weight_volatility
+        - equal_weight_return
+        - volatility_reduction_pct
+        - n_assets
+        - method
+      properties:
+        weights:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        expected_return:
+          type: number
+          format: double
+        volatility:
+          type: number
+          format: double
+        sharpe_ratio:
+          type: number
+          format: double
+        equal_weight_volatility:
+          type: number
+          format: double
+        equal_weight_return:
+          type: number
+          format: double
+        volatility_reduction_pct:
+          type: number
+          format: double
+        n_assets:
+          type: integer
+        method:
+          type: string
+
+    FactorExposure:
+      type: object
+      required:
+        - symbol
+        - alpha
+        - betas
+        - r_squared
+      properties:
+        symbol:
+          type: string
+        alpha:
+          type: number
+          format: double
+        betas:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        r_squared:
+          type: number
+          format: double
+
+    FactorAnalysisResponse:
+      type: object
+      required:
+        - per_asset
+        - factors
+        - n_assets
+        - n_periods
+        - method
+      properties:
+        per_asset:
+          type: array
+          items:
+            $ref: '#/components/schemas/FactorExposure'
+        factors:
+          type: array
+          items:
+            type: string
+        n_assets:
+          type: integer
+        n_periods:
+          type: integer
+        method:
+          type: string
+
+    TailMetrics:
+      type: object
+      required:
+        - symbol
+        - skewness
+        - excess_kurtosis
+        - jarque_bera
+        - is_normal
+        - omega_ratio
+        - calmar_ratio
+        - max_drawdown
+        - n_observations
+      properties:
+        symbol:
+          type: string
+        skewness:
+          type: number
+          format: double
+        excess_kurtosis:
+          type: number
+          format: double
+        jarque_bera:
+          type: number
+          format: double
+        is_normal:
+          type: boolean
+        omega_ratio:
+          type: number
+          format: double
+        calmar_ratio:
+          type: number
+          format: double
+        max_drawdown:
+          type: number
+          format: double
+        n_observations:
+          type: integer
+
+    TailRiskResponse:
+      type: object
+      required:
+        - portfolio_metrics
+        - per_asset
+        - n_assets
+        - method
+      properties:
+        portfolio_metrics:
+          $ref: '#/components/schemas/TailMetrics'
+        per_asset:
+          type: array
+          items:
+            $ref: '#/components/schemas/TailMetrics'
+        n_assets:
+          type: integer
+        method:
+          type: string
+
+    DecayResponse:
+      type: object
+      required:
+        - target_weights
+        - drift_summary
+        - optimal_rebalance
+        - n_assets
+        - n_periods
+        - method
+      properties:
+        target_weights:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        drift_summary:
+          type: array
+          items:
+            type: object
+            properties:
+              period:
+                type: integer
+              tracking_error:
+                type: number
+                format: double
+              max_deviation:
+                type: number
+                format: double
+        optimal_rebalance:
+          type: object
+          properties:
+            periods_to_threshold:
+              type: integer
+            threshold:
+              type: number
+              format: double
+            max_drift_at_threshold:
+              type: number
+              format: double
+        n_assets:
+          type: integer
+        n_periods:
+          type: integer
+        method:
+          type: string
+
+    PairsResponse:
+      type: object
+      required:
+        - pairs
+        - n_pairs_tested
+        - n_cointegrated
+        - method
+      properties:
+        pairs:
+          type: array
+          items:
+            type: object
+            properties:
+              pair:
+                type: array
+                items:
+                  type: string
+              adf_statistic:
+                type: number
+                format: double
+              hedge_ratio:
+                type: number
+                format: double
+              is_cointegrated:
+                type: boolean
+        n_pairs_tested:
+          type: integer
+        n_cointegrated:
+          type: integer
+        top_pair_detail:
+          type: object
+          nullable: true
+        method:
           type: string
 
     Error:

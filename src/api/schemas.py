@@ -504,3 +504,172 @@ class RegimeResponse(BaseModel):
 
     regimes: list[RegimeItem]
     summary: RegimeSummary
+
+
+class BlackLittermanResponse(BaseModel):
+    """Black-Litterman portfolio optimization result."""
+
+    weights: dict[str, float]
+    expected_return: float
+    volatility: float
+    sharpe_ratio: float
+    equilibrium_returns: dict[str, float]
+    posterior_returns: dict[str, float]
+    views: list[dict[str, Any]]
+    n_assets: int
+    method: str
+
+
+class HRPResponse(BaseModel):
+    """Hierarchical Risk Parity allocation result."""
+
+    weights: dict[str, float]
+    expected_return: float
+    volatility: float
+    sharpe_ratio: float
+    n_assets: int
+    method: str
+
+
+class VaRMethodResult(BaseModel):
+    var: float
+    cvar: float
+
+
+class VaRAssetBreakdown(BaseModel):
+    symbol: str
+    historical: VaRMethodResult
+    parametric: VaRMethodResult
+    cornish_fisher: VaRMethodResult
+
+
+class VaRResponse(BaseModel):
+    """Value-at-Risk comparison across methods."""
+
+    portfolio: dict[str, VaRMethodResult]
+    per_asset: list[VaRAssetBreakdown]
+    confidence: float
+    n_observations: int
+    method: str
+
+
+class ShrinkageEigenvalue(BaseModel):
+    sample: list[float]
+    shrunk: list[float]
+    condition_number_sample: float
+    condition_number_shrunk: float
+
+
+class ShrinkageResponse(BaseModel):
+    """Ledoit-Wolf covariance shrinkage analysis."""
+
+    intensity: float
+    n_assets: int
+    n_observations: int
+    eigenvalue_comparison: ShrinkageEigenvalue
+    symbols: list[str]
+    method: str
+
+
+class MaxDiversificationResponse(BaseModel):
+    """Maximum diversification portfolio result."""
+
+    weights: dict[str, float]
+    expected_return: float
+    volatility: float
+    sharpe_ratio: float
+    diversification_ratio: float
+    n_assets: int
+    method: str
+
+
+class MinVarianceResponse(BaseModel):
+    """Minimum variance portfolio result."""
+
+    weights: dict[str, float]
+    expected_return: float
+    volatility: float
+    sharpe_ratio: float
+    equal_weight_volatility: float
+    equal_weight_return: float
+    volatility_reduction_pct: float
+    n_assets: int
+    method: str
+
+
+class FactorExposure(BaseModel):
+    symbol: str
+    alpha: float
+    betas: dict[str, float]
+    r_squared: float
+
+
+class FactorAnalysisResponse(BaseModel):
+    """Factor exposure analysis result."""
+
+    per_asset: list[FactorExposure]
+    factors: list[str]
+    n_assets: int
+    n_periods: int
+    method: str
+
+
+class TailMetrics(BaseModel):
+    symbol: str
+    skewness: float
+    excess_kurtosis: float
+    jarque_bera: float
+    is_normal: bool
+    omega_ratio: float
+    calmar_ratio: float
+    max_drawdown: float
+    n_observations: int
+
+
+class TailRiskResponse(BaseModel):
+    """Tail risk and higher moments analysis."""
+
+    portfolio_metrics: TailMetrics
+    per_asset: list[TailMetrics]
+    n_assets: int
+    method: str
+
+
+class DecaySnapshot(BaseModel):
+    period: int
+    tracking_error: float
+    max_deviation: float
+
+
+class OptimalRebalance(BaseModel):
+    periods_to_threshold: int
+    threshold: float
+    max_drift_at_threshold: float
+
+
+class DecayResponse(BaseModel):
+    """Portfolio weight decay analysis."""
+
+    target_weights: dict[str, float]
+    drift_summary: list[DecaySnapshot]
+    optimal_rebalance: OptimalRebalance
+    n_assets: int
+    n_periods: int
+    method: str
+
+
+class PairResult(BaseModel):
+    pair: list[str]
+    adf_statistic: float
+    hedge_ratio: float
+    is_cointegrated: bool
+
+
+class PairsResponse(BaseModel):
+    """Pair trading cointegration analysis."""
+
+    pairs: list[PairResult]
+    n_pairs_tested: int
+    n_cointegrated: int
+    top_pair_detail: dict[str, Any] | None = None
+    method: str

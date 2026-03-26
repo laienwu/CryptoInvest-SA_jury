@@ -22,34 +22,44 @@ from src.api.metrics import pipeline_last_run, portfolio_sharpe, records_ingeste
 from src.api.schemas import (
     AlphaBetaResponse,
     AttributionResponse,
+    BacktestResponse,
+    BlackLittermanResponse,
+    CombinedPortfolioResponse,
     ConstrainedPortfolioRequest,
     ConstrainedPortfolioResponse,
-    RegimeResponse,
-    SortinoResponse,
-    BacktestResponse,
     CostAnalysisResponse,
     CustomPortfolioRequest,
     CustomPortfolioResponse,
-    CombinedPortfolioResponse,
+    DecayResponse,
     DrawdownResponse,
-    LivePricesResponse,
-    RebalanceResponse,
-    RiskContributionResponse,
-    RollingCorrelationResponse,
-    PositionSizingResponse,
-    RiskParityResponse,
-    ScenarioListResponse,
-    SignalsResponse,
-    StressTestResponse,
+    FactorAnalysisResponse,
     FrontierResponse,
+    HRPResponse,
     HealthResponse,
     KlinesResponse,
+    LivePricesResponse,
+    MaxDiversificationResponse,
     MetricResponse,
     MetricsListResponse,
+    MinVarianceResponse,
     MonteCarloResponse,
+    PairsResponse,
     PortfolioResponse,
     PortfolioSummaryResponse,
+    PositionSizingResponse,
+    RebalanceResponse,
+    RegimeResponse,
+    RiskContributionResponse,
+    RiskParityResponse,
+    RollingCorrelationResponse,
+    ScenarioListResponse,
+    ShrinkageResponse,
+    SignalsResponse,
+    SortinoResponse,
+    StressTestResponse,
     SymbolsResponse,
+    TailRiskResponse,
+    VaRResponse,
 )
 from src.config import load_config
 from src.storage import Storage, get_storage
@@ -710,22 +720,23 @@ def get_position_sizing(
 
 
 @app.get("/portfolio/cost-analysis", response_model=CostAnalysisResponse)
-async def get_cost_analysis(
+def get_cost_analysis(
     portfolio_key: str = "weights",
     portfolio_value: float = 10000.0,
     n_rebalances: int = 12,
     fee_rate: float = 0.001,
     slippage_bps: float = 5.0,
     storage: Storage = Depends(get_storage_dep),
-    cache: RedisCache = Depends(get_cache),
-) -> CostAnalysisResponse:
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
     """Analyze transaction costs: fees, slippage, net-of-cost returns."""
     from src.pipeline.costs import CostError, analyze_costs
 
     try:
-        return await cached_response(
+        return cached_response(
             cache,
             f"cost_analysis:{portfolio_key}:{portfolio_value}:{n_rebalances}:{fee_rate}:{slippage_bps}",
+            _CACHE_TTL_SECONDS,
             lambda: analyze_costs(
                 portfolio_key=portfolio_key,
                 portfolio_value=portfolio_value,
@@ -744,21 +755,22 @@ async def get_cost_analysis(
 
 
 @app.get("/portfolio/alpha-beta", response_model=AlphaBetaResponse)
-async def get_alpha_beta(
+def get_alpha_beta(
     portfolio_key: str = "weights",
     benchmark: str = "BTCUSDT",
     risk_free_rate: float = 0.0,
     periods_per_year: int = 365,
     storage: Storage = Depends(get_storage_dep),
-    cache: RedisCache = Depends(get_cache),
-) -> AlphaBetaResponse:
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
     """CAPM alpha/beta analysis vs a benchmark (default BTC)."""
     from src.pipeline.alpha_beta import AlphaBetaError, analyze_alpha_beta
 
     try:
-        return await cached_response(
+        return cached_response(
             cache,
             f"alpha_beta:{portfolio_key}:{benchmark}:{risk_free_rate}:{periods_per_year}",
+            _CACHE_TTL_SECONDS,
             lambda: analyze_alpha_beta(
                 portfolio_key=portfolio_key,
                 benchmark_symbol=benchmark,
@@ -776,17 +788,18 @@ async def get_alpha_beta(
 
 
 @app.get("/portfolio/regime", response_model=RegimeResponse)
-async def get_regime(
+def get_regime(
     storage: Storage = Depends(get_storage_dep),
-    cache: RedisCache = Depends(get_cache),
-) -> RegimeResponse:
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
     """Detect market regime (bull/bear/sideways) for each portfolio asset."""
     from src.pipeline.regime import RegimeError, analyze_regimes
 
     try:
-        return await cached_response(
+        return cached_response(
             cache,
             "regime",
+            _CACHE_TTL_SECONDS,
             lambda: analyze_regimes(storage=storage, save=False),
         )
     except RegimeError as e:
@@ -797,21 +810,22 @@ async def get_regime(
 
 
 @app.get("/portfolio/sortino", response_model=SortinoResponse)
-async def get_sortino(
+def get_sortino(
     portfolio_key: str = "weights",
     benchmark: str = "BTCUSDT",
     risk_free_rate: float = 0.0,
     periods_per_year: int = 365,
     storage: Storage = Depends(get_storage_dep),
-    cache: RedisCache = Depends(get_cache),
-) -> SortinoResponse:
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
     """Sortino ratio and downside risk metrics."""
     from src.pipeline.sortino import SortinoError, analyze_sortino
 
     try:
-        return await cached_response(
+        return cached_response(
             cache,
             f"sortino:{portfolio_key}:{benchmark}:{risk_free_rate}:{periods_per_year}",
+            _CACHE_TTL_SECONDS,
             lambda: analyze_sortino(
                 portfolio_key=portfolio_key,
                 benchmark_symbol=benchmark,
@@ -829,10 +843,10 @@ async def get_sortino(
 
 
 @app.post("/portfolio/constrained", response_model=ConstrainedPortfolioResponse)
-async def post_constrained_portfolio(
+def post_constrained_portfolio(
     body: ConstrainedPortfolioRequest,
     storage: Storage = Depends(get_storage_dep),
-) -> ConstrainedPortfolioResponse:
+) -> dict[str, Any]:
     """Optimize portfolio with min/max weight and group constraints."""
     from src.pipeline.constrained import ConstrainedError, analyze_constrained
 
@@ -851,6 +865,302 @@ async def post_constrained_portfolio(
         ) from e
     except Exception as e:
         logger.error("Failed constrained optimization: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Black-Litterman — /portfolio/black-litterman
+# =============================================================================
+
+
+@app.get("/portfolio/black-litterman", response_model=BlackLittermanResponse)
+def get_black_litterman(
+    risk_aversion: float = 2.5,
+    tau: float = 0.05,
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Black-Litterman portfolio optimization with implied views."""
+    from src.pipeline.black_litterman import (
+        BlackLittermanError,
+        analyze_black_litterman,
+    )
+
+    try:
+        return cached_response(
+            cache,
+            f"portfolio:black-litterman:{risk_aversion}:{tau}",
+            _CACHE_TTL_SECONDS,
+            lambda: analyze_black_litterman(
+                risk_aversion=risk_aversion,
+                tau=tau,
+                storage=storage,
+                save=False,
+            ),
+        )
+    except BlackLittermanError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed Black-Litterman optimization: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Hierarchical Risk Parity — /portfolio/hrp
+# =============================================================================
+
+
+@app.get("/portfolio/hrp", response_model=HRPResponse)
+def get_hrp(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Hierarchical Risk Parity portfolio allocation."""
+    from src.pipeline.hrp import HRPError, analyze_hrp
+
+    try:
+        return cached_response(
+            cache,
+            "portfolio:hrp",
+            _CACHE_TTL_SECONDS,
+            lambda: analyze_hrp(storage=storage, save=False),
+        )
+    except HRPError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed HRP allocation: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# VaR Comparison — /portfolio/var
+# =============================================================================
+
+
+@app.get("/portfolio/var", response_model=VaRResponse)
+def get_var(
+    confidence: float = 0.95,
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Compare Value-at-Risk methods (Historical, Parametric, Cornish-Fisher)."""
+    from src.pipeline.var_models import VaRError, analyze_var
+
+    try:
+        return cached_response(
+            cache,
+            f"portfolio:var:{confidence}",
+            _CACHE_TTL_SECONDS,
+            lambda: analyze_var(
+                confidence=confidence, storage=storage, save=False
+            ),
+        )
+    except VaRError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed VaR computation: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Covariance Shrinkage — /portfolio/shrinkage
+# =============================================================================
+
+
+@app.get("/portfolio/shrinkage", response_model=ShrinkageResponse)
+def get_shrinkage(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Ledoit-Wolf covariance shrinkage analysis."""
+    from src.pipeline.shrinkage import ShrinkageError, analyze_shrinkage
+
+    try:
+        return cached_response(
+            cache,
+            "portfolio:shrinkage",
+            _CACHE_TTL_SECONDS,
+            lambda: analyze_shrinkage(storage=storage, save=False),
+        )
+    except ShrinkageError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed shrinkage analysis: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Maximum Diversification — /portfolio/max-diversification
+# =============================================================================
+
+
+@app.get("/portfolio/max-diversification", response_model=MaxDiversificationResponse)
+def get_max_diversification(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Maximum diversification portfolio (maximize diversification ratio)."""
+    from src.pipeline.max_diversification import (
+        MaxDiversificationError,
+        analyze_max_diversification,
+    )
+
+    try:
+        return cached_response(
+            cache,
+            "portfolio:max-diversification",
+            _CACHE_TTL_SECONDS,
+            lambda: analyze_max_diversification(storage=storage, save=False),
+        )
+    except MaxDiversificationError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed max diversification: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Minimum Variance — /portfolio/min-variance
+# =============================================================================
+
+
+@app.get("/portfolio/min-variance", response_model=MinVarianceResponse)
+def get_min_variance(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Global minimum variance portfolio."""
+    from src.pipeline.min_variance import MinVarianceError, analyze_min_variance
+
+    try:
+        return cached_response(
+            cache,
+            "portfolio:min-variance",
+            _CACHE_TTL_SECONDS,
+            lambda: analyze_min_variance(storage=storage, save=False),
+        )
+    except MinVarianceError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed min variance optimization: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Factor Analysis — /portfolio/factors
+# =============================================================================
+
+
+@app.get("/portfolio/factors", response_model=FactorAnalysisResponse)
+def get_factor_analysis(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Multi-factor exposure analysis (market, momentum, volatility)."""
+    from src.pipeline.factor_analysis import FactorAnalysisError, analyze_factors
+
+    try:
+        return cached_response(
+            cache,
+            "portfolio:factors",
+            _CACHE_TTL_SECONDS,
+            lambda: analyze_factors(storage=storage, save=False),
+        )
+    except FactorAnalysisError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed factor analysis: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Tail Risk — /portfolio/tail-risk
+# =============================================================================
+
+
+@app.get("/portfolio/tail-risk", response_model=TailRiskResponse)
+def get_tail_risk(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Tail risk analysis: skewness, kurtosis, Jarque-Bera, Omega, Calmar."""
+    from src.pipeline.tail_risk import TailRiskError, analyze_tail_risk
+
+    try:
+        return cached_response(
+            cache,
+            "portfolio:tail-risk",
+            _CACHE_TTL_SECONDS,
+            lambda: analyze_tail_risk(storage=storage, save=False),
+        )
+    except TailRiskError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed tail risk analysis: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Portfolio Decay — /portfolio/decay
+# =============================================================================
+
+
+@app.get("/portfolio/decay", response_model=DecayResponse)
+def get_decay(
+    max_deviation_threshold: float = 0.05,
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Analyze portfolio weight drift from target over time."""
+    from src.pipeline.decay import DecayError, analyze_decay
+
+    try:
+        return cached_response(
+            cache,
+            f"portfolio:decay:{max_deviation_threshold}",
+            _CACHE_TTL_SECONDS,
+            lambda: analyze_decay(
+                max_deviation_threshold=max_deviation_threshold,
+                storage=storage,
+                save=False,
+            ),
+        )
+    except DecayError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed decay analysis: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Pairs Trading — /portfolio/pairs
+# =============================================================================
+
+
+@app.get("/portfolio/pairs", response_model=PairsResponse)
+def get_pairs(
+    min_observations: int = 50,
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Pair trading cointegration analysis across portfolio assets."""
+    from src.pipeline.pairs import PairsError, analyze_pairs
+
+    try:
+        return cached_response(
+            cache,
+            f"portfolio:pairs:{min_observations}",
+            _CACHE_TTL_SECONDS,
+            lambda: analyze_pairs(
+                min_observations=min_observations,
+                storage=storage,
+                save=False,
+            ),
+        )
+    except PairsError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed pairs analysis: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 

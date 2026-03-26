@@ -2,7 +2,7 @@
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-green.svg)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/tests-748%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1109%20passed-brightgreen.svg)]()
 [![CI](https://github.com/yourusername/binance-portfolio/actions/workflows/ci.yml/badge.svg)]()
 [![Couverture](https://img.shields.io/badge/coverage-55%25-yellow.svg)]()
 
@@ -188,6 +188,16 @@ Le tableau de bord Streamlit fournit 20 pages :
 - **Stress Test** - Scénarios de stress du portefeuille
 - **Drawdown** - Analyse des drawdowns et récupération
 - **Attribution** - Décomposition de la performance par actif
+- **Black-Litterman** - Optimisation bayésienne avec vues investisseur
+- **HRP** - Hierarchical Risk Parity (allocation par clustering)
+- **VaR Comparison** - Historique, Paramétrique, Cornish-Fisher
+- **Shrinkage** - Estimation Ledoit-Wolf de la covariance
+- **Max Diversification** - Maximisation du ratio de diversification
+- **Min Variance** - Portefeuille de variance minimale globale
+- **Factor Analysis** - Exposition multi-facteurs (marché, momentum, volatilité)
+- **Tail Risk** - Moments supérieurs (skewness, kurtosis, Jarque-Bera, Omega, Calmar)
+- **Decay** - Dérive des poids du portefeuille dans le temps
+- **Pairs Trading** - Analyse de cointégration Engle-Granger
 
 ## Test
 
@@ -198,7 +208,7 @@ uv run pytest tests/ -v
 # Run with coverage
 uv run pytest tests/ --cov=src --cov-report=term-missing
 
-# Results: 748 tests (100% passing)
+# Results: 1109 tests (100% passing)
 ```
 
 ## Structure du projet

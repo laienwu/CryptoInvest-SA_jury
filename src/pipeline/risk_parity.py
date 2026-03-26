@@ -208,7 +208,7 @@ def optimize_risk_parity(
     }
 
     if save:
-        storage.save_output(portfolio_key, result)
+        storage.save_output(result, portfolio_key)
         logger.info(
             "Risk parity: %d assets, vol=%.4f, converged=%s (%d iters)",
             len(symbols), port_vol, rp["converged"], rp["iterations"],
