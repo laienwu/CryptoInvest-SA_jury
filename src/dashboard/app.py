@@ -3312,6 +3312,70 @@ def page_min_variance() -> None:
         st.plotly_chart(fig, use_container_width=True)
 
 
+# =============================================================================
+# Page: Factor Analysis
+# =============================================================================
+
+
+def page_factor_analysis() -> None:
+    """Multi-factor exposure analysis."""
+    st.header("Factor Exposure Analysis")
+    data = fetch_api("/portfolio/factors")
+    if not data:
+        st.warning("No factor analysis data available.")
+        return
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Assets", data.get("n_assets", "N/A"))
+    c2.metric("Periods", data.get("n_periods", "N/A"))
+    c3.metric("Factors", ", ".join(data.get("factors", [])))
+
+    per_asset = data.get("per_asset", [])
+    if not per_asset:
+        return
+
+    st.markdown("---")
+
+    # Beta heatmap
+    factors = data.get("factors", [])
+    symbols = [a["symbol"] for a in per_asset]
+    beta_matrix = [[a.get("betas", {}).get(f, 0) for f in factors] for a in per_asset]
+
+    if factors and beta_matrix:
+        fig = go.Figure(go.Heatmap(
+            z=beta_matrix,
+            x=factors,
+            y=symbols,
+            colorscale="RdBu_r",
+            zmid=0,
+            text=[[f"{v:.3f}" for v in row] for row in beta_matrix],
+            texttemplate="%{text}",
+        ))
+        styled_layout(fig, title="Factor Betas by Asset")
+        fig.update_layout(height=max(300, len(symbols) * 40))
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown("---")
+
+    # R-squared bar chart
+    r2_values = [a.get("r_squared", 0) for a in per_asset]
+    fig = go.Figure(go.Bar(
+        x=symbols, y=r2_values, marker_color=COLORS["strategy"],
+    ))
+    styled_layout(fig, title="R-squared by Asset")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Detail table
+    st.subheader("Detail")
+    rows = []
+    for a in per_asset:
+        row = {"Symbol": a["symbol"], "Alpha": f"{a.get('alpha', 0):.6f}", "R²": f"{a.get('r_squared', 0):.4f}"}
+        for f in factors:
+            row[f"Beta ({f})"] = f"{a.get('betas', {}).get(f, 0):.4f}"
+        rows.append(row)
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
 def main() -> None:
     """Main dashboard entry point."""
     st.set_page_config(
@@ -3323,7 +3387,7 @@ def main() -> None:
     st.sidebar.title("Navigation")
     page = st.sidebar.radio(
         "Select Page",
-        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "HRP", "VaR", "Shrinkage", "Max Diversification", "Min Variance", "Live Ticker"],
+        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "HRP", "VaR", "Shrinkage", "Max Diversification", "Min Variance", "Factors", "Live Ticker"],
     )
 
     st.sidebar.markdown("---")
@@ -3402,6 +3466,8 @@ def main() -> None:
         page_max_diversification()
     elif page == "Min Variance":
         page_min_variance()
+    elif page == "Factors":
+        page_factor_analysis()
     elif page == "Live Ticker":
         page_live_ticker()
 

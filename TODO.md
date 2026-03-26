@@ -10,7 +10,7 @@ After ALL pages done: update CLAUDE.md demo script + README dashboard list + com
 - [x] 4. Shrinkage page — `/portfolio/shrinkage` — eigenvalue comparison chart (sample vs shrunk), intensity gauge, condition number
 - [x] 5. Max Diversification page — `/portfolio/max-diversification` — weights pie, diversification ratio KPI, comparison with equal-weight
 - [x] 6. Min Variance page — `/portfolio/min-variance` — weights pie, vol reduction KPI, comparison with equal-weight
-- [ ] 7. Factor Analysis page — `/portfolio/factors` — per-asset beta heatmap, R-squared bars, factor names
+- [x] 7. Factor Analysis page — `/portfolio/factors` — per-asset beta heatmap, R-squared bars, factor names
 - [ ] 8. Tail Risk page — `/portfolio/tail-risk` — portfolio metrics KPIs (skew, kurt, JB), per-asset table, normality flags
 - [ ] 9. Decay page — `/portfolio/decay` — tracking error line chart over time, max deviation line, rebalance threshold marker
 - [ ] 10. Pairs Trading page — `/portfolio/pairs` — cointegrated pairs table, top pair spread chart with z-score bands
