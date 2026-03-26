@@ -3074,6 +3074,62 @@ def page_black_litterman() -> None:
         st.dataframe(pd.DataFrame(views), use_container_width=True, hide_index=True)
 
 
+# =============================================================================
+# Page: Hierarchical Risk Parity
+# =============================================================================
+
+
+def page_hrp() -> None:
+    """Hierarchical Risk Parity allocation."""
+    st.header("Hierarchical Risk Parity (HRP)")
+    data = fetch_api("/portfolio/hrp")
+    if not data:
+        st.warning("No HRP data available.")
+        return
+
+    # KPIs
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Expected Return", fmt_pct(data.get("expected_return")))
+    c2.metric("Volatility", fmt_pct(data.get("volatility")))
+    c3.metric("Sharpe Ratio", fmt_ratio(data.get("sharpe_ratio")))
+    c4.metric("Assets", data.get("n_assets", "N/A"))
+
+    st.markdown("---")
+
+    # Weights pie
+    weights = data.get("weights", {})
+    if weights:
+        fig = go.Figure(go.Pie(
+            labels=list(weights.keys()),
+            values=list(weights.values()),
+            marker=dict(colors=[COLORS["strategy"], COLORS["benchmark"],
+                                COLORS["equal_weight"], COLORS["danger"],
+                                COLORS["grid"]] * 5),
+        ))
+        styled_layout(fig, title="HRP Portfolio Weights")
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Comparison with Max-Sharpe
+    st.markdown("---")
+    st.subheader("HRP vs Max-Sharpe Comparison")
+    sharpe_data = fetch_api("/portfolio")
+    if sharpe_data and sharpe_data.get("weights"):
+        rows = []
+        all_symbols = sorted(set(list(weights.keys()) + list(sharpe_data["weights"].keys())))
+        for s in all_symbols:
+            rows.append({
+                "Symbol": s,
+                "HRP Weight": f"{weights.get(s, 0):.2%}",
+                "Max-Sharpe Weight": f"{sharpe_data['weights'].get(s, 0):.2%}",
+                "Difference": f"{weights.get(s, 0) - sharpe_data['weights'].get(s, 0):+.2%}",
+            })
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+        c1, c2 = st.columns(2)
+        c1.metric("HRP Sharpe", fmt_ratio(data.get("sharpe_ratio")))
+        c2.metric("Max-Sharpe Sharpe", fmt_ratio(sharpe_data.get("sharpe_ratio")))
+
+
 def main() -> None:
     """Main dashboard entry point."""
     st.set_page_config(
@@ -3085,7 +3141,7 @@ def main() -> None:
     st.sidebar.title("Navigation")
     page = st.sidebar.radio(
         "Select Page",
-        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "Live Ticker"],
+        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "HRP", "Live Ticker"],
     )
 
     st.sidebar.markdown("---")
@@ -3154,6 +3210,8 @@ def main() -> None:
         page_attribution()
     elif page == "Black-Litterman":
         page_black_litterman()
+    elif page == "HRP":
+        page_hrp()
     elif page == "Live Ticker":
         page_live_ticker()
 
