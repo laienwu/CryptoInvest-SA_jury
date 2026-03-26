@@ -3376,6 +3376,55 @@ def page_factor_analysis() -> None:
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
+# =============================================================================
+# Page: Tail Risk
+# =============================================================================
+
+
+def page_tail_risk() -> None:
+    """Tail risk and higher moments analysis."""
+    st.header("Tail Risk Analysis")
+    data = fetch_api("/portfolio/tail-risk")
+    if not data:
+        st.warning("No tail risk data available.")
+        return
+
+    # Portfolio metrics KPIs
+    pm = data.get("portfolio_metrics", {})
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("Skewness", fmt_ratio(pm.get("skewness")))
+    c2.metric("Excess Kurtosis", fmt_ratio(pm.get("excess_kurtosis")))
+    c3.metric("Jarque-Bera", f"{pm.get('jarque_bera', 0):.2f}")
+    c4.metric("Omega Ratio", fmt_ratio(pm.get("omega_ratio")))
+    c5.metric("Calmar Ratio", fmt_ratio(pm.get("calmar_ratio")))
+
+    is_normal = pm.get("is_normal", False)
+    if is_normal:
+        st.success("Portfolio returns appear normally distributed (JB test)")
+    else:
+        st.warning("Portfolio returns are NOT normally distributed (JB test)")
+
+    st.markdown("---")
+
+    # Per-asset table
+    per_asset = data.get("per_asset", [])
+    if per_asset:
+        st.subheader("Per-Asset Tail Metrics")
+        rows = []
+        for a in per_asset:
+            rows.append({
+                "Symbol": a.get("symbol", ""),
+                "Skewness": f"{a.get('skewness', 0):.4f}",
+                "Kurtosis": f"{a.get('excess_kurtosis', 0):.4f}",
+                "JB Stat": f"{a.get('jarque_bera', 0):.2f}",
+                "Normal?": "Yes" if a.get("is_normal") else "No",
+                "Omega": f"{a.get('omega_ratio', 0):.3f}",
+                "Calmar": f"{a.get('calmar_ratio', 0):.3f}",
+                "Max DD": fmt_pct(a.get("max_drawdown")),
+            })
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
 def main() -> None:
     """Main dashboard entry point."""
     st.set_page_config(
@@ -3387,7 +3436,7 @@ def main() -> None:
     st.sidebar.title("Navigation")
     page = st.sidebar.radio(
         "Select Page",
-        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "HRP", "VaR", "Shrinkage", "Max Diversification", "Min Variance", "Factors", "Live Ticker"],
+        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "HRP", "VaR", "Shrinkage", "Max Diversification", "Min Variance", "Factors", "Tail Risk", "Live Ticker"],
     )
 
     st.sidebar.markdown("---")
@@ -3468,6 +3517,8 @@ def main() -> None:
         page_min_variance()
     elif page == "Factors":
         page_factor_analysis()
+    elif page == "Tail Risk":
+        page_tail_risk()
     elif page == "Live Ticker":
         page_live_ticker()
 
