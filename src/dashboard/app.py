@@ -3130,6 +3130,61 @@ def page_hrp() -> None:
         c2.metric("Max-Sharpe Sharpe", fmt_ratio(sharpe_data.get("sharpe_ratio")))
 
 
+# =============================================================================
+# Page: VaR Comparison
+# =============================================================================
+
+
+def page_var_comparison() -> None:
+    """Value-at-Risk comparison across methods."""
+    st.header("Value-at-Risk Comparison")
+    data = fetch_api("/portfolio/var")
+    if not data:
+        st.warning("No VaR data available.")
+        return
+
+    confidence = data.get("confidence", 0.95)
+    st.caption(f"Confidence level: {confidence:.0%}")
+
+    # Portfolio VaR KPIs
+    portfolio = data.get("portfolio", {})
+    methods = ["historical", "parametric", "cornish_fisher"]
+    labels = ["Historical", "Parametric", "Cornish-Fisher"]
+
+    cols = st.columns(3)
+    for i, (m, label) in enumerate(zip(methods, labels)):
+        method_data = portfolio.get(m, {})
+        cols[i].metric(f"{label} VaR", fmt_pct(method_data.get("var")))
+        cols[i].metric(f"{label} CVaR", fmt_pct(method_data.get("cvar")))
+
+    st.markdown("---")
+
+    # Grouped bar chart
+    var_vals = [portfolio.get(m, {}).get("var", 0) for m in methods]
+    cvar_vals = [portfolio.get(m, {}).get("cvar", 0) for m in methods]
+    fig = go.Figure()
+    fig.add_trace(go.Bar(name="VaR", x=labels, y=var_vals, marker_color=COLORS["strategy"]))
+    fig.add_trace(go.Bar(name="CVaR", x=labels, y=cvar_vals, marker_color=COLORS["danger"]))
+    styled_layout(fig, title="Portfolio VaR & CVaR by Method")
+    fig.update_layout(barmode="group")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Per-asset breakdown
+    per_asset = data.get("per_asset", [])
+    if per_asset:
+        st.markdown("---")
+        st.subheader("Per-Asset VaR Breakdown")
+        rows = []
+        for item in per_asset:
+            row = {"Symbol": item.get("symbol", "")}
+            for m, label in zip(methods, labels):
+                md = item.get(m, {})
+                row[f"{label} VaR"] = f"{md.get('var', 0):.4%}"
+                row[f"{label} CVaR"] = f"{md.get('cvar', 0):.4%}"
+            rows.append(row)
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
 def main() -> None:
     """Main dashboard entry point."""
     st.set_page_config(
@@ -3141,7 +3196,7 @@ def main() -> None:
     st.sidebar.title("Navigation")
     page = st.sidebar.radio(
         "Select Page",
-        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "HRP", "Live Ticker"],
+        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "HRP", "VaR", "Live Ticker"],
     )
 
     st.sidebar.markdown("---")
@@ -3212,6 +3267,8 @@ def main() -> None:
         page_black_litterman()
     elif page == "HRP":
         page_hrp()
+    elif page == "VaR":
+        page_var_comparison()
     elif page == "Live Ticker":
         page_live_ticker()
 
