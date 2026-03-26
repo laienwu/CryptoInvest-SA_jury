@@ -3233,6 +3233,85 @@ def page_shrinkage() -> None:
         st.caption(f"Symbols: {', '.join(symbols)}")
 
 
+# =============================================================================
+# Page: Max Diversification
+# =============================================================================
+
+
+def page_max_diversification() -> None:
+    """Maximum diversification portfolio."""
+    st.header("Maximum Diversification Portfolio")
+    data = fetch_api("/portfolio/max-diversification")
+    if not data:
+        st.warning("No max diversification data available.")
+        return
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Expected Return", fmt_pct(data.get("expected_return")))
+    c2.metric("Volatility", fmt_pct(data.get("volatility")))
+    c3.metric("Sharpe Ratio", fmt_ratio(data.get("sharpe_ratio")))
+    c4.metric("Diversification Ratio", fmt_ratio(data.get("diversification_ratio")))
+
+    weights = data.get("weights", {})
+    if weights:
+        st.markdown("---")
+        fig = go.Figure(go.Pie(
+            labels=list(weights.keys()),
+            values=list(weights.values()),
+            marker=dict(colors=[COLORS["strategy"], COLORS["benchmark"],
+                                COLORS["equal_weight"], COLORS["danger"],
+                                COLORS["grid"]] * 5),
+        ))
+        styled_layout(fig, title="Max Diversification Weights")
+        st.plotly_chart(fig, use_container_width=True)
+
+
+# =============================================================================
+# Page: Min Variance
+# =============================================================================
+
+
+def page_min_variance() -> None:
+    """Global minimum variance portfolio."""
+    st.header("Minimum Variance Portfolio")
+    data = fetch_api("/portfolio/min-variance")
+    if not data:
+        st.warning("No min variance data available.")
+        return
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Expected Return", fmt_pct(data.get("expected_return")))
+    c2.metric("Volatility", fmt_pct(data.get("volatility")))
+    c3.metric("Sharpe Ratio", fmt_ratio(data.get("sharpe_ratio")))
+    c4.metric("Vol Reduction", fmt_pct(data.get("volatility_reduction_pct")))
+
+    st.markdown("---")
+
+    # Comparison bar
+    min_vol = data.get("volatility", 0)
+    eq_vol = data.get("equal_weight_volatility", 0)
+    if min_vol or eq_vol:
+        fig = go.Figure(go.Bar(
+            x=["Min Variance", "Equal Weight"],
+            y=[min_vol, eq_vol],
+            marker_color=[COLORS["strategy"], COLORS["equal_weight"]],
+        ))
+        styled_layout(fig, title="Volatility: Min Variance vs Equal Weight")
+        st.plotly_chart(fig, use_container_width=True)
+
+    weights = data.get("weights", {})
+    if weights:
+        fig = go.Figure(go.Pie(
+            labels=list(weights.keys()),
+            values=list(weights.values()),
+            marker=dict(colors=[COLORS["strategy"], COLORS["benchmark"],
+                                COLORS["equal_weight"], COLORS["danger"],
+                                COLORS["grid"]] * 5),
+        ))
+        styled_layout(fig, title="Min Variance Weights")
+        st.plotly_chart(fig, use_container_width=True)
+
+
 def main() -> None:
     """Main dashboard entry point."""
     st.set_page_config(
@@ -3244,7 +3323,7 @@ def main() -> None:
     st.sidebar.title("Navigation")
     page = st.sidebar.radio(
         "Select Page",
-        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "HRP", "VaR", "Shrinkage", "Live Ticker"],
+        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "HRP", "VaR", "Shrinkage", "Max Diversification", "Min Variance", "Live Ticker"],
     )
 
     st.sidebar.markdown("---")
@@ -3319,6 +3398,10 @@ def main() -> None:
         page_var_comparison()
     elif page == "Shrinkage":
         page_shrinkage()
+    elif page == "Max Diversification":
+        page_max_diversification()
+    elif page == "Min Variance":
+        page_min_variance()
     elif page == "Live Ticker":
         page_live_ticker()
 
