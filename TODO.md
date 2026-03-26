@@ -1,17 +1,9 @@
-# TODO — Dashboard Pages for Batch 2 Modules
+# TODO — Batch 3: Strategy Comparison, Multi-Backtest, Polish
 
-Each task = add one page to `src/dashboard/app.py` + update nav radio + add elif routing.
-Follow existing patterns: `fetch_api()`, `styled_layout(fig)`, `COLORS`, `CHART_LAYOUT`.
-After ALL pages done: update CLAUDE.md demo script + README dashboard list + commit & push.
-
-- [x] 1. Black-Litterman page — `/portfolio/black-litterman` — show equilibrium vs posterior returns bar chart, weights pie, views table
-- [x] 2. HRP page — `/portfolio/hrp` — weights pie chart, comparison table vs max-Sharpe
-- [x] 3. VaR Comparison page — `/portfolio/var` — grouped bar chart (3 methods x VaR/CVaR), per-asset breakdown table
-- [x] 4. Shrinkage page — `/portfolio/shrinkage` — eigenvalue comparison chart (sample vs shrunk), intensity gauge, condition number
-- [x] 5. Max Diversification page — `/portfolio/max-diversification` — weights pie, diversification ratio KPI, comparison with equal-weight
-- [x] 6. Min Variance page — `/portfolio/min-variance` — weights pie, vol reduction KPI, comparison with equal-weight
-- [x] 7. Factor Analysis page — `/portfolio/factors` — per-asset beta heatmap, R-squared bars, factor names
-- [x] 8. Tail Risk page — `/portfolio/tail-risk` — portfolio metrics KPIs (skew, kurt, JB), per-asset table, normality flags
-- [x] 9. Decay page — `/portfolio/decay` — tracking error line chart over time, max deviation line, rebalance threshold marker
-- [x] 10. Pairs Trading page — `/portfolio/pairs` — cointegrated pairs table, top pair spread chart with z-score bands
-- [x] 11. Final sync — update CLAUDE.md (dashboard list to 30 pages), README, test count, commit & push
+- [ ] 1. Strategy Showdown module — `src/pipeline/strategy_compare.py` + tests. Calls all 6 optimizers (Max Sharpe, HRP, Risk Parity, Min Variance, Max Diversification, Black-Litterman), returns side-by-side weights, return, vol, Sharpe. API endpoint `GET /portfolio/compare-strategies` + schema + OpenAPI. Dashboard page with comparison table + radar chart.
+- [ ] 2. Multi-strategy backtest — extend `src/pipeline/backtest.py` to accept an `optimization_method` param (max_sharpe, hrp, risk_parity, min_variance, max_diversification). New endpoint `GET /portfolio/backtest/multi` returning results for all strategies. Dashboard page with overlaid equity curves.
+- [ ] 3. Update soutenance slides — `docs/soutenance.html` to reflect 30 pages, 42 endpoints, 1109+ tests, 39 pipeline modules. Add slides for batch 2+3 features.
+- [ ] 4. Boost test coverage — target 70%+. Run `pytest --cov` to find uncovered branches, add tests for gaps in existing modules (transform, optimize, ingest, storage, api).
+- [ ] 5. Integration test — `tests/test_integration.py`. End-to-end: mock raw data → transform → optimize → backtest → verify output keys/shapes. No external deps.
+- [ ] 6. Correlation regime analysis — `src/pipeline/correlation_regime.py` + tests. Compute correlations in bull vs bear periods (from regime module). Shows how diversification breaks down in crises. API endpoint `GET /portfolio/correlation-regime` + dashboard page.
+- [ ] 7. Final sync — update CLAUDE.md, README (test count, features, dashboard list), OpenAPI spec, commit & push.
