@@ -3425,6 +3425,115 @@ def page_tail_risk() -> None:
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
+# =============================================================================
+# Page: Portfolio Decay
+# =============================================================================
+
+
+def page_decay() -> None:
+    """Portfolio weight drift analysis."""
+    st.header("Portfolio Weight Decay")
+    data = fetch_api("/portfolio/decay")
+    if not data:
+        st.warning("No decay data available.")
+        return
+
+    # Optimal rebalance KPI
+    opt = data.get("optimal_rebalance", {})
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Periods to Threshold", opt.get("periods_to_threshold", "N/A"))
+    c2.metric("Threshold", fmt_pct(opt.get("threshold")))
+    c3.metric("Max Drift at Threshold", fmt_pct(opt.get("max_drift_at_threshold")))
+
+    st.markdown("---")
+
+    # Drift over time chart
+    drift = data.get("drift_summary", [])
+    if drift:
+        periods = [d["period"] for d in drift]
+        tracking_errors = [d["tracking_error"] for d in drift]
+        max_deviations = [d["max_deviation"] for d in drift]
+        threshold = opt.get("threshold", 0.05)
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=periods, y=tracking_errors,
+            name="Tracking Error", line=dict(color=COLORS["strategy"]),
+        ))
+        fig.add_trace(go.Scatter(
+            x=periods, y=max_deviations,
+            name="Max Deviation", line=dict(color=COLORS["danger"]),
+        ))
+        fig.add_hline(y=threshold, line_dash="dash", line_color=COLORS["grid"],
+                      annotation_text=f"Threshold ({threshold:.0%})")
+        styled_layout(fig, title="Weight Drift Over Time")
+        fig.update_layout(xaxis_title="Period", yaxis_title="Deviation")
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Target weights
+    target = data.get("target_weights", {})
+    if target:
+        st.caption(f"Target weights: {', '.join(f'{k}: {v:.1%}' for k, v in target.items())}")
+
+
+# =============================================================================
+# Page: Pairs Trading
+# =============================================================================
+
+
+def page_pairs() -> None:
+    """Pair trading cointegration analysis."""
+    st.header("Pairs Trading Analysis")
+    data = fetch_api("/portfolio/pairs")
+    if not data:
+        st.warning("No pairs data available.")
+        return
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Pairs Tested", data.get("n_pairs_tested", 0))
+    c2.metric("Cointegrated", data.get("n_cointegrated", 0))
+    c3.metric("Method", data.get("method", "N/A"))
+
+    st.markdown("---")
+
+    # Pairs table
+    pairs = data.get("pairs", [])
+    if pairs:
+        st.subheader("All Pair Results")
+        rows = []
+        for p in pairs:
+            pair = p.get("pair", [])
+            rows.append({
+                "Pair": f"{pair[0]} / {pair[1]}" if len(pair) == 2 else str(pair),
+                "ADF Statistic": f"{p.get('adf_statistic', 0):.4f}",
+                "Hedge Ratio": f"{p.get('hedge_ratio', 0):.4f}",
+                "Cointegrated": "Yes" if p.get("is_cointegrated") else "No",
+            })
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+    # Top pair detail
+    top = data.get("top_pair_detail")
+    if top:
+        st.markdown("---")
+        st.subheader("Top Pair Detail")
+        z_scores = top.get("z_scores", [])
+        if z_scores:
+            periods = [z.get("period", i) for i, z in enumerate(z_scores)]
+            z_vals = [z.get("z_score", 0) for z in z_scores]
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=periods, y=z_vals,
+                name="Z-Score", line=dict(color=COLORS["strategy"]),
+            ))
+            fig.add_hline(y=2, line_dash="dash", line_color=COLORS["danger"],
+                          annotation_text="Short signal")
+            fig.add_hline(y=-2, line_dash="dash", line_color=COLORS["equal_weight"],
+                          annotation_text="Long signal")
+            fig.add_hline(y=0, line_dash="dot", line_color=COLORS["grid"])
+            styled_layout(fig, title=f"Spread Z-Score: {top.get('pair', '')}")
+            st.plotly_chart(fig, use_container_width=True)
+
+
 def main() -> None:
     """Main dashboard entry point."""
     st.set_page_config(
@@ -3436,7 +3545,7 @@ def main() -> None:
     st.sidebar.title("Navigation")
     page = st.sidebar.radio(
         "Select Page",
-        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "HRP", "VaR", "Shrinkage", "Max Diversification", "Min Variance", "Factors", "Tail Risk", "Live Ticker"],
+        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "HRP", "VaR", "Shrinkage", "Max Diversification", "Min Variance", "Factors", "Tail Risk", "Decay", "Pairs", "Live Ticker"],
     )
 
     st.sidebar.markdown("---")
@@ -3519,6 +3628,10 @@ def main() -> None:
         page_factor_analysis()
     elif page == "Tail Risk":
         page_tail_risk()
+    elif page == "Decay":
+        page_decay()
+    elif page == "Pairs":
+        page_pairs()
     elif page == "Live Ticker":
         page_live_ticker()
 
