@@ -3185,6 +3185,54 @@ def page_var_comparison() -> None:
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
+# =============================================================================
+# Page: Covariance Shrinkage
+# =============================================================================
+
+
+def page_shrinkage() -> None:
+    """Ledoit-Wolf covariance shrinkage analysis."""
+    st.header("Covariance Shrinkage (Ledoit-Wolf)")
+    data = fetch_api("/portfolio/shrinkage")
+    if not data:
+        st.warning("No shrinkage data available.")
+        return
+
+    # KPIs
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Shrinkage Intensity", f"{data.get('intensity', 0):.4f}")
+    c2.metric("Assets", data.get("n_assets", "N/A"))
+    c3.metric("Observations", data.get("n_observations", "N/A"))
+
+    st.markdown("---")
+
+    # Eigenvalue comparison
+    eigen = data.get("eigenvalue_comparison", {})
+    sample_eig = eigen.get("sample", [])
+    shrunk_eig = eigen.get("shrunk", [])
+    if sample_eig and shrunk_eig:
+        c1, c2 = st.columns(2)
+        c1.metric("Condition # (Sample)", f"{eigen.get('condition_number_sample', 0):.1f}")
+        c2.metric("Condition # (Shrunk)", f"{eigen.get('condition_number_shrunk', 0):.1f}")
+
+        idx = list(range(1, len(sample_eig) + 1))
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            name="Sample", x=idx, y=sample_eig, marker_color=COLORS["benchmark"],
+        ))
+        fig.add_trace(go.Bar(
+            name="Shrunk", x=idx, y=shrunk_eig, marker_color=COLORS["strategy"],
+        ))
+        styled_layout(fig, title="Eigenvalue Comparison (Sample vs Shrunk)")
+        fig.update_layout(barmode="group", xaxis_title="Eigenvalue Index", yaxis_title="Value")
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Symbols
+    symbols = data.get("symbols", [])
+    if symbols:
+        st.caption(f"Symbols: {', '.join(symbols)}")
+
+
 def main() -> None:
     """Main dashboard entry point."""
     st.set_page_config(
@@ -3196,7 +3244,7 @@ def main() -> None:
     st.sidebar.title("Navigation")
     page = st.sidebar.radio(
         "Select Page",
-        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "HRP", "VaR", "Live Ticker"],
+        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "HRP", "VaR", "Shrinkage", "Live Ticker"],
     )
 
     st.sidebar.markdown("---")
@@ -3269,6 +3317,8 @@ def main() -> None:
         page_hrp()
     elif page == "VaR":
         page_var_comparison()
+    elif page == "Shrinkage":
+        page_shrinkage()
     elif page == "Live Ticker":
         page_live_ticker()
 
