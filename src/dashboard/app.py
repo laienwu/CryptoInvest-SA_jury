@@ -3008,6 +3008,72 @@ def page_attribution() -> None:
     st.dataframe(df[present], use_container_width=True, hide_index=True)
 
 
+# =============================================================================
+# Page: Black-Litterman
+# =============================================================================
+
+
+def page_black_litterman() -> None:
+    """Black-Litterman views-based portfolio optimization."""
+    st.header("Black-Litterman Optimization")
+    data = fetch_api("/portfolio/black-litterman")
+    if not data:
+        st.warning("No Black-Litterman data available.")
+        return
+
+    # KPIs
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Expected Return", fmt_pct(data.get("expected_return")))
+    c2.metric("Volatility", fmt_pct(data.get("volatility")))
+    c3.metric("Sharpe Ratio", fmt_ratio(data.get("sharpe_ratio")))
+    c4.metric("Assets", data.get("n_assets", "N/A"))
+
+    st.markdown("---")
+
+    # Weights pie chart
+    weights = data.get("weights", {})
+    if weights:
+        fig = go.Figure(go.Pie(
+            labels=list(weights.keys()),
+            values=list(weights.values()),
+            marker=dict(colors=[COLORS["strategy"], COLORS["benchmark"],
+                                COLORS["equal_weight"], COLORS["danger"],
+                                COLORS["grid"]] * 5),
+        ))
+        styled_layout(fig, title="Black-Litterman Weights")
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown("---")
+
+    # Equilibrium vs Posterior returns comparison
+    eq_returns = data.get("equilibrium_returns", {})
+    post_returns = data.get("posterior_returns", {})
+    if eq_returns and post_returns:
+        symbols = list(eq_returns.keys())
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            name="Equilibrium",
+            x=symbols,
+            y=[eq_returns.get(s, 0) for s in symbols],
+            marker_color=COLORS["benchmark"],
+        ))
+        fig.add_trace(go.Bar(
+            name="Posterior",
+            x=symbols,
+            y=[post_returns.get(s, 0) for s in symbols],
+            marker_color=COLORS["strategy"],
+        ))
+        styled_layout(fig, title="Equilibrium vs Posterior Returns")
+        fig.update_layout(barmode="group")
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Views table
+    views = data.get("views", [])
+    if views:
+        st.subheader("Investor Views")
+        st.dataframe(pd.DataFrame(views), use_container_width=True, hide_index=True)
+
+
 def main() -> None:
     """Main dashboard entry point."""
     st.set_page_config(
@@ -3019,7 +3085,7 @@ def main() -> None:
     st.sidebar.title("Navigation")
     page = st.sidebar.radio(
         "Select Page",
-        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Live Ticker"],
+        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "Live Ticker"],
     )
 
     st.sidebar.markdown("---")
@@ -3086,6 +3152,8 @@ def main() -> None:
         page_drawdown()
     elif page == "Attribution":
         page_attribution()
+    elif page == "Black-Litterman":
+        page_black_litterman()
     elif page == "Live Ticker":
         page_live_ticker()
 

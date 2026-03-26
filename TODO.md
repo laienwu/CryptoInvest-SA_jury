@@ -4,7 +4,7 @@ Each task = add one page to `src/dashboard/app.py` + update nav radio + add elif
 Follow existing patterns: `fetch_api()`, `styled_layout(fig)`, `COLORS`, `CHART_LAYOUT`.
 After ALL pages done: update CLAUDE.md demo script + README dashboard list + commit & push.
 
-- [ ] 1. Black-Litterman page — `/portfolio/black-litterman` — show equilibrium vs posterior returns bar chart, weights pie, views table
+- [x] 1. Black-Litterman page — `/portfolio/black-litterman` — show equilibrium vs posterior returns bar chart, weights pie, views table
 - [ ] 2. HRP page — `/portfolio/hrp` — weights pie chart, comparison table vs max-Sharpe
 - [ ] 3. VaR Comparison page — `/portfolio/var` — grouped bar chart (3 methods x VaR/CVaR), per-asset breakdown table
 - [ ] 4. Shrinkage page — `/portfolio/shrinkage` — eigenvalue comparison chart (sample vs shrunk), intensity gauge, condition number
