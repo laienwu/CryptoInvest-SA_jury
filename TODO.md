@@ -14,4 +14,4 @@ After ALL pages done: update CLAUDE.md demo script + README dashboard list + com
 - [x] 8. Tail Risk page — `/portfolio/tail-risk` — portfolio metrics KPIs (skew, kurt, JB), per-asset table, normality flags
 - [x] 9. Decay page — `/portfolio/decay` — tracking error line chart over time, max deviation line, rebalance threshold marker
 - [x] 10. Pairs Trading page — `/portfolio/pairs` — cointegrated pairs table, top pair spread chart with z-score bands
-- [ ] 11. Final sync — update CLAUDE.md (dashboard list to 30 pages), README, test count, commit & push
+- [x] 11. Final sync — update CLAUDE.md (dashboard list to 30 pages), README, test count, commit & push

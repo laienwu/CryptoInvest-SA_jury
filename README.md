@@ -166,7 +166,7 @@ uv run streamlit run src/dashboard/app.py
 
 ## Tableau de bord
 
-Le tableau de bord Streamlit fournit 20 pages :
+Le tableau de bord Streamlit fournit 30 pages :
 
 - **Dashboard** - Cartes KPI, allocation pie chart, corrélation heatmap
 - **Symbols** - Graphiques OHLCV par symbole
