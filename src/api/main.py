@@ -56,6 +56,7 @@ from src.api.schemas import (
     ShrinkageResponse,
     SignalsResponse,
     SortinoResponse,
+    StrategyComparisonResponse,
     StressTestResponse,
     SymbolsResponse,
     TailRiskResponse,
@@ -1161,6 +1162,36 @@ def get_pairs(
         raise HTTPException(404, e.message) from e
     except Exception as e:
         logger.error("Failed pairs analysis: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Strategy Comparison — /portfolio/compare-strategies
+# =============================================================================
+
+
+@app.get("/portfolio/compare-strategies", response_model=StrategyComparisonResponse)
+def get_compare_strategies(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Compare all optimization strategies side-by-side."""
+    from src.pipeline.strategy_compare import (
+        StrategyCompareError,
+        compare_strategies,
+    )
+
+    try:
+        return cached_response(
+            cache,
+            "portfolio:compare-strategies",
+            _CACHE_TTL_SECONDS,
+            lambda: compare_strategies(storage=storage, save=False),
+        )
+    except StrategyCompareError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed strategy comparison: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 

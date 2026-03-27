@@ -3534,6 +3534,87 @@ def page_pairs() -> None:
             st.plotly_chart(fig, use_container_width=True)
 
 
+# =============================================================================
+# Page: Strategy Showdown
+# =============================================================================
+
+
+def page_strategy_showdown() -> None:
+    """Compare all optimization strategies side-by-side."""
+    st.header("Strategy Showdown")
+    data = fetch_api("/portfolio/compare-strategies")
+    if not data:
+        st.warning("No strategy comparison data available.")
+        return
+
+    # Best strategy KPI
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Best Strategy", data.get("best_strategy", "N/A"))
+    c2.metric("Worst Strategy", data.get("worst_strategy", "N/A"))
+    c3.metric("Strategies", data.get("n_strategies", 0))
+    c4.metric("Assets", data.get("n_assets", 0))
+
+    st.markdown("---")
+
+    # Comparison table
+    strategies = data.get("strategies", [])
+    if strategies:
+        rows = []
+        for s in strategies:
+            if s.get("error"):
+                rows.append({
+                    "Rank": "—",
+                    "Strategy": s["name"],
+                    "Return": "Error",
+                    "Volatility": "Error",
+                    "Sharpe": s.get("error", ""),
+                })
+            else:
+                rows.append({
+                    "Rank": s.get("rank", "—"),
+                    "Strategy": s["name"],
+                    "Return": fmt_pct(s.get("expected_return")),
+                    "Volatility": fmt_pct(s.get("volatility")),
+                    "Sharpe": fmt_ratio(s.get("sharpe_ratio")),
+                })
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
+    # Sharpe ratio bar chart
+    successful = [s for s in strategies if not s.get("error")]
+    if successful:
+        sorted_strats = sorted(successful, key=lambda x: x.get("sharpe_ratio", 0), reverse=True)
+        names = [s["name"] for s in sorted_strats]
+        sharpes = [s.get("sharpe_ratio", 0) for s in sorted_strats]
+        fig = go.Figure(go.Bar(
+            x=names, y=sharpes,
+            marker_color=[COLORS["strategy"] if i == 0 else COLORS["benchmark"] for i in range(len(names))],
+        ))
+        styled_layout(fig, title="Sharpe Ratio by Strategy")
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Weight comparison grouped bar
+    symbols = data.get("symbols", [])
+    if successful and symbols:
+        st.markdown("---")
+        st.subheader("Weight Allocation Comparison")
+        fig = go.Figure()
+        colors = [COLORS["strategy"], COLORS["benchmark"], COLORS["equal_weight"],
+                  COLORS["danger"], COLORS["grid"], "#9b59b6"]
+        for i, s in enumerate(successful):
+            weights = s.get("weights", {})
+            fig.add_trace(go.Bar(
+                name=s["name"],
+                x=symbols,
+                y=[weights.get(sym, 0) for sym in symbols],
+                marker_color=colors[i % len(colors)],
+            ))
+        styled_layout(fig, title="Weight Allocation by Strategy")
+        fig.update_layout(barmode="group")
+        st.plotly_chart(fig, use_container_width=True)
+
+
 def main() -> None:
     """Main dashboard entry point."""
     st.set_page_config(
@@ -3545,7 +3626,7 @@ def main() -> None:
     st.sidebar.title("Navigation")
     page = st.sidebar.radio(
         "Select Page",
-        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "HRP", "VaR", "Shrinkage", "Max Diversification", "Min Variance", "Factors", "Tail Risk", "Decay", "Pairs", "Live Ticker"],
+        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "HRP", "VaR", "Shrinkage", "Max Diversification", "Min Variance", "Factors", "Tail Risk", "Decay", "Pairs", "Strategy Showdown", "Live Ticker"],
     )
 
     st.sidebar.markdown("---")
@@ -3632,6 +3713,8 @@ def main() -> None:
         page_decay()
     elif page == "Pairs":
         page_pairs()
+    elif page == "Strategy Showdown":
+        page_strategy_showdown()
     elif page == "Live Ticker":
         page_live_ticker()
 

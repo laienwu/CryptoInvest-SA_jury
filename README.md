@@ -166,7 +166,7 @@ uv run streamlit run src/dashboard/app.py
 
 ## Tableau de bord
 
-Le tableau de bord Streamlit fournit 30 pages :
+Le tableau de bord Streamlit fournit 31 pages :
 
 - **Dashboard** - Cartes KPI, allocation pie chart, corrélation heatmap
 - **Symbols** - Graphiques OHLCV par symbole
@@ -198,6 +198,7 @@ Le tableau de bord Streamlit fournit 30 pages :
 - **Tail Risk** - Moments supérieurs (skewness, kurtosis, Jarque-Bera, Omega, Calmar)
 - **Decay** - Dérive des poids du portefeuille dans le temps
 - **Pairs Trading** - Analyse de cointégration Engle-Granger
+- **Strategy Showdown** - Comparaison côte à côte des 6 stratégies d'optimisation
 
 ## Test
 

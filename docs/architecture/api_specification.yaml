@@ -1302,6 +1302,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /portfolio/compare-strategies:
+    get:
+      tags:
+        - Analytics
+      summary: Compare All Optimization Strategies
+      description: |
+        Runs all 6 optimization strategies (Max Sharpe, HRP, Risk Parity,
+        Min Variance, Max Diversification, Black-Litterman) and returns
+        side-by-side comparison with rankings.
+      operationId: getCompareStrategies
+      responses:
+        '200':
+          description: Strategy comparison result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StrategyComparisonResponse'
+        '404':
+          description: No strategies could be computed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   schemas:
     HealthResponse:
@@ -3137,6 +3161,68 @@ components:
         top_pair_detail:
           type: object
           nullable: true
+        method:
+          type: string
+
+    StrategyResult:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        weights:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: number
+            format: double
+        expected_return:
+          type: number
+          format: double
+          nullable: true
+        volatility:
+          type: number
+          format: double
+          nullable: true
+        sharpe_ratio:
+          type: number
+          format: double
+          nullable: true
+        rank:
+          type: integer
+          nullable: true
+        error:
+          type: string
+          nullable: true
+
+    StrategyComparisonResponse:
+      type: object
+      required:
+        - strategies
+        - best_strategy
+        - worst_strategy
+        - n_strategies
+        - n_assets
+        - symbols
+        - method
+      properties:
+        strategies:
+          type: array
+          items:
+            $ref: '#/components/schemas/StrategyResult'
+        best_strategy:
+          type: string
+        worst_strategy:
+          type: string
+        n_strategies:
+          type: integer
+        n_assets:
+          type: integer
+        symbols:
+          type: array
+          items:
+            type: string
         method:
           type: string
 

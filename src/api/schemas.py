@@ -673,3 +673,25 @@ class PairsResponse(BaseModel):
     n_cointegrated: int
     top_pair_detail: dict[str, Any] | None = None
     method: str
+
+
+class StrategyResult(BaseModel):
+    name: str
+    weights: dict[str, float] | None = None
+    expected_return: float | None = None
+    volatility: float | None = None
+    sharpe_ratio: float | None = None
+    rank: int | None = None
+    error: str | None = None
+
+
+class StrategyComparisonResponse(BaseModel):
+    """Side-by-side comparison of all optimization strategies."""
+
+    strategies: list[StrategyResult]
+    best_strategy: str
+    worst_strategy: str
+    n_strategies: int
+    n_assets: int
+    symbols: list[str]
+    method: str
