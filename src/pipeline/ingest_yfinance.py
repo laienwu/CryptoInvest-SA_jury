@@ -74,11 +74,11 @@ def fetch_yfinance_klines(
     """
     try:
         import yfinance as yf
-    except ImportError:
+    except ImportError as err:
         raise YFinanceError(
             "yfinance is not installed. Install with: uv sync --extra yfinance",
             symbol=symbol,
-        )
+        ) from err
 
     end = datetime.now(UTC)
     start = end - timedelta(days=period_days)
@@ -93,7 +93,7 @@ def fetch_yfinance_klines(
             auto_adjust=True,
         )
     except Exception as e:
-        raise YFinanceError(f"Failed to download {symbol}: {e}", symbol=symbol)
+        raise YFinanceError(f"Failed to download {symbol}: {e}", symbol=symbol) from e
 
     if df is None or df.empty:
         raise YFinanceError(f"No data returned for {symbol}", symbol=symbol)
@@ -102,7 +102,7 @@ def fetch_yfinance_klines(
     klines: list[dict[str, Any]] = []
     for idx, row in df.iterrows():
         klines.append({
-            "timestamp": idx.strftime("%Y-%m-%d"),  # type: ignore[union-attr]
+            "timestamp": idx.strftime("%Y-%m-%d"),  # type: ignore[union-attr,unused-ignore]
             "open": float(row["Open"]),
             "high": float(row["High"]),
             "low": float(row["Low"]),

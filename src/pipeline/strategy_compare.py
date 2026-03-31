@@ -125,7 +125,7 @@ def compare_strategies(
     first_weights = successful[0]["weights"]
     symbols = list(first_weights.keys()) if first_weights else []
 
-    result: dict[str, Any] = {
+    output: dict[str, Any] = {
         "strategies": ranked,
         "best_strategy": best_strategy,
         "worst_strategy": worst_strategy,
@@ -136,7 +136,7 @@ def compare_strategies(
     }
 
     if save:
-        storage.save_output(result, "strategy_comparison")
+        storage.save_output(output, "strategy_comparison")
         logger.info("Strategy comparison saved to storage")
 
     logger.info(
@@ -146,4 +146,4 @@ def compare_strategies(
         successful[0]["sharpe_ratio"] or 0.0,
     )
 
-    return result
+    return output

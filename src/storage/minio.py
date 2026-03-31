@@ -104,7 +104,7 @@ class MinIOStorage(Storage):
         """Download bytes from MinIO."""
         response = self._client.get_object(self._bucket, key)
         try:
-            return response.read()
+            return bytes(response.read())
         finally:
             response.close()
             response.release_conn()

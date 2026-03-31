@@ -17,6 +17,7 @@ import os
 import signal
 import time
 from datetime import UTC, datetime
+from typing import Any
 
 import websocket
 from kafka import KafkaProducer
@@ -34,7 +35,7 @@ def _build_stream_url(symbols: list[str], interval: str = "1d") -> str:
     return f"{BINANCE_WS_BASE}/{'/'.join(streams)}"
 
 
-def _parse_kline_event(data: dict) -> dict | None:
+def _parse_kline_event(data: dict[str, Any]) -> dict[str, Any] | None:
     """Parse a Binance kline WebSocket event into a flat record."""
     if data.get("e") != "kline":
         return None
@@ -86,7 +87,7 @@ def run_producer(
 
     running = True
 
-    def _shutdown(*_args):
+    def _shutdown(*_args: Any) -> None:
         nonlocal running
         running = False
         logger.info("Shutdown signal received")
@@ -99,7 +100,7 @@ def run_producer(
 
     produced_count = 0
 
-    def on_message(_ws, message):
+    def on_message(_ws: Any, message: str) -> None:
         nonlocal produced_count
         data = json.loads(message)
         record = _parse_kline_event(data)
@@ -108,13 +109,13 @@ def run_producer(
             produced_count += 1
             logger.info("Produced: %s %s", record["symbol"], record["timestamp"])
 
-    def on_error(_ws, error):
+    def on_error(_ws: Any, error: Any) -> None:
         logger.error("WebSocket error: %s", error)
 
-    def on_close(_ws, status, msg):
+    def on_close(_ws: Any, status: Any, msg: Any) -> None:
         logger.info("WebSocket closed: %s %s", status, msg)
 
-    def on_open(_ws):
+    def on_open(_ws: Any) -> None:
         logger.info("WebSocket connected, streaming %d symbols", len(symbols))
 
     while running:
@@ -150,7 +151,7 @@ def _build_orderbook_stream_url(symbols: list[str]) -> str:
     return f"{BINANCE_WS_BASE}/{'/'.join(streams)}"
 
 
-def _parse_orderbook_event(data: dict, symbol: str) -> dict | None:
+def _parse_orderbook_event(data: dict[str, Any], symbol: str) -> dict[str, Any] | None:
     """Parse a Binance depth WebSocket event into a structured record."""
     bids = data.get("bids", [])
     asks = data.get("asks", [])
@@ -206,7 +207,7 @@ def run_orderbook_producer(
 
     running = True
 
-    def _shutdown(*_args):
+    def _shutdown(*_args: Any) -> None:
         nonlocal running
         running = False
         logger.info("Shutdown signal received")
@@ -219,7 +220,7 @@ def run_orderbook_producer(
 
     produced_count = 0
 
-    def on_message(_ws, message):
+    def on_message(_ws: Any, message: str) -> None:
         nonlocal produced_count
         data = json.loads(message)
         # Combined stream wraps in {"stream": "...", "data": {...}}
@@ -238,13 +239,13 @@ def run_orderbook_producer(
             if produced_count % 100 == 0:
                 logger.info("Produced %d orderbook snapshots", produced_count)
 
-    def on_error(_ws, error):
+    def on_error(_ws: Any, error: Any) -> None:
         logger.error("WebSocket error: %s", error)
 
-    def on_close(_ws, status, msg):
+    def on_close(_ws: Any, status: Any, msg: Any) -> None:
         logger.info("WebSocket closed: %s %s", status, msg)
 
-    def on_open(_ws):
+    def on_open(_ws: Any) -> None:
         logger.info("WebSocket connected, streaming %d symbols depth", len(symbols))
 
     while running:

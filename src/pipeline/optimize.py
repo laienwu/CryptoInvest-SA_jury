@@ -691,16 +691,22 @@ def optimize_weights(
         return optimize_minimum_variance(cov_matrix)
     elif strategy == "hrp":
         from src.pipeline.hrp import compute_hrp_weights
-        result = compute_hrp_weights(cov_matrix)
-        return result["weights"]
+        n = len(cov_matrix)
+        stds = [math.sqrt(max(cov_matrix[i][i], 1e-12)) for i in range(n)]
+        corr = [
+            [cov_matrix[i][j] / (stds[i] * stds[j]) for j in range(n)]
+            for i in range(n)
+        ]
+        result = compute_hrp_weights(cov_matrix, corr)
+        return list(result["weights"])
     elif strategy == "risk_parity":
         from src.pipeline.risk_parity import compute_risk_parity_weights
         result = compute_risk_parity_weights(cov_matrix)
-        return result["weights"]
+        return list(result["weights"])
     elif strategy == "max_diversification":
         from src.pipeline.max_diversification import optimize_max_diversification
         result = optimize_max_diversification(cov_matrix, mean_returns)
-        return result["weights"]
+        return list(result["weights"])
     else:
         raise OptimizeError(
             f"Unknown strategy: {strategy}. Use 'max_sharpe', 'min_variance', "

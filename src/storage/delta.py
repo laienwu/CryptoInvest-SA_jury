@@ -50,7 +50,7 @@ class DeltaStorageError(Exception):
         super().__init__(self.message)
 
 
-def _get_deltalake():
+def _get_deltalake() -> Any:
     """Lazy import of deltalake to allow module loading without the package."""
     try:
         import deltalake
@@ -219,10 +219,10 @@ class DeltaStorage(Storage):
 
         try:
             dt = dl.DeltaTable(str(table_dir))
-        except Exception:
+        except Exception as err:
             raise StorageError(
                 f"Processed data '{name}' not found", operation="load_processed"
-            )
+            ) from err
 
         table = dt.to_pyarrow_table()
         keys = table.column("key").to_pylist()
@@ -253,7 +253,8 @@ class DeltaStorage(Storage):
                 operation="load_output",
             )
 
-        return json.loads(output_path.read_text())
+        result: dict[str, Any] = json.loads(output_path.read_text())
+        return result
 
     def list_raw_symbols(self) -> list[str]:
         """List symbols available in the Delta table."""
@@ -266,7 +267,8 @@ class DeltaStorage(Storage):
 
         table = dt.to_pyarrow_table(columns=["symbol"])
         import pyarrow.compute as pc
-        return pc.unique(table.column("symbol")).to_pylist()
+        symbols: list[str] = pc.unique(table.column("symbol")).to_pylist()
+        return symbols
 
     def list_processed(self) -> list[str]:
         """List available processed datasets."""

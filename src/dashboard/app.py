@@ -108,12 +108,12 @@ def fetch_api(endpoint: str) -> dict[str, Any] | None:
 
 def _is_trad_mode() -> bool:
     """Return True when the sidebar toggle is set to Traditional."""
-    return st.session_state.get("portfolio_mode") == "Traditional"
+    return bool(st.session_state.get("portfolio_mode") == "Traditional")
 
 
 def _is_combined_mode() -> bool:
     """Return True when the sidebar toggle is set to Combined."""
-    return st.session_state.get("portfolio_mode") == "Combined"
+    return bool(st.session_state.get("portfolio_mode") == "Combined")
 
 
 def _portfolio_endpoint() -> str:
@@ -624,7 +624,7 @@ def render_normalized_prices(symbols: list[str]) -> None:
             continue
         df = pd.DataFrame(klines["data"])
         if "timestamp" in df.columns:
-            dates = pd.to_datetime(df["timestamp"]).dt.strftime("%Y-%m-%d").tolist()
+            dates = pd.to_datetime(df["timestamp"], format="mixed", dayfirst=False).dt.strftime("%Y-%m-%d").tolist()
         elif "open_time" in df.columns:
             dates = pd.to_datetime(df["open_time"], unit="ms").dt.strftime("%Y-%m-%d").tolist()
         else:
@@ -1032,7 +1032,7 @@ def page_symbols() -> None:
 
     df = pd.DataFrame(klines_data["data"])
     if "timestamp" in df.columns:
-        df["date"] = pd.to_datetime(df["timestamp"])
+        df["date"] = pd.to_datetime(df["timestamp"], format="mixed", dayfirst=False)
     elif "open_time" in df.columns:
         df["date"] = pd.to_datetime(df["open_time"], unit="ms")
     else:
@@ -2440,7 +2440,6 @@ def page_live_ticker() -> None:
         col = cols[i % len(cols)]
         change = t.get("change_24h", 0)
         arrow = "+" if change >= 0 else ""
-        color = "green" if change >= 0 else "red"
         col.metric(
             label=t["symbol"],
             value=f"${t['price']:,.2f}",

@@ -205,10 +205,6 @@ def compute_shrinkage_intensity(
 
     # rho: for constant-correlation target, approximate rho = pi
     # (simplified: asymptotic covariance of target entries equals pi)
-    rho = pi_sum
-
-    kappa = (pi_sum - rho) / gamma  # = 0 for this simplified form
-
     # More precise estimation: use the Ledoit-Wolf formula directly
     # delta_star = pi / (T * gamma)
     delta = pi_sum / (n_obs * gamma)

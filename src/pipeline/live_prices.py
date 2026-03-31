@@ -8,7 +8,7 @@ No authentication required — uses Binance public ticker endpoint.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import requests
@@ -116,7 +116,7 @@ def fetch_live_prices(
     return {
         "crypto": crypto_tickers,
         "trad": trad_tickers,
-        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+        "timestamp": datetime.now(tz=UTC).isoformat(),
         "n_crypto": len(crypto_tickers),
         "n_trad": len(trad_tickers),
     }

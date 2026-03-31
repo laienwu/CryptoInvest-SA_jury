@@ -67,17 +67,17 @@ def run_monte_carlo(
     try:
         weights_data = storage.load_output("weights")
     except Exception as e:
-        raise MonteCarloError(f"Cannot load weights: {e}", operation="load_weights")
+        raise MonteCarloError(f"Cannot load weights: {e}", operation="load_weights") from e
 
     try:
         mean_returns_data = storage.load_processed("mean_returns")
     except Exception as e:
-        raise MonteCarloError(f"Cannot load mean_returns: {e}", operation="load_mean_returns")
+        raise MonteCarloError(f"Cannot load mean_returns: {e}", operation="load_mean_returns") from e
 
     try:
         cov_data = storage.load_processed("covariance")
     except Exception as e:
-        raise MonteCarloError(f"Cannot load covariance: {e}", operation="load_covariance")
+        raise MonteCarloError(f"Cannot load covariance: {e}", operation="load_covariance") from e
 
     weights_dict = weights_data.get("weights", {})
     symbols = list(weights_dict.keys())

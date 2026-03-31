@@ -19,7 +19,6 @@ from typing import Any
 from src.pipeline.optimize import (
     calculate_portfolio_return,
     calculate_portfolio_variance,
-    dot_product,
     matrix_vector_multiply,
 )
 from src.storage import Storage, get_storage
@@ -81,8 +80,7 @@ def compute_risk_parity_weights(
 
     converged = False
     iteration = 0
-
-    for iteration in range(1, max_iter + 1):
+    for iteration in range(1, max_iter + 1):  # noqa: B007 — used after loop
         # Portfolio volatility
         port_var = calculate_portfolio_variance(weights, cov_matrix)
         port_vol = math.sqrt(max(port_var, 1e-12))

@@ -11,7 +11,7 @@ Usage:
 """
 
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -129,7 +129,7 @@ def compute_data_metrics(
     # Freshness: hours since most recent record
     freshness_hours: float | None = None
     if raw_data:
-        all_dates = []
+        all_dates: list[str] = []
         for records in raw_data.values():
             all_dates.extend(r["timestamp"] for r in records)
         if all_dates:

@@ -14,7 +14,6 @@ from typing import Any
 from src.pipeline.optimize import (
     calculate_portfolio_return,
     calculate_portfolio_variance,
-    dot_product,
     matrix_vector_multiply,
 )
 from src.storage import Storage, get_storage

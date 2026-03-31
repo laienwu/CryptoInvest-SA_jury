@@ -13,7 +13,6 @@ Output: data/output/position_sizing.json
 """
 
 import logging
-import math
 from typing import Any
 
 from src.storage import Storage, get_storage

@@ -816,4 +816,4 @@ def _std(values: list[float]) -> float:
     n = len(values)
     mean = sum(values) / n
     variance = sum((x - mean) ** 2 for x in values) / (n - 1)
-    return variance ** 0.5
+    return float(variance ** 0.5)

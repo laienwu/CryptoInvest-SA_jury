@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.api.cache import _CACHE_TTL_SECONDS, RedisCache, cached_response, get_cache
@@ -30,12 +30,13 @@ from src.api.schemas import (
     CostAnalysisResponse,
     CustomPortfolioRequest,
     CustomPortfolioResponse,
+    DataVolumeMetricsResponse,
     DecayResponse,
     DrawdownResponse,
     FactorAnalysisResponse,
     FrontierResponse,
-    HRPResponse,
     HealthResponse,
+    HRPResponse,
     KlinesResponse,
     LivePricesResponse,
     MaxDiversificationResponse,
@@ -57,7 +58,6 @@ from src.api.schemas import (
     ShrinkageResponse,
     SignalsResponse,
     SortinoResponse,
-    DataVolumeMetricsResponse,
     StrategyComparisonResponse,
     StressTestResponse,
     SymbolsResponse,
@@ -1240,14 +1240,15 @@ def get_multi_backtest(
 async def data_volume_metrics(
     storage: Storage = Depends(get_storage_dep),
     cache: RedisCache = Depends(get_cache),
-):
+) -> dict[str, Any]:
     """Data volume metrics: record counts, sizes, partitions, freshness."""
     from src.pipeline.data_metrics import compute_data_metrics
 
     try:
-        return await cached_response(
+        return cached_response(
             cache,
             "data_metrics",
+            _CACHE_TTL_SECONDS,
             lambda: compute_data_metrics(storage),
         )
     except Exception as e:

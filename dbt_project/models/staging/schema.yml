@@ -19,7 +19,7 @@ models:
         description: "Candle timestamp"
         tests:
           - not_null
-      - name: close
+      - name: close_price
         description: "Closing price"
         tests:
           - not_null

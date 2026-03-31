@@ -145,7 +145,7 @@ def run_consumer(
 
     running = True
 
-    def _shutdown(*_args):
+    def _shutdown(*_args: Any) -> None:
         nonlocal running
         running = False
         logger.info("Shutdown signal received")
@@ -245,7 +245,7 @@ def _flush_orderbook_buffer(
     }, schema=ORDERBOOK_SCHEMA)
 
     # Write with timestamp-based filename
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
     ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     file_path = output_dir / f"orderbook_{ts}.parquet"
     pq.write_table(table, file_path, compression="snappy")
@@ -287,7 +287,7 @@ def run_orderbook_consumer(
 
     running = True
 
-    def _shutdown(*_args):
+    def _shutdown(*_args: Any) -> None:
         nonlocal running
         running = False
         logger.info("Shutdown signal received")

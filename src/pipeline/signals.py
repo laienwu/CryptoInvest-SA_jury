@@ -161,12 +161,12 @@ def sma_crossover_signal(
 
     signals: list[str | None] = []
     for i in range(len(prices)):
-        s, l = short_sma[i], long_sma[i]
-        if s is None or l is None:
+        s, long_val = short_sma[i], long_sma[i]
+        if s is None or long_val is None:
             signals.append(None)
-        elif s > l:
+        elif s > long_val:
             signals.append(BUY)
-        elif s < l:
+        elif s < long_val:
             signals.append(SELL)
         else:
             signals.append(HOLD)
@@ -258,12 +258,12 @@ def bollinger_signal(
 
     signals: list[str | None] = []
     for i in range(len(prices)):
-        u, l = upper[i], lower[i]
-        if u is None or l is None:
+        u, low_band = upper[i], lower[i]
+        if u is None or low_band is None:
             signals.append(None)
         elif prices[i] > u:
             signals.append(BUY)
-        elif prices[i] < l:
+        elif prices[i] < low_band:
             signals.append(SELL)
         else:
             signals.append(HOLD)

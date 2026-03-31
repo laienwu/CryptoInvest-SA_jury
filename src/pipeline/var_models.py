@@ -106,7 +106,7 @@ def _skewness(returns: list[float]) -> float:
     if m2 == 0.0:
         return 0.0
 
-    return m3 / (m2 ** 1.5)
+    return float(m3 / (m2 ** 1.5))
 
 
 def _excess_kurtosis(returns: list[float]) -> float:

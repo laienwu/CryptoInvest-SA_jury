@@ -31,7 +31,7 @@ class SparkTransformError(Exception):
         super().__init__(self.message)
 
 
-def _get_spark():
+def _get_spark() -> Any:
     """Get or create a local SparkSession (lazy singleton)."""
     global _spark_session
     if _spark_session is not None:
@@ -64,9 +64,9 @@ def _stop_spark() -> None:
         _spark_session = None
 
 
-def _load_prices_df(storage: Storage, spark):
+def _load_prices_df(storage: Storage, spark: Any) -> Any:
     """Load raw data from storage into a Spark DataFrame."""
-    from pyspark.sql.types import StructType, StructField, StringType, DoubleType
+    from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 
     raw = storage.load_raw()
     if not raw:

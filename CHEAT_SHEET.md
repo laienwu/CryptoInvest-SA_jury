@@ -498,9 +498,9 @@ curl http://localhost:8000/data/metrics | python -m json.tool
 
 ```bash
 cd dbt_project
-dbt run --profiles-dir .
-dbt test --profiles-dir .
-dbt docs generate --profiles-dir .
+uv run dbt run --profiles-dir .       # 7 models (staging + marts)
+uv run dbt test --profiles-dir .      # 13 data tests (not_null, unique, volumes)
+uv run dbt docs generate --profiles-dir .  # lineage docs
 ```
 
 ### 8.8 Mode Secours (sans Internet)
@@ -678,7 +678,7 @@ data/delta/raw/klines/
 - [ ] Donnees presentes dans data/ (Hive-partitioned)
 - [ ] Pipeline execute sans erreur
 - [ ] DuckDB queries fonctionnent
-- [ ] dbt models compilent: `cd dbt_project && dbt compile --profiles-dir .`
+- [ ] dbt models compilent: `cd dbt_project && uv run dbt run --profiles-dir . && uv run dbt test --profiles-dir .`
 - [ ] Connaitre les 46 endpoints API
 - [ ] Dashboard: 6 sections, navigation groupee, data range filter
 - [ ] Savoir expliquer Markowitz + 5 autres strategies

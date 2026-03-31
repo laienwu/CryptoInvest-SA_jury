@@ -120,7 +120,7 @@ def _build_shocks(
 
     # Custom shocks passed directly
     if "shocks" in scenario and scenario["shocks"]:
-        return scenario["shocks"]
+        return dict(scenario["shocks"])
 
     return shocks
 
