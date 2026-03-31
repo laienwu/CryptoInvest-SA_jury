@@ -1,0 +1,40 @@
+version: 2
+
+models:
+  - name: fact_prices
+    description: "Fact table: daily OHLCV prices with symbol key"
+    columns:
+      - name: symbol
+        tests:
+          - not_null
+      - name: timestamp
+        tests:
+          - not_null
+
+  - name: dim_symbol
+    description: "Dimension: symbol metadata"
+    columns:
+      - name: symbol
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_date
+    description: "Dimension: date attributes"
+    columns:
+      - name: date_key
+        tests:
+          - not_null
+          - unique
+
+  - name: agg_daily_returns
+    description: "Aggregate: log returns per symbol per day"
+    columns:
+      - name: symbol
+        tests:
+          - not_null
+      - name: log_return
+        description: "Natural log return: ln(close_t / close_t-1)"
+
+  - name: portfolio_summary
+    description: "Summary: count symbols, date range, total records"

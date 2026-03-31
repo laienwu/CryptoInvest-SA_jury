@@ -30,11 +30,20 @@ class PipelineConfig:
     # Portfolio
     symbols: list[str] = field(
         default_factory=lambda: [
-            "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "ADAUSDT"
+            "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT",
+            "DOGEUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT", "ATOMUSDT", "FILUSDT",
+            "MATICUSDT", "NEARUSDT", "AAVEUSDT", "UNIUSDT", "LTCUSDT", "TRXUSDT",
+            "ICPUSDT", "APTUSDT", "ARBUSDT", "OPUSDT", "SUIUSDT", "INJUSDT",
+            "FETUSDT", "RUNEUSDT", "THETAUSDT", "ALGOUSDT", "VETUSDT", "FTMUSDT",
+            "GRTUSDT", "DYDXUSDT", "SNXUSDT", "MKRUSDT", "COMPUSDT",
+            "SUSHIUSDT", "CRVUSDT", "LDOUSDT", "PENDLEUSDT", "ENSUSDT",
+            "SHIBUSDT", "PEPEUSDT", "FLOKIUSDT", "BOMEUSDT",
+            "SANDUSDT", "MANAUSDT", "AXSUSDT", "GALAUSDT", "IMXUSDT",
+            "RENDERUSDT", "HBARUSDT",
         ]
     )
-    interval: str = "1d"
-    period_days: int = 90
+    interval: str = "1m"
+    period_days: int = 30
 
     # Paths
     data_dir: Path = field(default_factory=lambda: _PROJECT_ROOT / "data")
@@ -150,16 +159,24 @@ def load_config(config_path: Path | None = None) -> PipelineConfig:
 # =============================================================================
 
 _DEFAULT_YFINANCE_SYMBOLS = [
-    "SPY",      # S&P 500 (US)
-    "EFA",      # MSCI EAFE (Europe/Asia)
-    "GLD",      # Gold
-    "SLV",      # Silver
-    "TLT",      # US Treasury Bonds 20y
-    "AAPL",     # Apple (US)
-    "MSFT",     # Microsoft (US)
-    "ASML.AS",  # ASML (Europe/Amsterdam)
-    "MC.PA",    # LVMH (Europe/Paris)
-    "SAP.DE",   # SAP (Europe/Frankfurt)
+    # US broad market
+    "SPY", "QQQ", "IWM", "DIA",
+    # International
+    "EFA", "VGK", "EEM",
+    # Bonds
+    "TLT", "BND", "HYG",
+    # Commodities
+    "GLD", "SLV", "USO",
+    # US sectors
+    "XLF", "XLE", "XLK", "XLV",
+    # Mega caps
+    "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA",
+    # Financials
+    "JPM", "V", "GS",
+    # Healthcare / Consumer
+    "JNJ", "PG", "KO",
+    # European
+    "ASML.AS", "MC.PA", "SAP.DE",
 ]
 
 

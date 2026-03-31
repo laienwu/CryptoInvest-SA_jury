@@ -20,15 +20,17 @@ class TestDefaults:
 
     def test_default_symbols(self):
         cfg = PipelineConfig()
-        assert cfg.symbols == ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "ADAUSDT"]
+        assert len(cfg.symbols) == 51
+        assert "BTCUSDT" in cfg.symbols
+        assert "HBARUSDT" in cfg.symbols
 
     def test_default_interval(self):
         cfg = PipelineConfig()
-        assert cfg.interval == "1d"
+        assert cfg.interval == "1m"
 
     def test_default_period_days(self):
         cfg = PipelineConfig()
-        assert cfg.period_days == 90
+        assert cfg.period_days == 30
 
     def test_default_risk_free_rate(self):
         cfg = PipelineConfig()
@@ -64,8 +66,8 @@ class TestLoadFromToml:
 
     def test_missing_file_uses_defaults(self, tmp_path):
         cfg = load_config(tmp_path / "nonexistent.toml")
-        assert cfg.symbols == ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "ADAUSDT"]
-        assert cfg.interval == "1d"
+        assert len(cfg.symbols) == 51
+        assert cfg.interval == "1m"
 
     def test_partial_toml_merges_with_defaults(self, tmp_path):
         toml_file = tmp_path / "config.toml"
@@ -73,14 +75,14 @@ class TestLoadFromToml:
         cfg = load_config(toml_file)
         assert cfg.interval == "1h"
         # Other values stay default
-        assert cfg.period_days == 90
+        assert cfg.period_days == 30
         assert cfg.risk_free_rate == 0.05
 
     def test_empty_toml_uses_defaults(self, tmp_path):
         toml_file = tmp_path / "config.toml"
         toml_file.write_text("")
         cfg = load_config(toml_file)
-        assert cfg.interval == "1d"
+        assert cfg.interval == "1m"
 
 
 class TestEnvVarOverrides:
@@ -132,7 +134,7 @@ class TestYFinanceDefaults:
         cfg = YFinanceConfig()
         assert "SPY" in cfg.symbols
         assert "GLD" in cfg.symbols
-        assert len(cfg.symbols) == 10
+        assert len(cfg.symbols) == 33
 
     def test_default_trading_days(self):
         cfg = YFinanceConfig()
@@ -166,7 +168,7 @@ class TestYFinanceLoadFromToml:
 
     def test_missing_file_uses_defaults(self, tmp_path):
         cfg = load_yfinance_config(tmp_path / "nonexistent.toml")
-        assert len(cfg.symbols) == 10
+        assert len(cfg.symbols) == 33
         assert cfg.trading_days_per_year == 252
 
     def test_partial_toml_merges_with_defaults(self, tmp_path):

@@ -111,6 +111,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /data/metrics:
+    get:
+      tags:
+        - Data
+      summary: Data Volume Metrics
+      description: Returns data volume metrics including record counts, file sizes, partition counts, and freshness
+      operationId: dataVolumeMetrics
+      responses:
+        '200':
+          description: Data volume metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataVolumeMetricsResponse'
+
   /metrics:
     get:
       tags:
@@ -1302,6 +1317,42 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /portfolio/backtest/multi:
+    get:
+      tags:
+        - Analytics
+      summary: Multi-Strategy Backtest
+      description: |
+        Run walk-forward backtest for all optimization strategies
+        (Max Sharpe, HRP, Risk Parity, Min Variance, Max Diversification)
+        with equal-weight benchmark. Returns per-strategy cumulative values,
+        metrics, and ranking by Sharpe ratio.
+      operationId: getMultiBacktest
+      parameters:
+        - name: train_window
+          in: query
+          schema:
+            type: integer
+            default: 60
+        - name: test_window
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        '200':
+          description: Multi-strategy backtest result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MultiBacktestResponse'
+        '404':
+          description: Raw data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /portfolio/compare-strategies:
     get:
       tags:
@@ -1351,6 +1402,70 @@ components:
             type: string
         count:
           type: integer
+
+    SymbolVolumeMetrics:
+      type: object
+      required:
+        - records
+      properties:
+        records:
+          type: integer
+        first_date:
+          type: string
+          nullable: true
+        last_date:
+          type: string
+          nullable: true
+        size_bytes:
+          type: integer
+
+    ZoneVolumeMetrics:
+      type: object
+      required:
+        - raw
+        - processed
+        - output
+      properties:
+        raw:
+          type: object
+        processed:
+          type: object
+        output:
+          type: object
+
+    DataVolumeMetricsResponse:
+      type: object
+      required:
+        - total_records
+        - total_symbols
+        - symbols
+        - total_size_bytes
+        - total_size_mb
+        - zones
+        - partitions
+        - method
+      properties:
+        total_records:
+          type: integer
+        total_symbols:
+          type: integer
+        symbols:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/SymbolVolumeMetrics'
+        total_size_bytes:
+          type: integer
+        total_size_mb:
+          type: number
+        zones:
+          $ref: '#/components/schemas/ZoneVolumeMetrics'
+        partitions:
+          type: integer
+        freshness_hours:
+          type: number
+          nullable: true
+        method:
+          type: string
 
     KlineRecord:
       type: object
@@ -3223,6 +3338,80 @@ components:
           type: array
           items:
             type: string
+        method:
+          type: string
+
+    MultiBacktestStrategyResult:
+      type: object
+      required:
+        - cumulative_values
+        - n_periods
+      properties:
+        cumulative_values:
+          type: array
+          items:
+            type: number
+        total_return:
+          type: number
+          nullable: true
+        annualized_return:
+          type: number
+          nullable: true
+        volatility:
+          type: number
+          nullable: true
+        sharpe_ratio:
+          type: number
+          nullable: true
+        n_periods:
+          type: integer
+        error:
+          type: string
+          nullable: true
+
+    MultiBacktestRanking:
+      type: object
+      required:
+        - rank
+        - strategy
+        - sharpe_ratio
+      properties:
+        rank:
+          type: integer
+        strategy:
+          type: string
+        sharpe_ratio:
+          type: number
+
+    MultiBacktestResponse:
+      type: object
+      required:
+        - strategies
+        - equal_weight
+        - ranking
+        - symbols
+        - n_windows
+        - config
+        - method
+      properties:
+        strategies:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/MultiBacktestStrategyResult'
+        equal_weight:
+          $ref: '#/components/schemas/MultiBacktestStrategyResult'
+        ranking:
+          type: array
+          items:
+            $ref: '#/components/schemas/MultiBacktestRanking'
+        symbols:
+          type: array
+          items:
+            type: string
+        n_windows:
+          type: integer
+        config:
+          type: object
         method:
           type: string
 

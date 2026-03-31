@@ -136,3 +136,117 @@ class TestConsumer:
 
         result = _load_existing_timestamps(tmp_path / "nonexistent.parquet")
         assert result == set()
+
+
+class TestOrderBookProducer:
+    """Tests for order book depth producer."""
+
+    def test_build_orderbook_stream_url_single(self):
+        from src.pipeline.stream_producer import _build_orderbook_stream_url
+
+        url = _build_orderbook_stream_url(["BTCUSDT"])
+        assert "btcusdt@depth20@100ms" in url
+        assert url.startswith("wss://stream.binance.com")
+
+    def test_build_orderbook_stream_url_multiple(self):
+        from src.pipeline.stream_producer import _build_orderbook_stream_url
+
+        url = _build_orderbook_stream_url(["BTCUSDT", "ETHUSDT"])
+        assert "btcusdt@depth20@100ms" in url
+        assert "ethusdt@depth20@100ms" in url
+
+    def test_parse_orderbook_event_valid(self):
+        from src.pipeline.stream_producer import _parse_orderbook_event
+
+        event = {
+            "bids": [["42000.0", "1.5"], ["41999.0", "2.0"]],
+            "asks": [["42001.0", "1.0"], ["42002.0", "3.0"]],
+        }
+        result = _parse_orderbook_event(event, "BTCUSDT")
+        assert result is not None
+        assert result["symbol"] == "BTCUSDT"
+        assert result["spread"] == pytest.approx(1.0, abs=0.01)
+        assert result["mid_price"] == pytest.approx(42000.5, abs=0.01)
+        assert len(result["bids"]) == 2
+        assert len(result["asks"]) == 2
+        assert result["bid_depth"] == pytest.approx(3.5, abs=0.01)
+        assert result["ask_depth"] == pytest.approx(4.0, abs=0.01)
+
+    def test_parse_orderbook_event_empty_bids(self):
+        from src.pipeline.stream_producer import _parse_orderbook_event
+
+        event = {"bids": [], "asks": [["42001.0", "1.0"]]}
+        result = _parse_orderbook_event(event, "BTCUSDT")
+        assert result is None
+
+    def test_parse_orderbook_event_empty_asks(self):
+        from src.pipeline.stream_producer import _parse_orderbook_event
+
+        event = {"bids": [["42000.0", "1.5"]], "asks": []}
+        result = _parse_orderbook_event(event, "BTCUSDT")
+        assert result is None
+
+    def test_parse_orderbook_event_no_data(self):
+        from src.pipeline.stream_producer import _parse_orderbook_event
+
+        result = _parse_orderbook_event({}, "BTCUSDT")
+        assert result is None
+
+
+class TestOrderBookConsumer:
+    """Tests for order book depth consumer."""
+
+    def test_flush_orderbook_buffer_empty(self, tmp_path):
+        from src.pipeline.stream_consumer import _flush_orderbook_buffer
+
+        flushed = _flush_orderbook_buffer([], tmp_path)
+        assert flushed == 0
+
+    def test_flush_orderbook_buffer_writes_parquet(self, tmp_path):
+        from src.pipeline.stream_consumer import _flush_orderbook_buffer
+
+        buffer = [
+            {
+                "symbol": "BTCUSDT",
+                "timestamp": "2024-01-01T12:00:00",
+                "bids": [["42000.0", "1.5"]],
+                "asks": [["42001.0", "1.0"]],
+                "spread": 1.0,
+                "mid_price": 42000.5,
+                "bid_depth": 1.5,
+                "ask_depth": 1.0,
+            },
+            {
+                "symbol": "ETHUSDT",
+                "timestamp": "2024-01-01T12:00:00",
+                "bids": [["2200.0", "10.0"]],
+                "asks": [["2201.0", "5.0"]],
+                "spread": 1.0,
+                "mid_price": 2200.5,
+                "bid_depth": 10.0,
+                "ask_depth": 5.0,
+            },
+        ]
+        flushed = _flush_orderbook_buffer(buffer, tmp_path)
+        assert flushed == 2
+        parquet_files = list(tmp_path.glob("orderbook_*.parquet"))
+        assert len(parquet_files) == 1
+
+    def test_flush_orderbook_buffer_creates_directory(self, tmp_path):
+        from src.pipeline.stream_consumer import _flush_orderbook_buffer
+
+        output_dir = tmp_path / "streaming" / "orderbook"
+        buffer = [
+            {
+                "symbol": "BTCUSDT",
+                "timestamp": "2024-01-01T12:00:00",
+                "bids": [["42000.0", "1.5"]],
+                "asks": [["42001.0", "1.0"]],
+                "spread": 1.0,
+                "mid_price": 42000.5,
+                "bid_depth": 1.5,
+                "ask_depth": 1.0,
+            },
+        ]
+        _flush_orderbook_buffer(buffer, output_dir)
+        assert output_dir.exists()

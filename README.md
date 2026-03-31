@@ -2,7 +2,7 @@
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-green.svg)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/tests-1109%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1201%20passed-brightgreen.svg)]()
 [![CI](https://github.com/yourusername/binance-portfolio/actions/workflows/ci.yml/badge.svg)]()
 [![Couverture](https://img.shields.io/badge/coverage-55%25-yellow.svg)]()
 
@@ -11,14 +11,18 @@ Plate-forme d'ingénierie de données prête pour la production pour l'optimisat
 ## Caractéristiques
 
 - **Ingestion de données multi-sources** - 6 types de sources : API REST, CSV, JSON, Web Scraping, PostgreSQL, yfinance
-- **Streaming temps réel** - Ingestion Kafka (Redpanda) via WebSocket Binance
-- **Architecture médaillon** - Zones de données Bronze/Argent/Or avec Parquet stockage
+- **Streaming temps réel** - Ingestion Kafka (Redpanda) via WebSocket Binance (klines + order book depth)
+- **Architecture médaillon** - Zones de données Bronze/Argent/Or avec Parquet partitionné Hive-style
+- **Delta Lake** - Stockage ACID optionnel (delta-rs, sans JVM)
 - **Star Schema Warehouse** - Requêtes analytiques basées sur DuckDB
+- **dbt transforms** - Modèles SQL staging/marts avec tests et lineage (dbt-duckdb)
+- **PySpark analytics** - Rolling correlation, volatility surface, volume analysis distribuée
 - **Optimisation de Markowitz** - Optimisation du portefeuille à variance moyenne maximisant le ratio de Sharpe
 - **API REST** - FastAPI avec documentation OpenAPI automatique
 - **Tableau de bord interactif** - Visualisation rationalisée avec Plotly charts
 - **Orchestration** - DAG Airflow pour l'exécution planifiée du pipeline
 - **Stockage S3** - MinIO (S3-compatible) via Storage ABC
+- **Data volume metrics** - Record counts, file sizes, partitions, freshness (API + dashboard)
 - **Cache API** - Redis avec TTL et fallback gracieux
 - **Monitoring** - Prometheus + Grafana (métriques, alertes)
 - **Qualité des données** - Validation bronze/silver/gold (contrats de données)
@@ -199,6 +203,7 @@ Le tableau de bord Streamlit fournit 31 pages :
 - **Decay** - Dérive des poids du portefeuille dans le temps
 - **Pairs Trading** - Analyse de cointégration Engle-Granger
 - **Strategy Showdown** - Comparaison côte à côte des 6 stratégies d'optimisation
+- **Multi Backtest** - Courbes d'equity superposées pour toutes les stratégies d'optimisation
 
 ## Test
 
@@ -209,7 +214,7 @@ uv run pytest tests/ -v
 # Run with coverage
 uv run pytest tests/ --cov=src --cov-report=term-missing
 
-# Results: 1109 tests (100% passing)
+# Results: 1159 tests (100% passing)
 ```
 
 ## Structure du projet

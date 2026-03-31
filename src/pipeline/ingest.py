@@ -123,26 +123,36 @@ def _make_request(
     raise last_exception or BinanceAPIError("Unknown error after retries")
 
 
+def _timestamp_format(interval: str) -> str:
+    """Return the timestamp format string for the given kline interval."""
+    if interval in ("1d", "3d", "1w", "1M"):
+        return "%Y-%m-%d"
+    return "%Y-%m-%dT%H:%M:%S"
+
+
 def fetch_klines(
     symbol: str,
-    interval: str = "1d",
+    interval: str = "1m",
     start_time: datetime | None = None,
     end_time: datetime | None = None,
     limit: int = 1000,
     api_base: str = "https://api.binance.com",
     rate_limit_delay: float = 0.5,
     max_retries: int = 3,
-    period_days: int = 90,
+    period_days: int = 30,
 ) -> list[dict[str, Any]]:
     """
     Fetch klines (candlestick data) for a single symbol from Binance API.
 
+    Automatically paginates through results when the requested date range
+    contains more than 1000 candles (Binance API limit per call).
+
     Args:
         symbol: Trading pair symbol (e.g., "BTCUSDT").
-        interval: Kline interval (e.g., "1d", "1h", "15m").
+        interval: Kline interval (e.g., "1m", "5m", "1h", "1d").
         start_time: Start datetime for data. Defaults to period_days ago.
         end_time: End datetime for data. Defaults to now.
-        limit: Maximum number of klines to fetch (max 1000).
+        limit: Records per page (max 1000).
         api_base: Binance API base URL.
         rate_limit_delay: Base delay for retries in seconds.
         max_retries: Maximum number of retry attempts.
@@ -154,58 +164,66 @@ def fetch_klines(
 
     Raises:
         BinanceAPIError: If API request fails.
-
-    Example:
-        >>> klines = fetch_klines("BTCUSDT", interval="1d")
-        >>> print(klines[0])
-        {'timestamp': '2024-01-01', 'open': 45000.0, ...}
     """
-    # Set default time range
     if end_time is None:
         end_time = datetime.now(UTC)
     if start_time is None:
         start_time = end_time - timedelta(days=period_days)
 
-    # Convert to milliseconds timestamp
-    start_ms = int(start_time.timestamp() * 1000)
+    current_start_ms = int(start_time.timestamp() * 1000)
     end_ms = int(end_time.timestamp() * 1000)
-
-    # Build request parameters
-    params = {
-        "symbol": symbol,
-        "interval": interval,
-        "startTime": start_ms,
-        "endTime": end_ms,
-        "limit": min(limit, 1000),  # Ensure we don't exceed API limit
-    }
-
     url = f"{api_base}/api/v3/klines"
-    logger.info(f"Fetching {symbol} klines from {start_time.date()} to {end_time.date()}...")
+    page_size = min(limit, 1000)
+    ts_fmt = _timestamp_format(interval)
 
-    # Make API request
-    raw_klines = _make_request(url, params, rate_limit_delay, max_retries)
+    logger.info(
+        "Fetching %s klines (%s) from %s to %s...",
+        symbol, interval, start_time.date(), end_time.date(),
+    )
 
-    # Parse response into structured format
-    # Binance kline format:
-    # [openTime, open, high, low, close, volume, closeTime,
-    #  quoteVolume, trades, takerBuyBase, takerBuyQuote, ignore]
-    klines: list[dict[str, Any]] = []
-    for kline in raw_klines:
-        # Convert timestamp to readable date string (YYYY-MM-DD)
-        timestamp_dt = datetime.fromtimestamp(kline[0] / 1000, tz=UTC)
-        klines.append(
-            {
-                "timestamp": timestamp_dt.strftime("%Y-%m-%d"),
+    all_klines: list[dict[str, Any]] = []
+    page = 0
+
+    while current_start_ms < end_ms:
+        params = {
+            "symbol": symbol,
+            "interval": interval,
+            "startTime": current_start_ms,
+            "endTime": end_ms,
+            "limit": page_size,
+        }
+
+        raw_klines = _make_request(url, params, rate_limit_delay, max_retries)
+
+        if not raw_klines:
+            break
+
+        for kline in raw_klines:
+            timestamp_dt = datetime.fromtimestamp(kline[0] / 1000, tz=UTC)
+            all_klines.append({
+                "timestamp": timestamp_dt.strftime(ts_fmt),
                 "open": float(kline[1]),
                 "high": float(kline[2]),
                 "low": float(kline[3]),
                 "close": float(kline[4]),
                 "volume": float(kline[5]),
-            }
-        )
+            })
 
-    logger.info(f"Retrieved {len(klines)} klines for {symbol}")
-    return klines
+        # Advance past the last returned kline's close time
+        last_close_ms = int(raw_klines[-1][6])
+        current_start_ms = last_close_ms + 1
+        page += 1
+
+        # Stop if we got fewer than a full page (no more data)
+        if len(raw_klines) < page_size:
+            break
+
+        # Rate limit between pages
+        if current_start_ms < end_ms:
+            time.sleep(rate_limit_delay)
+
+    logger.info("Retrieved %d klines for %s (%d pages)", len(all_klines), symbol, page)
+    return all_klines
 
 
 def fetch_all_symbols(
@@ -360,11 +378,15 @@ def ingest_incremental(
             existing_records = []
 
         if existing_records:
-            # Find last date
+            # Find last timestamp (supports both daily and intraday formats)
             last_date_str = max(r["timestamp"] for r in existing_records)
-            last_date = datetime.strptime(last_date_str, "%Y-%m-%d").replace(tzinfo=UTC)
-            start_time = last_date + timedelta(days=1)  # Start from next day
-            logger.info(f"{symbol}: Last data {last_date_str}, fetching from {start_time.date()}")
+            try:
+                last_date = datetime.strptime(last_date_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=UTC)
+                start_time = last_date + timedelta(minutes=1)
+            except ValueError:
+                last_date = datetime.strptime(last_date_str, "%Y-%m-%d").replace(tzinfo=UTC)
+                start_time = last_date + timedelta(days=1)
+            logger.info(f"{symbol}: Last data {last_date_str}, fetching from {start_time}")
         else:
             # No existing data, fetch full period
             start_time = datetime.now(UTC) - timedelta(days=cfg.period_days)

@@ -1,13 +1,49 @@
 [portfolio]
-symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "ADAUSDT", "LINKUSDT", "DOTUSDT", "AVAXUSDT", "ATOMUSDT", "XRPUSDT", "DOGEUSDT", "FILUSDT"]
-interval = "1d"
-period_days = 365
+symbols = [
+    # Large caps
+    "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT",
+    "DOGEUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT", "ATOMUSDT", "FILUSDT",
+    # Mid caps
+    "MATICUSDT", "NEARUSDT", "AAVEUSDT", "UNIUSDT", "LTCUSDT", "TRXUSDT",
+    "ICPUSDT", "APTUSDT", "ARBUSDT", "OPUSDT", "SUIUSDT", "INJUSDT",
+    "FETUSDT", "RUNEUSDT", "THETAUSDT", "ALGOUSDT", "VETUSDT", "FTMUSDT",
+    # DeFi / Layer 2
+    "GRTUSDT", "DYDXUSDT", "SNXUSDT", "MKRUSDT", "COMPUSDT",
+    "SUSHIUSDT", "CRVUSDT", "LDOUSDT", "PENDLEUSDT", "ENSUSDT",
+    # Meme / Small caps
+    "SHIBUSDT", "PEPEUSDT", "FLOKIUSDT", "BOMEUSDT",
+    # Gaming / Metaverse
+    "SANDUSDT", "MANAUSDT", "AXSUSDT", "GALAUSDT", "IMXUSDT",
+    # Infrastructure
+    "RENDERUSDT", "HBARUSDT",
+]
+interval = "1m"
+period_days = 30
 risk_free_rate = 0.05
 trading_days_per_year = 365
 storage_backend = "parquet"
 
 [yfinance]
-symbols = ["SPY", "EFA", "GLD", "SLV", "TLT", "AAPL", "MSFT", "ASML.AS", "MC.PA", "SAP.DE"]
+symbols = [
+    # US broad market
+    "SPY", "QQQ", "IWM", "DIA",
+    # International
+    "EFA", "VGK", "EEM",
+    # Bonds
+    "TLT", "BND", "HYG",
+    # Commodities
+    "GLD", "SLV", "USO",
+    # US sectors
+    "XLF", "XLE", "XLK", "XLV",
+    # Mega caps
+    "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA",
+    # Financials
+    "JPM", "V", "GS",
+    # Healthcare / Consumer
+    "JNJ", "PG", "KO",
+    # European
+    "ASML.AS", "MC.PA", "SAP.DE",
+]
 trading_days_per_year = 252
 period_days = 365
 risk_free_rate = 0.05

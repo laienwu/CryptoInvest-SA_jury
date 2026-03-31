@@ -689,9 +689,22 @@ def optimize_weights(
         return _scipy_max_sharpe(mean_returns, cov_matrix, risk_free_rate)
     elif strategy == "min_variance":
         return optimize_minimum_variance(cov_matrix)
+    elif strategy == "hrp":
+        from src.pipeline.hrp import compute_hrp_weights
+        result = compute_hrp_weights(cov_matrix)
+        return result["weights"]
+    elif strategy == "risk_parity":
+        from src.pipeline.risk_parity import compute_risk_parity_weights
+        result = compute_risk_parity_weights(cov_matrix)
+        return result["weights"]
+    elif strategy == "max_diversification":
+        from src.pipeline.max_diversification import optimize_max_diversification
+        result = optimize_max_diversification(cov_matrix, mean_returns)
+        return result["weights"]
     else:
         raise OptimizeError(
-            f"Unknown strategy: {strategy}. Use 'max_sharpe' or 'min_variance'.",
+            f"Unknown strategy: {strategy}. Use 'max_sharpe', 'min_variance', "
+            "'hrp', 'risk_parity', or 'max_diversification'.",
             operation="optimize",
         )
 
@@ -740,10 +753,10 @@ def optimize_portfolio(
 
     symbols, cov_matrix, mean_returns, storage = _load_optimization_inputs(storage)
 
-    # Optimization (long-only: no short selling)
-    logger.info("Running long-only max-Sharpe optimization")
-    optimal_weights = _scipy_max_sharpe_long_only(mean_returns, cov_matrix, risk_free_rate)
-    method = "scipy_long_only"
+    # Optimization (unconstrained: short selling allowed)
+    logger.info("Running unconstrained max-Sharpe optimization")
+    optimal_weights = _scipy_max_sharpe(mean_returns, cov_matrix, risk_free_rate)
+    method = "scipy_unconstrained"
 
     # Calculate portfolio metrics
     expected_return = calculate_portfolio_return(optimal_weights, mean_returns)

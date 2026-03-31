@@ -34,9 +34,12 @@ API_URL = os.getenv("API_URL", "http://localhost:8000")
 COLORS = {
     "strategy": "#2ca02c",
     "equal": "#1f77b4",
+    "benchmark": "#1f77b4",
+    "equal_weight": "#1f77b4",
     "btc": "#ff7f0e",
     "accent": "#9467bd",
     "danger": "#d62728",
+    "grid": "#7f7f7f",
     "assets": px.colors.qualitative.Set2,
 }
 
@@ -50,23 +53,6 @@ CHART_LAYOUT: dict[str, Any] = {
     "yaxis": {"gridcolor": "rgba(128,128,128,0.15)", "zeroline": False},
 }
 
-RANGE_SELECTOR: dict[str, Any] = {
-    "buttons": [
-        {"count": 1, "label": "1M", "step": "month", "stepmode": "backward"},
-        {"count": 3, "label": "3M", "step": "month", "stepmode": "backward"},
-        {"count": 6, "label": "6M", "step": "month", "stepmode": "backward"},
-        {"count": 1, "label": "YTD", "step": "year", "stepmode": "todate"},
-        {"count": 1, "label": "1Y", "step": "year", "stepmode": "backward"},
-        {"step": "all", "label": "All"},
-    ],
-    "activecolor": "#2ca02c",
-    "bgcolor": "rgba(150,150,150,0.2)",
-    "font": {"size": 13, "color": "white"},
-    "bordercolor": "rgba(150,150,150,0.4)",
-    "borderwidth": 1,
-    "x": 0,
-    "y": 1.13,
-}
 
 STRATEGY_LABELS = {
     "strategy": "Optimized",
@@ -459,10 +445,20 @@ def render_kpi_cards(
         )
 
 
+def _invested_weights(weights: dict[str, float], threshold: float = 1e-4) -> dict[str, float]:
+    """Filter weights to only include assets with material allocation."""
+    return {s: w for s, w in weights.items() if abs(w) >= threshold}
+
+
 def render_allocation_donut(weights: dict[str, float]) -> None:
     """Render portfolio allocation as a horizontal bar chart (handles short positions)."""
     if not weights:
         st.warning("No allocation data available")
+        return
+
+    weights = _invested_weights(weights)
+    if not weights:
+        st.info("No material allocations")
         return
 
     sorted_w = sorted(weights.items(), key=lambda x: x[1], reverse=True)
@@ -502,9 +498,13 @@ def render_risk_contribution(
         st.info("No covariance data for risk contribution")
         return
 
+    invested = _invested_weights(weights)
     rc = _compute_risk_contribution(weights, matrix, symbols_cov)
 
-    syms = symbols_cov
+    syms = [s for s in symbols_cov if s in invested]
+    if not syms:
+        st.info("No material allocations for risk contribution")
+        return
     w_vals = [weights.get(s, 0.0) for s in syms]
     rc_vals = [rc.get(s, 0.0) for s in syms]
 
@@ -553,17 +553,29 @@ def render_risk_return_scatter(
     weights: dict[str, float],
 ) -> None:
     """Render risk-return bubble scatter: x=vol, y=return, size=weight."""
-    symbols = mean_ret_data.get("symbols", [])
+    all_symbols = mean_ret_data.get("symbols", [])
     ret_values = mean_ret_data.get("values", [])
     vol_values = vol_data.get("values", [])
 
-    if not symbols or len(ret_values) != len(symbols) or len(vol_values) != len(symbols):
+    if not all_symbols or len(ret_values) != len(all_symbols) or len(vol_values) != len(all_symbols):
         st.info("Insufficient data for risk-return scatter")
         return
 
+    invested = _invested_weights(weights)
+    # Filter to only invested assets
+    indices = [i for i, s in enumerate(all_symbols) if s in invested]
+    symbols = [all_symbols[i] for i in indices]
+    ret_values = [ret_values[i] for i in indices]
+    vol_values = [vol_values[i] for i in indices]
+
+    if not symbols:
+        st.info("No invested assets for scatter plot")
+        return
+
     w = [weights.get(s, 0.0) for s in symbols]
-    max_w = max(w) if w else 1.0
-    sizes = [max(8, (wi / max_w) * 50) if max_w > 0 else 15 for wi in w]
+    abs_w = [abs(wi) for wi in w]
+    max_w = max(abs_w) if abs_w else 1.0
+    sizes = [max(8, (aw / max_w) * 50) if max_w > 0 else 15 for aw in abs_w]
 
     fig = go.Figure()
     for i, sym in enumerate(symbols):
@@ -744,12 +756,8 @@ def page_dashboard() -> None:
 
     st.markdown("---")
 
-    symbols_resp = fetch_api("/symbols")
-    all_syms = symbols_resp.get("symbols", []) if symbols_resp else []
-    if _is_trad_mode():
-        dash_symbols = [s for s in all_syms if not s.endswith(("USDT", "BUSD"))]
-    else:
-        dash_symbols = [s for s in all_syms if s.endswith(("USDT", "BUSD"))]
+    invested = _invested_weights(weights)
+    dash_symbols = sorted(invested.keys())
     if dash_symbols:
         render_normalized_prices(dash_symbols)
 
@@ -940,7 +948,7 @@ def render_technical_chart(df: pd.DataFrame) -> None:
         hovermode="x unified",
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02},
     )
-    fig.update_xaxes(type="date", rangeselector=RANGE_SELECTOR, row=1, col=1)
+    fig.update_xaxes(type="date", row=1, col=1)
     fig.update_yaxes(title_text="Price (USDT)", row=1, col=1)
     fig.update_yaxes(title_text="Volume", row=2, col=1)
     fig.update_yaxes(title_text="RSI", row=3, col=1, range=[0, 100])
@@ -992,13 +1000,19 @@ def page_symbols() -> None:
         st.warning(f"No {mode_label.lower()} symbols found. Run the pipeline first.")
         return
 
-    col_sym, col_chart, col_compare = st.columns([2, 2, 1])
+    col_sym, col_chart, col_range, col_compare = st.columns([2, 2, 2, 1])
     with col_sym:
         selected_symbol = st.selectbox("Select Symbol", symbols)
     with col_chart:
         chart_type = st.selectbox(
             "Chart Type",
             ["Full (SMA + Bollinger + RSI)", "Candlestick + Volume", "Line only"],
+        )
+    with col_range:
+        date_range = st.selectbox(
+            "Date Range",
+            ["1D", "3D", "5D", "1W", "MTD", "1M", "3M", "6M", "YTD", "1Y", "All"],
+            index=10,
         )
     with col_compare:
         compare_mode = st.checkbox("Compare", value=False)
@@ -1027,6 +1041,33 @@ def page_symbols() -> None:
     for col in ["open", "high", "low", "close", "volume"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # Apply date range filter
+    if date_range != "All" and hasattr(df["date"].iloc[0], "date"):
+        last_date = df["date"].max()
+        if date_range == "1D":
+            cutoff = last_date - pd.Timedelta(days=1)
+        elif date_range == "3D":
+            cutoff = last_date - pd.Timedelta(days=3)
+        elif date_range == "5D":
+            cutoff = last_date - pd.Timedelta(days=5)
+        elif date_range == "1W":
+            cutoff = last_date - pd.Timedelta(weeks=1)
+        elif date_range == "MTD":
+            cutoff = last_date.replace(day=1)
+        elif date_range == "1M":
+            cutoff = last_date - pd.DateOffset(months=1)
+        elif date_range == "3M":
+            cutoff = last_date - pd.DateOffset(months=3)
+        elif date_range == "6M":
+            cutoff = last_date - pd.DateOffset(months=6)
+        elif date_range == "YTD":
+            cutoff = last_date.replace(month=1, day=1)
+        elif date_range == "1Y":
+            cutoff = last_date - pd.DateOffset(years=1)
+        else:
+            cutoff = df["date"].min()
+        df = df[df["date"] >= cutoff].reset_index(drop=True)
 
     # Compare mode: normalized overlay
     if compare_mode and compare_symbol:
@@ -1066,7 +1107,6 @@ def page_symbols() -> None:
             st.plotly_chart(fig_cmp, use_container_width=True)
 
     # Main chart
-    range_sel = RANGE_SELECTOR
     if chart_type.startswith("Full"):
         render_technical_chart(df)
     elif chart_type.startswith("Candlestick") and all(
@@ -1091,7 +1131,7 @@ def page_symbols() -> None:
             ), row=2, col=1)
         styled_layout(fig, title=f"{selected_symbol} OHLCV",
                       xaxis_rangeslider_visible=False, hovermode="x unified")
-        fig.update_xaxes(type="date", rangeselector=range_sel, row=1, col=1)
+        fig.update_xaxes(type="date", row=1, col=1)
         fig.update_yaxes(title_text="Price (USDT)", row=1, col=1)
         fig.update_yaxes(title_text="Volume", row=2, col=1)
         st.plotly_chart(fig, use_container_width=True)
@@ -1103,7 +1143,7 @@ def page_symbols() -> None:
         styled_layout(fig, title=f"{selected_symbol} Price History",
                       xaxis_title="Date", yaxis_title="Price (USDT)",
                       hovermode="x unified")
-        fig.update_xaxes(type="date", rangeselector=range_sel)
+        fig.update_xaxes(type="date")
         st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("---")
@@ -3535,6 +3575,99 @@ def page_pairs() -> None:
 
 
 # =============================================================================
+# Page: Multi-Strategy Backtest
+# =============================================================================
+
+
+def page_multi_backtest() -> None:
+    """Overlaid equity curves for multiple optimization strategies."""
+    st.header("Multi-Strategy Backtest")
+    data = fetch_api("/portfolio/backtest/multi")
+    if not data:
+        st.warning("No multi-backtest data available.")
+        return
+
+    strategies = data.get("strategies", {})
+    eq = data.get("equal_weight", {})
+    ranking = data.get("ranking", [])
+
+    # KPI row
+    best_name = ranking[0]["strategy"] if ranking else "N/A"
+    best_sharpe = ranking[0]["sharpe_ratio"] if ranking else 0.0
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Best Strategy", best_name)
+    c2.metric("Best Sharpe", fmt_ratio(best_sharpe))
+    c3.metric("Windows", data.get("n_windows", 0))
+    c4.metric("Strategies", len(strategies))
+
+    st.markdown("---")
+
+    # Overlaid equity curves
+    fig = go.Figure()
+    strat_colors = [COLORS["strategy"], COLORS["btc"], COLORS["accent"],
+                    COLORS["danger"], "#17becf", "#bcbd22"]
+
+    for i, (name, res) in enumerate(strategies.items()):
+        cum = res.get("cumulative_values", [])
+        if cum:
+            fig.add_trace(go.Scatter(
+                x=list(range(len(cum))), y=cum,
+                mode="lines", name=name.replace("_", " ").title(),
+                line={"color": strat_colors[i % len(strat_colors)], "width": 2},
+            ))
+
+    # Equal-weight benchmark
+    eq_cum = eq.get("cumulative_values", [])
+    if eq_cum:
+        fig.add_trace(go.Scatter(
+            x=list(range(len(eq_cum))), y=eq_cum,
+            mode="lines", name="Equal Weight",
+            line={"color": COLORS["equal"], "width": 2, "dash": "dash"},
+        ))
+
+    styled_layout(fig, title="Equity Curves — All Strategies")
+    fig.update_yaxes(title_text="Portfolio Value (start = 1.0)")
+    fig.update_xaxes(title_text="Trading Days")
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown("---")
+
+    # Ranking table
+    if ranking:
+        st.subheader("Strategy Ranking (by Sharpe)")
+        rows = []
+        for r in ranking:
+            strat = strategies.get(r["strategy"], {})
+            rows.append({
+                "Rank": r["rank"],
+                "Strategy": r["strategy"].replace("_", " ").title(),
+                "Sharpe": fmt_ratio(r["sharpe_ratio"]),
+                "Total Return": fmt_pct(strat.get("total_return")),
+                "Volatility": fmt_pct(strat.get("volatility")),
+                "Periods": strat.get("n_periods", 0),
+            })
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
+    # Sharpe comparison bar chart
+    if ranking:
+        names = [r["strategy"].replace("_", " ").title() for r in ranking]
+        sharpes = [r["sharpe_ratio"] for r in ranking]
+        eq_sharpe = eq.get("sharpe_ratio", 0)
+
+        fig2 = go.Figure()
+        fig2.add_trace(go.Bar(
+            x=names + ["Equal Weight"],
+            y=sharpes + [eq_sharpe],
+            marker_color=[strat_colors[i % len(strat_colors)] for i in range(len(names))]
+            + [COLORS["equal"]],
+        ))
+        styled_layout(fig2, title="Sharpe Ratio Comparison")
+        st.plotly_chart(fig2, use_container_width=True)
+
+
+# =============================================================================
 # Page: Strategy Showdown
 # =============================================================================
 
@@ -3615,6 +3748,97 @@ def page_strategy_showdown() -> None:
         st.plotly_chart(fig, use_container_width=True)
 
 
+_NAV_SECTIONS: dict[str, list[str]] = {
+    "Overview": [
+        "Dashboard",
+        "Symbols",
+        "Metrics",
+        "Live Ticker",
+    ],
+    "Optimization": [
+        "Frontier",
+        "Constrained",
+        "Black-Litterman",
+        "HRP",
+        "Max Diversification",
+        "Min Variance",
+        "Strategy Showdown",
+    ],
+    "Risk": [
+        "Risk Analysis",
+        "VaR",
+        "Tail Risk",
+        "Factors",
+        "Shrinkage",
+        "Alpha/Beta",
+        "Sortino",
+        "Stress Test",
+    ],
+    "Backtest": [
+        "Backtest",
+        "Monte Carlo",
+        "Multi Backtest",
+    ],
+    "Trading": [
+        "Signals",
+        "Regime",
+        "Pairs",
+        "Position Sizing",
+        "Costs",
+    ],
+    "Portfolio": [
+        "Comparison",
+        "Correlation",
+        "Drawdown",
+        "Attribution",
+        "Decay",
+    ],
+}
+
+_PAGE_DISPATCH: dict[str, Any] = {
+    "Dashboard": page_dashboard,
+    "Symbols": page_symbols,
+    "Metrics": page_metrics,
+    "Live Ticker": page_live_ticker,
+    "Frontier": page_frontier,
+    "Constrained": page_constrained,
+    "Black-Litterman": page_black_litterman,
+    "HRP": page_hrp,
+    "Max Diversification": page_max_diversification,
+    "Min Variance": page_min_variance,
+    "Strategy Showdown": page_strategy_showdown,
+    "Risk Analysis": page_risk,
+    "VaR": page_var_comparison,
+    "Tail Risk": page_tail_risk,
+    "Factors": page_factor_analysis,
+    "Shrinkage": page_shrinkage,
+    "Alpha/Beta": page_alpha_beta,
+    "Sortino": page_sortino_risk,
+    "Stress Test": page_stress_test,
+    "Backtest": page_backtest,
+    "Monte Carlo": page_monte_carlo,
+    "Multi Backtest": page_multi_backtest,
+    "Signals": page_signals,
+    "Regime": page_regime,
+    "Pairs": page_pairs,
+    "Position Sizing": page_position_sizing,
+    "Costs": page_cost_analysis,
+    "Comparison": page_comparison,
+    "Correlation": page_correlation_network,
+    "Drawdown": page_drawdown,
+    "Attribution": page_attribution,
+    "Decay": page_decay,
+}
+
+
+def _section_for_page(page_name: str) -> str:
+    """Return the section that contains the given page."""
+    for section, pages in _NAV_SECTIONS.items():
+        if page_name in pages:
+            return section
+    return "Overview"
+
+
 def main() -> None:
     """Main dashboard entry point."""
     st.set_page_config(
@@ -3623,11 +3847,26 @@ def main() -> None:
         layout="wide",
     )
 
+    if "page" not in st.session_state:
+        st.session_state.page = "Dashboard"
+
+    # --- Grouped sidebar navigation ---
     st.sidebar.title("Navigation")
-    page = st.sidebar.radio(
-        "Select Page",
-        ["Dashboard", "Symbols", "Metrics", "Risk Analysis", "Frontier", "Backtest", "Monte Carlo", "Signals", "Regime", "Costs", "Alpha/Beta", "Sortino", "Comparison", "Constrained", "Correlation", "Position Sizing", "Stress Test", "Drawdown", "Attribution", "Black-Litterman", "HRP", "VaR", "Shrinkage", "Max Diversification", "Min Variance", "Factors", "Tail Risk", "Decay", "Pairs", "Strategy Showdown", "Live Ticker"],
-    )
+    active_section = _section_for_page(st.session_state.page)
+
+    for section, pages in _NAV_SECTIONS.items():
+        with st.sidebar.expander(f"**{section}**", expanded=(section == active_section)):
+            for p in pages:
+                is_active = p == st.session_state.page
+                label = f"{'> ' if is_active else ''}{p}"
+                if st.button(
+                    label,
+                    key=f"nav_{p}",
+                    use_container_width=True,
+                    type="primary" if is_active else "secondary",
+                ):
+                    st.session_state.page = p
+                    st.rerun()
 
     st.sidebar.markdown("---")
     st.sidebar.radio(
@@ -3649,74 +3888,17 @@ def main() -> None:
     _render_sidebar_last_updated()
 
     st.sidebar.markdown("---")
-    if st.sidebar.button("🔄 Refresh data"):
+    if st.sidebar.button("Refresh data"):
         st.cache_data.clear()
         st.rerun()
 
     auto_refresh = st.sidebar.toggle("Auto-refresh (30s)", value=False)
 
-    if page == "Dashboard":
-        page_dashboard()
-    elif page == "Symbols":
-        page_symbols()
-    elif page == "Metrics":
-        page_metrics()
-    elif page == "Risk Analysis":
-        page_risk()
-    elif page == "Frontier":
-        page_frontier()
-    elif page == "Backtest":
-        page_backtest()
-    elif page == "Monte Carlo":
-        page_monte_carlo()
-    elif page == "Signals":
-        page_signals()
-    elif page == "Regime":
-        page_regime()
-    elif page == "Costs":
-        page_cost_analysis()
-    elif page == "Alpha/Beta":
-        page_alpha_beta()
-    elif page == "Sortino":
-        page_sortino_risk()
-    elif page == "Comparison":
-        page_comparison()
-    elif page == "Constrained":
-        page_constrained()
-    elif page == "Correlation":
-        page_correlation_network()
-    elif page == "Position Sizing":
-        page_position_sizing()
-    elif page == "Stress Test":
-        page_stress_test()
-    elif page == "Drawdown":
-        page_drawdown()
-    elif page == "Attribution":
-        page_attribution()
-    elif page == "Black-Litterman":
-        page_black_litterman()
-    elif page == "HRP":
-        page_hrp()
-    elif page == "VaR":
-        page_var_comparison()
-    elif page == "Shrinkage":
-        page_shrinkage()
-    elif page == "Max Diversification":
-        page_max_diversification()
-    elif page == "Min Variance":
-        page_min_variance()
-    elif page == "Factors":
-        page_factor_analysis()
-    elif page == "Tail Risk":
-        page_tail_risk()
-    elif page == "Decay":
-        page_decay()
-    elif page == "Pairs":
-        page_pairs()
-    elif page == "Strategy Showdown":
-        page_strategy_showdown()
-    elif page == "Live Ticker":
-        page_live_ticker()
+    # --- Page dispatch ---
+    page = st.session_state.page
+    handler = _PAGE_DISPATCH.get(page)
+    if handler:
+        handler()
 
     if auto_refresh:
         time.sleep(30)

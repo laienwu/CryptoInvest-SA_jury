@@ -84,9 +84,19 @@ class ParquetStorage(Storage):
         (self.data_dir / "processed").mkdir(parents=True, exist_ok=True)
         (self.data_dir / "output").mkdir(parents=True, exist_ok=True)
 
+    @property
+    def _raw_dataset_dir(self) -> Path:
+        """Root directory for the partitioned raw klines dataset."""
+        return self.data_dir / "raw" / "klines"
+
     def _get_raw_path(self, symbol: str) -> Path:
-        """Get the file path for a symbol's raw klines data."""
+        """Get the legacy flat-file path for a symbol's raw klines data."""
         return self.data_dir / "raw" / "klines" / f"{symbol}.parquet"
+
+    def _is_partitioned(self) -> bool:
+        """Check if the raw data uses Hive-style partitioning."""
+        klines_dir = self._raw_dataset_dir
+        return any(d.name.startswith("symbol=") for d in klines_dir.iterdir() if d.is_dir()) if klines_dir.exists() else False
 
     def _get_processed_path(self, name: str) -> Path:
         """Get the file path for processed data."""
@@ -104,9 +114,9 @@ class ParquetStorage(Storage):
         self, data: dict[str, list[dict[str, Any]]], metadata: dict[str, Any] | None = None
     ) -> str:
         """
-        Save raw ingested klines data to Parquet files.
+        Save raw ingested klines data as a Hive-partitioned Parquet dataset.
 
-        Each symbol gets its own Parquet file with OHLCV columns.
+        Partition layout: ``klines/symbol=X/year=Y/month=M/data.parquet``
 
         Args:
             data: Dictionary mapping symbol to list of OHLCV records.
@@ -122,32 +132,47 @@ class ParquetStorage(Storage):
             raise StorageError("No data provided to save", operation="save_raw")
 
         saved_count = 0
-        klines_dir = self.data_dir / "raw" / "klines"
+        klines_dir = self._raw_dataset_dir
 
         for symbol, records in data.items():
             if not records:
-                logger.debug(f"Skipping {symbol}: no records")
+                logger.debug("Skipping %s: no records", symbol)
                 continue
 
             try:
-                file_path = self._get_raw_path(symbol)
-                write_klines_parquet(symbol, records, file_path, metadata)
+                # Group records by year/month extracted from timestamp
+                buckets: dict[tuple[str, str], list[dict[str, Any]]] = {}
+                for rec in records:
+                    ts = rec["timestamp"]
+                    # Handle both "YYYY-MM-DD" and "YYYY-MM-DDTHH:MM:SS"
+                    year = ts[:4]
+                    month = ts[5:7]
+                    buckets.setdefault((year, month), []).append(rec)
+
+                for (year, month), bucket_records in buckets.items():
+                    partition_dir = klines_dir / f"symbol={symbol}" / f"year={year}" / f"month={month}"
+                    partition_dir.mkdir(parents=True, exist_ok=True)
+                    file_path = partition_dir / "data.parquet"
+                    write_klines_parquet(symbol, bucket_records, file_path, metadata)
+
                 saved_count += 1
-                logger.debug(f"Saved {symbol}: {len(records)} records to {file_path.name}")
+                logger.debug("Saved %s: %d records (%d partitions)", symbol, len(records), len(buckets))
 
             except Exception as e:
                 raise StorageError(
                     f"Failed to save {symbol}: {e}", operation="save_raw"
                 ) from e
 
-        logger.info(f"Saved raw data for {saved_count} symbols to {klines_dir}")
+        logger.info("Saved raw data for %d symbols to %s", saved_count, klines_dir)
         return str(klines_dir)
 
     def load_raw(
         self, symbols: list[str] | None = None
     ) -> dict[str, list[dict[str, Any]]]:
         """
-        Load raw klines data from Parquet files.
+        Load raw klines data from Hive-partitioned Parquet dataset.
+
+        Falls back to legacy flat-file layout for backward compatibility.
 
         Args:
             symbols: List of symbols to load. If None, loads all available.
@@ -158,9 +183,8 @@ class ParquetStorage(Storage):
         Raises:
             StorageError: If no data is found.
         """
-        klines_dir = self.data_dir / "raw" / "klines"
+        klines_dir = self._raw_dataset_dir
 
-        # Determine which symbols to load
         if symbols is None:
             symbols = self.list_raw_symbols()
 
@@ -172,32 +196,26 @@ class ParquetStorage(Storage):
         result: dict[str, list[dict[str, Any]]] = {}
 
         for symbol in symbols:
-            file_path = self._get_raw_path(symbol)
-
-            if not file_path.exists():
-                logger.warning(f"No data found for {symbol}")
-                continue
-
             try:
-                # Read Parquet file
-                table = pq.read_table(file_path)
+                table = self._load_symbol_table(symbol)
+                if table is None:
+                    logger.warning("No data found for %s", symbol)
+                    continue
 
-                # Convert to list of dicts (row-oriented format)
-                records = []
-                for i in range(table.num_rows):
-                    records.append(
-                        {
-                            "timestamp": table["timestamp"][i].as_py(),
-                            "open": table["open"][i].as_py(),
-                            "high": table["high"][i].as_py(),
-                            "low": table["low"][i].as_py(),
-                            "close": table["close"][i].as_py(),
-                            "volume": table["volume"][i].as_py(),
-                        }
-                    )
-
-                result[symbol] = records
-                logger.debug(f"Loaded {symbol}: {len(records)} records")
+                records = table.to_pydict()
+                n = table.num_rows
+                result[symbol] = [
+                    {
+                        "timestamp": records["timestamp"][i],
+                        "open": records["open"][i],
+                        "high": records["high"][i],
+                        "low": records["low"][i],
+                        "close": records["close"][i],
+                        "volume": records["volume"][i],
+                    }
+                    for i in range(n)
+                ]
+                logger.debug("Loaded %s: %d records", symbol, n)
 
             except Exception as e:
                 raise StorageError(
@@ -210,8 +228,24 @@ class ParquetStorage(Storage):
                 operation="load_raw",
             )
 
-        logger.info(f"Loaded raw data for {len(result)} symbols")
+        logger.info("Loaded raw data for %d symbols", len(result))
         return result
+
+    def _load_symbol_table(self, symbol: str) -> pa.Table | None:
+        """Load all partitions for a single symbol into one Arrow table."""
+        partition_dir = self._raw_dataset_dir / f"symbol={symbol}"
+        if partition_dir.is_dir():
+            parquet_files = list(partition_dir.rglob("*.parquet"))
+            if parquet_files:
+                tables = [pq.read_table(f) for f in sorted(parquet_files)]
+                return pa.concat_tables(tables)
+
+        # Fallback: legacy flat file
+        flat_file = self._get_raw_path(symbol)
+        if flat_file.exists():
+            return pq.read_table(flat_file)
+
+        return None
 
     # -------------------------------------------------------------------------
     # Processed Data Operations
@@ -520,16 +554,25 @@ class ParquetStorage(Storage):
         """
         List all symbols that have stored raw data.
 
+        Supports both Hive-partitioned (``symbol=X/``) and legacy flat layout.
+
         Returns:
-            List of symbol names (without .parquet extension).
+            Sorted list of symbol names.
         """
-        klines_dir = self.data_dir / "raw" / "klines"
+        klines_dir = self._raw_dataset_dir
         if not klines_dir.exists():
             return []
 
-        symbols = []
-        for file_path in klines_dir.glob("*.parquet"):
-            symbols.append(file_path.stem)
+        symbols: set[str] = set()
+
+        # Hive partitions: symbol=BTCUSDT/
+        for d in klines_dir.iterdir():
+            if d.is_dir() and d.name.startswith("symbol="):
+                symbols.add(d.name.split("=", 1)[1])
+
+        # Legacy flat files: BTCUSDT.parquet
+        for f in klines_dir.glob("*.parquet"):
+            symbols.add(f.stem)
 
         return sorted(symbols)
 

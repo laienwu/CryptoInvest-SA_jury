@@ -675,6 +675,61 @@ class PairsResponse(BaseModel):
     method: str
 
 
+class MultiBacktestStrategyResult(BaseModel):
+    cumulative_values: list[float]
+    total_return: float | None = None
+    annualized_return: float | None = None
+    volatility: float | None = None
+    sharpe_ratio: float | None = None
+    n_periods: int
+    error: str | None = None
+
+
+class MultiBacktestRanking(BaseModel):
+    rank: int
+    strategy: str
+    sharpe_ratio: float
+
+
+class MultiBacktestResponse(BaseModel):
+    """Multi-strategy backtest results."""
+
+    strategies: dict[str, MultiBacktestStrategyResult]
+    equal_weight: MultiBacktestStrategyResult
+    ranking: list[MultiBacktestRanking]
+    symbols: list[str]
+    n_windows: int
+    config: dict[str, Any]
+    method: str
+
+
+class SymbolVolumeMetrics(BaseModel):
+    records: int
+    first_date: str | None = None
+    last_date: str | None = None
+    size_bytes: int = 0
+
+
+class ZoneVolumeMetrics(BaseModel):
+    raw: dict[str, Any]
+    processed: dict[str, Any]
+    output: dict[str, Any]
+
+
+class DataVolumeMetricsResponse(BaseModel):
+    """Data volume metrics for governance and monitoring."""
+
+    total_records: int
+    total_symbols: int
+    symbols: dict[str, SymbolVolumeMetrics]
+    total_size_bytes: int
+    total_size_mb: float
+    zones: ZoneVolumeMetrics
+    partitions: int
+    freshness_hours: float | None = None
+    method: str
+
+
 class StrategyResult(BaseModel):
     name: str
     weights: dict[str, float] | None = None

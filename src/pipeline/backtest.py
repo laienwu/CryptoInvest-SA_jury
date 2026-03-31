@@ -640,3 +640,180 @@ def run_yfinance_backtest(
 
     logger.info("Traditional backtest complete")
     return result
+
+
+# =============================================================================
+# Multi-Strategy Backtest
+# =============================================================================
+
+MULTI_STRATEGIES = ["max_sharpe", "hrp", "risk_parity", "min_variance", "max_diversification"]
+
+
+def run_multi_backtest(
+    train_window: int = 60,
+    test_window: int = 30,
+    strategies: list[str] | None = None,
+    storage: Storage | None = None,
+    risk_free_rate: float = 0.05,
+    save: bool = True,
+) -> dict[str, Any]:
+    """
+    Run walk-forward backtest for multiple optimization strategies.
+
+    Shares the same data loading and window creation, then runs each
+    strategy through the same windows for fair comparison.
+
+    Args:
+        train_window: Training window size in days.
+        test_window: Test window size in days.
+        strategies: List of strategy names. Defaults to all 5 supported.
+        storage: Storage instance.
+        risk_free_rate: Risk-free rate.
+        save: Whether to save results.
+
+    Returns:
+        Dictionary with per-strategy results, comparison metrics, and config.
+    """
+    if strategies is None:
+        strategies = list(MULTI_STRATEGIES)
+
+    logger.info("Running multi-strategy backtest for: %s", strategies)
+
+    cfg = load_config()
+    if storage is None:
+        storage = get_storage(cfg.storage_backend)
+    trading_days = cfg.trading_days_per_year
+
+    # Load and align data
+    try:
+        raw_data = storage.load_raw()
+    except Exception as e:
+        raise BacktestError(
+            f"Failed to load raw data: {e}", operation="load"
+        ) from e
+
+    symbols, dates, prices_matrix = align_data_by_date(raw_data)
+    n_symbols = len(symbols)
+
+    windows = _create_rolling_windows(dates, prices_matrix, train_window, test_window)
+    equal_weights = [1.0 / n_symbols] * n_symbols
+
+    # Run each strategy
+    strategy_results: dict[str, dict[str, Any]] = {}
+
+    for strat_name in strategies:
+        try:
+            all_returns: list[float] = []
+            all_dates_strat: list[str] = []
+
+            for window in windows:
+                ti, te = window["train_start_idx"], window["train_end_idx"]
+                tsi, tei = window["test_start_idx"], window["test_end_idx"]
+
+                train_prices = [s[ti:te] for s in prices_matrix]
+                test_prices = [s[tsi:tei] for s in prices_matrix]
+
+                opt_weights = _optimize_on_window(
+                    train_prices, strat_name, risk_free_rate, trading_days
+                )
+                daily_rets = _compute_portfolio_daily_returns(test_prices, opt_weights)
+                all_returns.extend(daily_rets)
+                all_dates_strat.extend(dates[tsi + 1:tei])
+
+            # Cumulative values
+            cum = [1.0]
+            for r in all_returns:
+                cum.append(cum[-1] * (1.0 + r))
+
+            total_return = cum[-1] / cum[0] - 1.0 if cum[0] > 0 else 0.0
+            ann_return = total_return * (trading_days / max(len(all_returns), 1))
+            vol = _std(all_returns) * (trading_days ** 0.5) if all_returns else 0.0
+            sharpe = ann_return / vol if vol > 0 else 0.0
+
+            strategy_results[strat_name] = {
+                "cumulative_values": cum,
+                "total_return": round(total_return, 6),
+                "annualized_return": round(ann_return, 6),
+                "volatility": round(vol, 6),
+                "sharpe_ratio": round(sharpe, 4),
+                "n_periods": len(all_returns),
+                "error": None,
+            }
+        except Exception as e:
+            logger.warning("Strategy %s failed: %s", strat_name, e)
+            strategy_results[strat_name] = {
+                "cumulative_values": [],
+                "total_return": None,
+                "annualized_return": None,
+                "volatility": None,
+                "sharpe_ratio": None,
+                "n_periods": 0,
+                "error": str(e),
+            }
+
+    # Equal-weight benchmark
+    eq_returns: list[float] = []
+    for window in windows:
+        tsi, tei = window["test_start_idx"], window["test_end_idx"]
+        test_prices = [s[tsi:tei] for s in prices_matrix]
+        eq_rets = _compute_portfolio_daily_returns(test_prices, equal_weights)
+        eq_returns.extend(eq_rets)
+
+    eq_cum = [1.0]
+    for r in eq_returns:
+        eq_cum.append(eq_cum[-1] * (1.0 + r))
+
+    eq_total = eq_cum[-1] / eq_cum[0] - 1.0 if eq_cum[0] > 0 else 0.0
+    eq_ann = eq_total * (trading_days / max(len(eq_returns), 1))
+    eq_vol = _std(eq_returns) * (trading_days ** 0.5) if eq_returns else 0.0
+    eq_sharpe = eq_ann / eq_vol if eq_vol > 0 else 0.0
+
+    # Ranking
+    ranked = sorted(
+        [(name, r) for name, r in strategy_results.items() if r.get("sharpe_ratio") is not None],
+        key=lambda x: x[1]["sharpe_ratio"],
+        reverse=True,
+    )
+    ranking = [{"rank": i + 1, "strategy": name, "sharpe_ratio": r["sharpe_ratio"]} for i, (name, r) in enumerate(ranked)]
+
+    result: dict[str, Any] = {
+        "strategies": strategy_results,
+        "equal_weight": {
+            "cumulative_values": eq_cum,
+            "total_return": round(eq_total, 6),
+            "annualized_return": round(eq_ann, 6),
+            "volatility": round(eq_vol, 6),
+            "sharpe_ratio": round(eq_sharpe, 4),
+        },
+        "ranking": ranking,
+        "symbols": symbols,
+        "n_windows": len(windows),
+        "config": {
+            "train_window": train_window,
+            "test_window": test_window,
+            "strategies": strategies,
+            "risk_free_rate": risk_free_rate,
+        },
+        "method": "multi_backtest",
+    }
+
+    if save:
+        try:
+            storage.save_output(result, "backtest_multi")
+        except Exception as e:
+            raise BacktestError(
+                f"Failed to save multi backtest: {e}", operation="save"
+            ) from e
+
+    logger.info("Multi-strategy backtest complete: %d strategies, %d windows", len(strategies), len(windows))
+    return result
+
+
+def _std(values: list[float]) -> float:
+    """Compute standard deviation of a list of floats."""
+    if len(values) < 2:
+        return 0.0
+    n = len(values)
+    mean = sum(values) / n
+    variance = sum((x - mean) ** 2 for x in values) / (n - 1)
+    return variance ** 0.5

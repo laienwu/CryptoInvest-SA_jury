@@ -43,6 +43,7 @@ from src.api.schemas import (
     MetricsListResponse,
     MinVarianceResponse,
     MonteCarloResponse,
+    MultiBacktestResponse,
     PairsResponse,
     PortfolioResponse,
     PortfolioSummaryResponse,
@@ -56,6 +57,7 @@ from src.api.schemas import (
     ShrinkageResponse,
     SignalsResponse,
     SortinoResponse,
+    DataVolumeMetricsResponse,
     StrategyComparisonResponse,
     StressTestResponse,
     SymbolsResponse,
@@ -1192,6 +1194,64 @@ def get_compare_strategies(
         raise HTTPException(404, e.message) from e
     except Exception as e:
         logger.error("Failed strategy comparison: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Multi-Strategy Backtest — /portfolio/backtest/multi
+# =============================================================================
+
+
+@app.get("/portfolio/backtest/multi", response_model=MultiBacktestResponse)
+def get_multi_backtest(
+    train_window: int = 60,
+    test_window: int = 30,
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache | None = Depends(get_cache),
+) -> dict[str, Any]:
+    """Run walk-forward backtest for all optimization strategies."""
+    from src.pipeline.backtest import BacktestError, run_multi_backtest
+
+    try:
+        return cached_response(
+            cache,
+            f"portfolio:backtest-multi:{train_window}:{test_window}",
+            _CACHE_TTL_SECONDS,
+            lambda: run_multi_backtest(
+                train_window=train_window,
+                test_window=test_window,
+                storage=storage,
+                save=False,
+            ),
+        )
+    except BacktestError as e:
+        raise HTTPException(404, e.message) from e
+    except Exception as e:
+        logger.error("Failed multi backtest: %s", e)
+        raise HTTPException(500, "Internal server error") from e
+
+
+# =============================================================================
+# Data volume metrics
+# =============================================================================
+
+
+@app.get("/data/metrics", response_model=DataVolumeMetricsResponse, tags=["Data"])
+async def data_volume_metrics(
+    storage: Storage = Depends(get_storage_dep),
+    cache: RedisCache = Depends(get_cache),
+):
+    """Data volume metrics: record counts, sizes, partitions, freshness."""
+    from src.pipeline.data_metrics import compute_data_metrics
+
+    try:
+        return await cached_response(
+            cache,
+            "data_metrics",
+            lambda: compute_data_metrics(storage),
+        )
+    except Exception as e:
+        logger.error("Failed to compute data metrics: %s", e)
         raise HTTPException(500, "Internal server error") from e
 
 

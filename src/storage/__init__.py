@@ -48,6 +48,14 @@ try:
 except ImportError:
     _has_minio = False
 
+# Delta Lake is an optional dependency — only register if installed
+try:
+    from .delta import DeltaStorage
+
+    _has_delta = True
+except ImportError:
+    _has_delta = False
+
 # Type alias for storage names
 StorageName = str
 
@@ -61,6 +69,8 @@ _mutable_registry: dict[str, type[Storage]] = {
 }
 if _has_minio:
     _mutable_registry["minio"] = MinIOStorage
+if _has_delta:
+    _mutable_registry["delta"] = DeltaStorage
 _STORAGE_REGISTRY: MappingProxyType[str, type[Storage]] = MappingProxyType(_mutable_registry)
 
 # Default storage backend
@@ -168,3 +178,5 @@ __all__ = [
 ]
 if _has_minio:
     __all__.append("MinIOStorage")
+if _has_delta:
+    __all__.append("DeltaStorage")

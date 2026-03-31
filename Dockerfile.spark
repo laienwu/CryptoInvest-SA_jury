@@ -1,0 +1,21 @@
+FROM python:3.13-slim
+
+# Install Java for PySpark
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends openjdk-17-jre-headless && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+
+WORKDIR /app
+
+# Install Python dependencies
+COPY pyproject.toml uv.lock ./
+RUN pip install --no-cache-dir uv && \
+    uv sync --extra spark
+
+COPY src/ src/
+COPY config.toml ./
+
+CMD ["python", "-m", "src.pipeline.spark_transforms"]

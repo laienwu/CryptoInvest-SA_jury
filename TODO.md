@@ -1,9 +1,21 @@
-# TODO — Batch 3: Strategy Comparison, Multi-Backtest, Polish
+# TODO — Batch 4: Massive Data Infrastructure
 
-- [x] 1. Strategy Showdown module — `src/pipeline/strategy_compare.py` + tests. Calls all 6 optimizers (Max Sharpe, HRP, Risk Parity, Min Variance, Max Diversification, Black-Litterman), returns side-by-side weights, return, vol, Sharpe. API endpoint `GET /portfolio/compare-strategies` + schema + OpenAPI. Dashboard page with comparison table + radar chart.
-- [ ] 2. Multi-strategy backtest — extend `src/pipeline/backtest.py` to accept an `optimization_method` param (max_sharpe, hrp, risk_parity, min_variance, max_diversification). New endpoint `GET /portfolio/backtest/multi` returning results for all strategies. Dashboard page with overlaid equity curves.
-- [ ] 3. Update soutenance slides — `docs/soutenance.html` to reflect 30 pages, 42 endpoints, 1109+ tests, 39 pipeline modules. Add slides for batch 2+3 features.
-- [ ] 4. Boost test coverage — target 70%+. Run `pytest --cov` to find uncovered branches, add tests for gaps in existing modules (transform, optimize, ingest, storage, api).
-- [ ] 5. Integration test — `tests/test_integration.py`. End-to-end: mock raw data → transform → optimize → backtest → verify output keys/shapes. No external deps.
-- [ ] 6. Correlation regime analysis — `src/pipeline/correlation_regime.py` + tests. Compute correlations in bull vs bear periods (from regime module). Shows how diversification breaks down in crises. API endpoint `GET /portfolio/correlation-regime` + dashboard page.
-- [ ] 7. Final sync — update CLAUDE.md, README (test count, features, dashboard list), OpenAPI spec, commit & push.
+## Batch 3 (carried over)
+- [x] 1. Strategy Showdown module
+- [x] 2. Multi-strategy backtest
+- [ ] 3. Update soutenance slides
+- [ ] 4. Boost test coverage to 70%+
+- [ ] 5. Integration test
+- [ ] 6. Correlation regime analysis
+- [ ] 7. Final sync
+
+## Batch 4: Massive Data
+- [x] 1. Expand symbols — 51 crypto pairs + 33 trad assets in config. Updated `PipelineConfig` defaults.
+- [x] 2. Paginated ingestion — `fetch_klines` loops with 1000-record pages via `startTime`/`closeTime`.
+- [x] 3. Switch to 1-minute candles — default interval `1m`, ISO 8601 timestamps (`%Y-%m-%dT%H:%M:%S`).
+- [x] 4. Partition Parquet — Hive-style `symbol=X/year=Y/month=M/` layout in parquet storage.
+- [x] 5. Delta Lake — `DeltaStorage` backend (`src/storage/delta.py`), registered in factory. ADR-006. Tests.
+- [x] 6. Order book snapshots — Binance depth WebSocket → Kafka `orderbook-depth` → Parquet consumer. Tests.
+- [x] 7. PySpark transforms — `src/pipeline/spark_transforms.py` (rolling corr, vol surface, volume). Dockerfile.spark. Tests.
+- [x] 8. dbt SQL transforms — `dbt_project/` with staging + marts models on DuckDB. ADR-007. Airflow dbt_run task. Tests.
+- [x] 9. Data volume metrics — `src/pipeline/data_metrics.py`. API endpoint `GET /data/metrics`. Tests.

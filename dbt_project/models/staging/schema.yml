@@ -1,0 +1,33 @@
+version: 2
+
+sources:
+  - name: raw
+    description: "Raw Parquet files from the Bronze zone"
+    tables:
+      - name: klines
+        description: "OHLCV candlestick data from Binance and yfinance"
+
+models:
+  - name: stg_klines
+    description: "Staging: cleaned klines with proper types"
+    columns:
+      - name: symbol
+        description: "Trading pair symbol"
+        tests:
+          - not_null
+      - name: timestamp
+        description: "Candle timestamp"
+        tests:
+          - not_null
+      - name: close
+        description: "Closing price"
+        tests:
+          - not_null
+
+  - name: stg_symbols
+    description: "Staging: unique symbols with metadata"
+    columns:
+      - name: symbol
+        tests:
+          - not_null
+          - unique
