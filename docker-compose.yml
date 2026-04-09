@@ -44,6 +44,7 @@ x-airflow-common: &airflow-common
     - ./src:/opt/airflow/src
     - ./data:/opt/airflow/data
     - ./config.toml:/opt/airflow/config.toml
+    - ./dbt_project:/opt/airflow/dbt_project
   depends_on:
     postgres:
       condition: service_healthy

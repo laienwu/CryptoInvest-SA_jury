@@ -2,6 +2,7 @@
 
 import math
 import random
+from unittest.mock import patch
 
 import pytest
 
@@ -385,10 +386,18 @@ class TestFindAllPairs:
 
 
 class TestAnalyzePairs:
+    def _patch_config(self, symbols):
+        """Patch load_config to return a config with the given symbols."""
+        from unittest.mock import MagicMock
+        mock_cfg = MagicMock()
+        mock_cfg.symbols = symbols
+        return patch("src.pipeline.pairs.load_config", return_value=mock_cfg)
+
     def test_basic_analysis(self):
         raw = _make_cointegrated_raw(n=120)
         storage = MockStorage(raw_data=raw)
-        result = analyze_pairs(min_observations=10, storage=storage, save=False)
+        with self._patch_config(list(raw.keys())):
+            result = analyze_pairs(min_observations=10, storage=storage, save=False)
         assert "pairs" in result
         assert "n_pairs_tested" in result
         assert "n_cointegrated" in result
@@ -398,35 +407,41 @@ class TestAnalyzePairs:
     def test_saves_when_requested(self):
         raw = _make_cointegrated_raw(n=120)
         storage = MockStorage(raw_data=raw)
-        analyze_pairs(min_observations=10, storage=storage, save=True)
+        with self._patch_config(list(raw.keys())):
+            analyze_pairs(min_observations=10, storage=storage, save=True)
         assert "pairs_analysis" in storage._saved
 
     def test_no_save_when_disabled(self):
         raw = _make_cointegrated_raw(n=120)
         storage = MockStorage(raw_data=raw)
-        analyze_pairs(min_observations=10, storage=storage, save=False)
+        with self._patch_config(list(raw.keys())):
+            analyze_pairs(min_observations=10, storage=storage, save=False)
         assert "pairs_analysis" not in storage._saved
 
     def test_missing_data_raises(self):
         storage = MockStorage(raise_on_load=True)
-        with pytest.raises(PairsError, match="Raw price data not found"):
-            analyze_pairs(storage=storage)
+        with self._patch_config(["AAAA", "BBBB"]):
+            with pytest.raises(PairsError, match="Raw price data not found"):
+                analyze_pairs(storage=storage)
 
     def test_empty_data_raises(self):
         storage = MockStorage(raw_data={})
-        with pytest.raises(PairsError, match="No symbols found"):
-            analyze_pairs(storage=storage)
+        with self._patch_config(["AAAA"]):
+            with pytest.raises(PairsError, match="No symbols found"):
+                analyze_pairs(storage=storage)
 
     def test_single_symbol_raises(self):
         raw = {"ONLY": _make_kline_records([100.0, 101.0, 102.0])}
         storage = MockStorage(raw_data=raw)
-        with pytest.raises(PairsError, match="at least 2 symbols"):
-            analyze_pairs(storage=storage)
+        with self._patch_config(["ONLY"]):
+            with pytest.raises(PairsError, match="at least 2 symbols"):
+                analyze_pairs(storage=storage)
 
     def test_top_pair_detail(self):
         raw = _make_cointegrated_raw(n=150)
         storage = MockStorage(raw_data=raw)
-        result = analyze_pairs(min_observations=10, storage=storage, save=False)
+        with self._patch_config(list(raw.keys())):
+            result = analyze_pairs(min_observations=10, storage=storage, save=False)
         if result["n_cointegrated"] > 0:
             detail = result["top_pair_detail"]
             assert detail is not None

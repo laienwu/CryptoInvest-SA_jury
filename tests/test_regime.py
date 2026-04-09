@@ -143,9 +143,11 @@ class TestAnalyzeRegimes:
                 self._raw = raw
                 self._saved = {}
 
-            def load_raw(self):
+            def load_raw(self, symbols=None):
                 if self._raw is None:
                     raise FileNotFoundError("no data")
+                if symbols is not None:
+                    return {s: self._raw[s] for s in symbols if s in self._raw}
                 return self._raw
 
             def save_output(self, data, key):

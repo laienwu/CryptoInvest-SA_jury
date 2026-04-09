@@ -105,8 +105,20 @@ def align_data_by_date(
         common_dates = common_dates.intersection(symbol_dates)
 
     if not common_dates:
+        # Log diagnostic info for each symbol's date range
+        for symbol in symbols:
+            s_dates = sorted(symbol_prices[symbol].keys())
+            logger.error(
+                "%s: %d dates, range %s to %s (sample: %s)",
+                symbol, len(s_dates),
+                s_dates[0] if s_dates else "N/A",
+                s_dates[-1] if s_dates else "N/A",
+                s_dates[0] if s_dates else "N/A",
+            )
         raise TransformError(
-            "No common dates found across symbols", operation="align"
+            f"No common dates found across {len(symbols)} symbols. "
+            f"Check that all symbols use the same interval/format.",
+            operation="align",
         )
 
     # Sort dates chronologically

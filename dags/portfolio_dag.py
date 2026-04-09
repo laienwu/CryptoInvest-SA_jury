@@ -5,7 +5,7 @@ Orchestrates two parallel branches:
   Crypto:       ingest → transform → optimize → frontier → backtest
   Traditional:  ingest_trad → transform_trad → optimize_trad → frontier_trad → backtest_trad
 
-Schedule: Every 10 minutes
+Schedule: Hourly
 """
 
 from datetime import datetime, timedelta
@@ -19,14 +19,15 @@ default_args = {
     "depends_on_past": False,
     "email_on_failure": False,
     "retries": 1,
-    "retry_delay": timedelta(minutes=5),
+    "retry_delay": timedelta(minutes=2),
+    "execution_timeout": timedelta(minutes=10),
 }
 
 dag = DAG(
     "portfolio_optimization",
     default_args=default_args,
     description="ETL pipeline for crypto + traditional portfolio optimization",
-    schedule_interval="*/10 * * * *",
+    schedule_interval="@hourly",
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=["portfolio", "etl", "binance", "yfinance"],
@@ -48,8 +49,10 @@ def run_ingest() -> str:
 
 
 def run_transform() -> str:
+    from src.config import load_config
     from src.pipeline import transform_data
-    transform_data()
+    cfg = load_config()
+    transform_data(symbols=list(cfg.symbols))
     return "Transform complete"
 
 
@@ -202,7 +205,7 @@ monte_carlo_task = PythonOperator(
 
 dbt_run_task = BashOperator(
     task_id="dbt_run",
-    bash_command="cd /opt/airflow/dbt_project && dbt run --profiles-dir .",
+    bash_command="cd /opt/airflow/dbt_project && dbt clean --profiles-dir . && dbt run --profiles-dir .",
     dag=dag,
 )
 

@@ -360,9 +360,9 @@ def run_backtest(
         storage = get_storage(cfg.storage_backend)
     trading_days = cfg.trading_days_per_year
 
-    # Load raw data
+    # Load raw data (only crypto symbols from config to avoid mixing intervals)
     try:
-        raw_data = storage.load_raw()
+        raw_data = storage.load_raw(list(cfg.symbols))
     except Exception as e:
         raise BacktestError(
             f"Failed to load raw data: {e}. Ensure ingest_data() has been run first.",
@@ -684,9 +684,9 @@ def run_multi_backtest(
         storage = get_storage(cfg.storage_backend)
     trading_days = cfg.trading_days_per_year
 
-    # Load and align data
+    # Load and align data (only crypto symbols from config)
     try:
-        raw_data = storage.load_raw()
+        raw_data = storage.load_raw(list(cfg.symbols))
     except Exception as e:
         raise BacktestError(
             f"Failed to load raw data: {e}", operation="load"

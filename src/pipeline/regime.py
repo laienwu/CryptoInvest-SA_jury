@@ -16,6 +16,7 @@ import logging
 import math
 from typing import Any
 
+from src.config import load_config
 from src.storage import Storage, get_storage
 from src.storage.base import StorageError
 
@@ -193,9 +194,10 @@ def analyze_regimes(
     if storage is None:
         storage = get_storage()
 
-    # Load raw kline data
+    # Load raw kline data (only configured symbols to avoid mixing frequencies)
+    cfg = load_config()
     try:
-        raw_data = storage.load_raw()
+        raw_data = storage.load_raw(list(cfg.symbols))
     except (StorageError, FileNotFoundError) as e:
         raise RegimeError(
             "Raw price data not found", operation="load"
