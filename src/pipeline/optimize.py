@@ -267,13 +267,22 @@ def _frontier_scalars(
     Returns:
         (A, B, C, D, Σ⁻¹·1, Σ⁻¹·μ)
     """
+    import numpy as np
+    from numpy.linalg import LinAlgError
     from scipy.linalg import inv
 
     n = len(mean_returns)
     ones = [1.0] * n
 
     # Σ⁻¹ via scipy (exact for symmetric positive-definite)
-    inv_cov = inv([[float(x) for x in row] for row in cov_matrix]).tolist()
+    # Fall back to pseudo-inverse if the matrix is singular (e.g. highly
+    # correlated assets or insufficient data points).
+    cov_arr = np.array([[float(x) for x in row] for row in cov_matrix])
+    try:
+        inv_cov = inv(cov_arr).tolist()
+    except LinAlgError:
+        logger.warning("Covariance matrix is singular — using pseudo-inverse")
+        inv_cov = np.linalg.pinv(cov_arr).tolist()
 
     inv_cov_ones = matrix_vector_multiply(inv_cov, ones)
     inv_cov_mu = matrix_vector_multiply(inv_cov, mean_returns)
@@ -370,12 +379,19 @@ def optimize_minimum_variance(cov_matrix: list[list[float]]) -> list[float]:
     Returns:
         Minimum variance portfolio weights.
     """
+    import numpy as np
+    from numpy.linalg import LinAlgError
     from scipy.linalg import inv
 
     n = len(cov_matrix)
     ones = [1.0] * n
 
-    inv_cov = inv([[float(x) for x in row] for row in cov_matrix]).tolist()
+    cov_arr = np.array([[float(x) for x in row] for row in cov_matrix])
+    try:
+        inv_cov = inv(cov_arr).tolist()
+    except LinAlgError:
+        logger.warning("Covariance matrix is singular — using pseudo-inverse")
+        inv_cov = np.linalg.pinv(cov_arr).tolist()
     inv_cov_ones = matrix_vector_multiply(inv_cov, ones)
     a = dot_product(ones, inv_cov_ones)  # 1'Σ⁻¹1
 
