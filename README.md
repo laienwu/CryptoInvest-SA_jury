@@ -4,71 +4,69 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-green.svg)](https://fastapi.tiangolo.com/)
 [![Tests](https://img.shields.io/badge/tests-1201%20passed-brightgreen.svg)]()
 [![CI](https://github.com/yourusername/binance-portfolio/actions/workflows/ci.yml/badge.svg)]()
-[![Couverture](https://img.shields.io/badge/coverage-55%25-yellow.svg)]()
 
-Plate-forme d'ingénierie de données prête pour la production pour l'optimisation du portefeuille de crypto-monnaies à l'aide des données de marché Binance. Construit comme un projet de certification démontrant des pratiques modernes d'ingénierie des données.
+Plate-forme d'ingenierie de donnees pour l'optimisation de portefeuille crypto + actifs traditionnels. Projet de certification Data Engineer (RNCP Niveau 7 - Expert en infrastructures de donnees massives).
 
-## Caractéristiques
+## Caracteristiques
 
-- **Ingestion de données multi-sources** - 6 types de sources : API REST, CSV, JSON, Web Scraping, PostgreSQL, yfinance
-- **Streaming temps réel** - Ingestion Kafka (Redpanda) via WebSocket Binance (klines + order book depth)
-- **Architecture médaillon** - Zones de données Bronze/Argent/Or avec Parquet partitionné Hive-style
-- **Delta Lake** - Stockage ACID optionnel (delta-rs, sans JVM)
-- **Star Schema Warehouse** - Requêtes analytiques basées sur DuckDB
-- **dbt transforms** - Modèles SQL staging/marts avec tests et lineage (dbt-duckdb)
-- **PySpark analytics** - Rolling correlation, volatility surface, volume analysis distribuée
-- **Optimisation de Markowitz** - Optimisation du portefeuille à variance moyenne maximisant le ratio de Sharpe
-- **API REST** - FastAPI avec documentation OpenAPI automatique
-- **Tableau de bord interactif** - Visualisation rationalisée avec Plotly charts
-- **Orchestration** - DAG Airflow pour l'exécution planifiée du pipeline
+- **Ingestion multi-sources** - 6 types : API REST (Binance), CSV, JSON, Web Scraping (CoinGecko), PostgreSQL, yfinance (33 actifs traditionnels)
+- **Streaming temps reel** - Binance WebSocket → Kafka (Redpanda) → micro-batch Parquet (klines + order book depth)
+- **Architecture medallion** - Zones Bronze/Silver/Gold avec Parquet partitionne
+- **Delta Lake** - Stockage ACID optionnel (delta-rs, sans JVM, time travel)
+- **Star Schema Warehouse** - DuckDB OLAP embarque (fact_prices, dim_symbol, dim_date)
+- **dbt transforms** - 6 modeles SQL staging/marts avec tests et lineage (dbt-duckdb)
+- **PySpark analytics** - Rolling correlation, volatility surface, volume analysis
+- **6 strategies d'optimisation** - Markowitz, HRP, Risk Parity, Black-Litterman, Min Variance, Max Diversification
+- **45 endpoints REST** - FastAPI avec OpenAPI, cache Redis, metriques Prometheus
+- **31 pages dashboard** - Streamlit avec graphiques Plotly interactifs
+- **Orchestration** - Airflow DAG (12 taches, 2 branches paralleles crypto + trad)
 - **Stockage S3** - MinIO (S3-compatible) via Storage ABC
-- **Data volume metrics** - Record counts, file sizes, partitions, freshness (API + dashboard)
 - **Cache API** - Redis avec TTL et fallback gracieux
-- **Monitoring** - Prometheus + Grafana (métriques, alertes)
-- **Qualité des données** - Validation bronze/silver/gold (contrats de données)
+- **Monitoring** - Prometheus + Grafana (metriques metier, alertes, dashboards)
+- **Qualite des donnees** - Validation bronze/silver/gold (contrats de donnees)
 - **CI/CD** - GitHub Actions (ruff, mypy, pytest, coverage, bandit, pip-audit)
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      DATA SOURCES                           │
-│ [Binance API] [CSV] [JSON] [Scraping] [PostgreSQL] [yfinance] │
-└──────────┬──────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                        DATA SOURCES (6)                             │
+│  [Binance API] [CSV] [JSON] [Scraping] [PostgreSQL] [yfinance]     │
+└──────────┬──────────────────────────────────────────────────────────┘
            │
            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  STREAMING (optional)                        │
-│   Binance WebSocket → Kafka (Redpanda) → Consumer           │
-└──────────┬──────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                    STREAMING (optionnel)                            │
+│    Binance WebSocket → Kafka (Redpanda) → Consumer → Parquet       │
+└──────────┬──────────────────────────────────────────────────────────┘
            │
            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                       DATA LAKE                             │
-│   ┌─────────┐    ┌─────────┐    ┌─────────┐                │
-│   │ BRONZE  │───▶│ SILVER  │───▶│  GOLD   │                │
-│   │  (raw)  │    │(metrics)│    │(weights)│                │
-│   └─────────┘    └─────────┘    └─────────┘                │
-└──────────┬──────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                         DATA LAKE                                   │
+│  ┌─────────┐    ┌─────────┐    ┌─────────┐                         │
+│  │ BRONZE  │───▶│ SILVER  │───▶│  GOLD   │  + Delta Lake (ACID)    │
+│  │  (raw)  │    │(metrics)│    │(weights)│                         │
+│  └─────────┘    └─────────┘    └─────────┘                         │
+└──────────┬──────────────────────────────────────────────────────────┘
            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    DATA WAREHOUSE                           │
-│        fact_prices │ dim_symbol │ dim_date                  │
-│                    DuckDB + Star Schema                     │
-└──────────┬──────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                      DATA WAREHOUSE                                 │
+│   fact_prices │ dim_symbol │ dim_date │ dbt models (staging+marts) │
+│                        DuckDB + Star Schema                         │
+└──────────┬──────────────────────────────────────────────────────────┘
            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                       EXPOSURE                              │
-│          FastAPI (:8000)  │  Streamlit (:8501)             │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                         EXPOSURE                                    │
+│   FastAPI (:8000) │ Streamlit (:8501) │ Prometheus+Grafana (:9090) │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-## Démarrage rapide
+## Demarrage rapide
 
-### Prérequis
+### Prerequis
 
 - Python 3.13+
-- [uv](https://github.com/astral-sh/uv) (recommandé) ou pip
+- [uv](https://github.com/astral-sh/uv) (recommande) ou pip
 - Docker & Docker Compose (facultatif)
 
 ### Installation
@@ -92,13 +90,13 @@ pip install -e .
 cp .env.example .env
 ```
 
-The `.env` file contains Airflow, PostgreSQL, and Kafka credentials. See `.env.example` for required variables.
+Le fichier `.env` contient les identifiants Airflow, PostgreSQL et Kafka. Voir `.env.example` pour les variables requises.
 
-### Exécuter avec Docker (recommandé)
+### Executer avec Docker (recommande)
 
 ```bash
-# Start API + Dashboard
-docker compose --profile api up
+# Start API + Dashboard (services par defaut)
+docker compose up
 
 # Access:
 # - API: http://localhost:8000/docs
@@ -107,9 +105,21 @@ docker compose --profile api up
 # Start streaming ingestion (Kafka)
 docker compose --profile streaming up -d
 # - Redpanda Console: http://localhost:8080
+
+# Start Airflow (orchestration planifiee)
+docker compose --profile airflow up -d
+# - Airflow UI: http://localhost:8081
+
+# Start monitoring
+docker compose --profile monitoring up -d
+# - Prometheus: http://localhost:9090
+# - Grafana: http://localhost:3000
+
+# Stack complete
+docker compose --profile full up -d
 ```
 
-### Exécuter localement
+### Executer localement
 
 ```bash
 # 1. Run the pipeline
@@ -131,81 +141,120 @@ uv run uvicorn src.api.main:app --reload
 uv run streamlit run src/dashboard/app.py
 ```
 
-## Points de terminaison de l'API
+## Points de terminaison de l'API (45 endpoints)
 
-| Point de terminaison | Description |
+### General (5)
+
+| Endpoint | Description |
 |----------|-------------|
-| `GET /` | Bilan de santé |
+| `GET /` | Bilan de sante |
 | `GET /symbols` | Liste des symboles disponibles |
-| `GET /klines/{symbol}` | Données brutes OHLCV |
-| `GET /metrics` | Métriques disponibles |
-| `GET /metrics/{name}` | Métrique spécifique (rendements, volatilité, corrélation, covariance) |
-| `GET /portfolio` | Pondérations optimales du portefeuille |
+| `GET /klines/{symbol}` | Donnees brutes OHLCV |
+| `GET /metrics` | Metriques disponibles |
+| `GET /metrics/{name}` | Metrique specifique (rendements, volatilite, correlation, covariance) |
+
+### Portefeuille (7)
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /portfolio` | Ponderations optimales du portefeuille |
 | `GET /portfolio/summary` | KPI du portefeuille |
-| `GET /portfolio/frontier` | Frontière efficiente |
-| `GET /portfolio/backtest` | Résultats du backtest walk-forward |
-| `GET /portfolio/trad` | Portefeuille traditionnel (actions, ETF, matières premières) |
-| `GET /portfolio/trad/frontier` | Frontière efficiente actifs traditionnels |
+| `GET /portfolio/frontier` | Frontiere efficiente |
+| `GET /portfolio/backtest` | Resultats du backtest walk-forward |
+| `GET /portfolio/trad` | Portefeuille traditionnel (actions, ETF, matieres premieres) |
+| `GET /portfolio/trad/frontier` | Frontiere efficiente actifs traditionnels |
 | `GET /portfolio/trad/backtest` | Backtest actifs traditionnels (benchmark SPY) |
+
+### Analyse (14)
+
+| Endpoint | Description |
+|----------|-------------|
 | `GET /portfolio/monte-carlo` | Simulation Monte Carlo (VaR, CVaR, percentiles) |
-| `GET /portfolio/combined?crypto_weight=0.6` | Portefeuille combiné crypto + traditionnel |
-| `GET /portfolio/rebalance?drift_threshold=0.05` | Alertes de rééquilibrage et trades suggérés |
-| `GET /portfolio/report?portfolio_key=weights` | Télécharger rapport PDF du portefeuille |
+| `GET /portfolio/rolling-correlation` | Correlation glissante entre paires d'actifs |
 | `GET /portfolio/risk-contribution` | Contribution marginale au risque par actif |
-| `GET /portfolio/rolling-correlation?window=30` | Corrélation glissante entre paires d'actifs |
-| `GET /portfolio/scenarios` | Liste des scénarios de stress test disponibles |
-| `GET /portfolio/stress-test?scenario=crypto_crash` | Test de stress du portefeuille (5 scénarios prédéfinis + custom) |
-| `GET /portfolio/drawdown?portfolio_key=backtest` | Analyse des drawdowns (séries, périodes, récupération) |
-| `GET /portfolio/attribution?portfolio_key=weights` | Attribution de performance par actif (poids × rendement) |
-| `POST /portfolio/custom` | Évaluation de portefeuille personnalisé (poids définis par l'utilisateur) |
+| `GET /portfolio/combined` | Portefeuille combine crypto + traditionnel |
+| `GET /portfolio/rebalance` | Alertes de reequilibrage et trades suggeres |
 | `GET /portfolio/signals` | Signaux de trading (SMA crossover, RSI, MACD, Bollinger) |
-| `GET /portfolio/risk-parity` | Portefeuille risk parity (contribution égale au risque) |
-| `GET /portfolio/position-sizing?method=vol_target` | Dimensionnement des positions (Kelly, vol-target, fractional) |
-| `GET /portfolio/cost-analysis?n_rebalances=12` | Analyse des coûts de transaction (frais, slippage, rendement net) |
-| `GET /portfolio/alpha-beta?benchmark=BTCUSDT` | Analyse CAPM alpha/beta vs benchmark (β, α, R², tracking error) |
-| `GET /portfolio/regime` | Détection de régime de marché (bull/bear/sideways par actif) |
-| `GET /portfolio/sortino?benchmark=BTCUSDT` | Ratio de Sortino, risque baissier, capture ratios |
-| `POST /portfolio/constrained` | Optimisation sous contraintes (poids min/max, limites de groupe) |
-| `GET /prices/live` | Prix en temps réel (Binance 24h ticker) |
+| `GET /portfolio/risk-parity` | Portefeuille risk parity (contribution egale au risque) |
+| `GET /portfolio/position-sizing` | Dimensionnement des positions (Kelly, vol-target, fractional) |
+| `GET /portfolio/cost-analysis` | Analyse des couts de transaction (frais, slippage) |
+| `GET /portfolio/alpha-beta` | Analyse CAPM alpha/beta vs benchmark |
+| `GET /portfolio/regime` | Detection de regime de marche (bull/bear/sideways) |
+| `GET /portfolio/sortino` | Ratio de Sortino, risque baissier, capture ratios |
+| `GET /portfolio/factors` | Exposition multi-facteurs (marche, momentum, volatilite) |
+| `GET /portfolio/tail-risk` | Moments superieurs (skewness, kurtosis, Omega, Calmar) |
 
-## Tableau de bord
+### Optimisation (7)
 
-Le tableau de bord Streamlit fournit 31 pages :
+| Endpoint | Description |
+|----------|-------------|
+| `POST /portfolio/constrained` | Optimisation sous contraintes (poids min/max, groupes) |
+| `GET /portfolio/black-litterman` | Optimisation bayesienne Black-Litterman |
+| `GET /portfolio/hrp` | Hierarchical Risk Parity (allocation par clustering) |
+| `GET /portfolio/var` | Comparaison VaR (historique, parametrique, Cornish-Fisher) |
+| `GET /portfolio/shrinkage` | Estimation Ledoit-Wolf de la covariance |
+| `GET /portfolio/max-diversification` | Maximisation du ratio de diversification |
+| `GET /portfolio/min-variance` | Portefeuille de variance minimale globale |
 
-- **Dashboard** - Cartes KPI, allocation pie chart, corrélation heatmap
+### Avance (7)
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /portfolio/decay` | Derive des poids du portefeuille dans le temps |
+| `GET /portfolio/pairs` | Analyse de cointegration Engle-Granger |
+| `GET /portfolio/compare-strategies` | Comparaison des 6 strategies d'optimisation |
+| `GET /portfolio/backtest/multi` | Backtest multi-strategies (courbes d'equity) |
+| `POST /portfolio/custom` | Evaluation de portefeuille personnalise |
+| `GET /portfolio/report` | Telecharger rapport PDF du portefeuille |
+| `GET /portfolio/stress-test` | Test de stress (5 scenarios + custom) |
+
+### Donnees et monitoring (5)
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /portfolio/scenarios` | Liste des scenarios de stress disponibles |
+| `GET /portfolio/drawdown` | Analyse des drawdowns et recuperation |
+| `GET /portfolio/attribution` | Attribution de performance par actif |
+| `GET /prices/live` | Prix en temps reel (Binance 24h ticker) |
+| `GET /data/metrics` | Metriques de volume de donnees (tailles, fraicheur) |
+
+*Documentation automatique : `/docs` (Swagger) et `/redoc` (ReDoc)*
+
+## Tableau de bord (31 pages)
+
+- **Dashboard** - Cartes KPI, allocation pie chart, correlation heatmap
 - **Symbols** - Graphiques OHLCV par symbole
-- **Metrics** - Exploration des métriques brutes
-- **Frontier** - Frontière efficiente interactive
-- **Backtest** - Résultats du walk-forward backtesting
+- **Metrics** - Exploration des metriques brutes
+- **Frontier** - Frontiere efficiente interactive
+- **Backtest** - Resultats du walk-forward backtesting
 - **Monte Carlo** - Fan chart des simulations, histogramme, VaR/CVaR
-- **Live Prices** - Prix en temps réel avec variation 24h
-- **Rebalancing** - Alertes et suggestions de rééquilibrage
+- **Live Prices** - Prix en temps reel avec variation 24h
+- **Rebalancing** - Alertes et suggestions de reequilibrage
 - **Signals** - Signaux de trading (SMA, RSI, MACD, Bollinger)
-- **Regime** - Détection de régime de marché (bull/bear/sideways)
-- **Cost Analysis** - Modèle de coûts de transaction (frais, slippage)
+- **Regime** - Detection de regime de marche (bull/bear/sideways)
+- **Cost Analysis** - Modele de couts de transaction (frais, slippage)
 - **Alpha/Beta** - Analyse CAPM vs benchmarks
-- **Sortino Risk** - Métriques de risque baissier (Sortino, downside deviation)
+- **Sortino Risk** - Metriques de risque baissier (Sortino, downside deviation)
 - **Comparison** - Comparaison crypto vs traditionnel
 - **Constrained** - Optimisation sous contraintes (min/max poids, groupes)
-- **Correlation Network** - Corrélations glissantes par paires
+- **Correlation Network** - Correlations glissantes par paires
 - **Position Sizing** - Kelly, vol-target, fixed-fractional
-- **Stress Test** - Scénarios de stress du portefeuille
-- **Drawdown** - Analyse des drawdowns et récupération
-- **Attribution** - Décomposition de la performance par actif
-- **Black-Litterman** - Optimisation bayésienne avec vues investisseur
+- **Stress Test** - Scenarios de stress du portefeuille
+- **Drawdown** - Analyse des drawdowns et recuperation
+- **Attribution** - Decomposition de la performance par actif
+- **Black-Litterman** - Optimisation bayesienne avec vues investisseur
 - **HRP** - Hierarchical Risk Parity (allocation par clustering)
-- **VaR Comparison** - Historique, Paramétrique, Cornish-Fisher
+- **VaR Comparison** - Historique, Parametrique, Cornish-Fisher
 - **Shrinkage** - Estimation Ledoit-Wolf de la covariance
 - **Max Diversification** - Maximisation du ratio de diversification
 - **Min Variance** - Portefeuille de variance minimale globale
-- **Factor Analysis** - Exposition multi-facteurs (marché, momentum, volatilité)
-- **Tail Risk** - Moments supérieurs (skewness, kurtosis, Jarque-Bera, Omega, Calmar)
-- **Decay** - Dérive des poids du portefeuille dans le temps
-- **Pairs Trading** - Analyse de cointégration Engle-Granger
-- **Strategy Showdown** - Comparaison côte à côte des 6 stratégies d'optimisation
-- **Multi Backtest** - Courbes d'equity superposées pour toutes les stratégies d'optimisation
+- **Factor Analysis** - Exposition multi-facteurs (marche, momentum, volatilite)
+- **Tail Risk** - Moments superieurs (skewness, kurtosis, Jarque-Bera, Omega, Calmar)
+- **Decay** - Derive des poids du portefeuille dans le temps
+- **Pairs Trading** - Analyse de cointegration Engle-Granger
+- **Strategy Showdown** - Comparaison cote a cote des 6 strategies d'optimisation
 
-## Test
+## Tests
 
 ```bash
 # Run all tests
@@ -214,45 +263,60 @@ uv run pytest tests/ -v
 # Run with coverage
 uv run pytest tests/ --cov=src --cov-report=term-missing
 
-# Results: 1159 tests (100% passing)
+# Results: 1201 tests across 53 files (100% passing)
 ```
 
 ## Structure du projet
 
 ```
 src/
-├── config.py                # Centralized PipelineConfig + load_config()
-├── pipeline/                # ETL modules
-│   ├── ingest.py           # Binance API extraction
-│   ├── ingest_sources.py   # Multi-source orchestration (DataSource ABC)
-│   ├── ingest_scraping.py  # CoinGecko web scraping
-│   ├── ingest_postgres.py  # PostgreSQL benchmarks
-│   ├── ingest_yfinance.py  # Yahoo Finance (stocks, ETFs, commodities)
-│   ├── transform.py        # Financial metrics calculation
-│   ├── optimize.py         # Markowitz optimization + efficient frontier
-│   ├── backtest.py         # Walk-forward backtesting engine
-│   ├── monte_carlo.py      # Monte Carlo simulation (VaR/CVaR)
-│   ├── stream_producer.py  # Binance WebSocket → Kafka producer
-│   ├── stream_consumer.py  # Kafka → micro-batch Parquet consumer
-│   └── validation.py       # Data quality validation (bronze/silver/gold)
-├── storage/                 # Data layer
-│   ├── base.py             # Abstract interface
-│   ├── _utils.py           # Shared storage utilities
-│   ├── parquet.py          # Data lake storage
-│   ├── duckdb.py           # Data warehouse
-│   └── minio.py            # MinIO (S3-compatible) storage
-├── api/                     # REST API
-│   ├── main.py             # FastAPI endpoints
-│   ├── cache.py            # Redis cache (TTL, fallback)
-│   ├── metrics.py          # Prometheus business metrics
-│   └── schemas.py          # Pydantic response models
-└── dashboard/               # Visualization
-    └── app.py              # Streamlit app
+├── config.py                    # PipelineConfig centralise + load_config()
+├── pipeline/                    # 42 modules ETL + analytics
+│   ├── ingest.py               # Extraction Binance API
+│   ├── ingest_sources.py       # Orchestrateur multi-sources (DataSource ABC)
+│   ├── ingest_scraping.py      # Web scraping CoinGecko
+│   ├── ingest_postgres.py      # Benchmarks PostgreSQL
+│   ├── ingest_yfinance.py      # Yahoo Finance (33 actifs traditionnels)
+│   ├── transform.py            # Rendements, volatilite, correlation, covariance
+│   ├── optimize.py             # Markowitz + frontiere efficiente
+│   ├── backtest.py             # Walk-forward backtesting
+│   ├── monte_carlo.py          # Simulation Monte Carlo (VaR/CVaR)
+│   ├── strategy_compare.py     # Comparaison des 6 strategies
+│   ├── risk_parity.py          # Parite de risque
+│   ├── black_litterman.py      # Optimisation bayesienne
+│   ├── hrp.py                  # Hierarchical Risk Parity
+│   ├── min_variance.py         # Variance minimale globale
+│   ├── max_diversification.py  # Diversification maximale
+│   ├── constrained.py          # Optimisation sous contraintes
+│   ├── signals.py              # Signaux (SMA, RSI, MACD, Bollinger)
+│   ├── regime.py               # Detection de regime de marche
+│   ├── pairs.py                # Cointegration Engle-Granger
+│   ├── stream_producer.py      # Binance WebSocket → Kafka
+│   ├── stream_consumer.py      # Kafka → micro-batch Parquet
+│   ├── spark_transforms.py     # PySpark analytics
+│   ├── data_metrics.py         # Metriques de volume de donnees
+│   ├── validation.py           # Validation qualite des donnees
+│   └── ...                     # +18 modules (voir CLAUDE.md)
+├── storage/                     # Couche stockage
+│   ├── base.py                 # Interface abstraite (Storage ABC)
+│   ├── parquet.py              # Data Lake (Bronze/Silver/Gold)
+│   ├── duckdb.py               # Data Warehouse (schema en etoile)
+│   ├── delta.py                # Delta Lake (ACID, time travel)
+│   └── minio.py                # MinIO (S3-compatible)
+├── api/                         # API REST
+│   ├── main.py                 # FastAPI (45 endpoints, Depends injection)
+│   ├── cache.py                # Cache Redis (TTL, fallback)
+│   ├── metrics.py              # Metriques Prometheus metier
+│   └── schemas.py              # Modeles de reponse Pydantic
+└── dashboard/                   # Visualisation
+    └── app.py                  # Streamlit (31 pages, Plotly)
 
-tests/                       # Test suite (364 tests)
-dags/                        # Airflow DAGs
-docs/                        # Documentation
-data/                        # Data zones (bronze/silver/gold)
+tests/                           # 1201 tests across 53 files
+dags/                            # Airflow DAG (12 taches, 2 branches paralleles)
+dbt_project/                     # dbt-duckdb (6 modeles SQL, tests, lineage)
+docs/                            # Documentation (architecture, rapport, operations)
+data/                            # Zones de donnees (bronze/silver/gold/reference)
+monitoring/                      # Prometheus + Grafana (alertes, dashboards)
 ```
 
 ## Configuration
@@ -271,77 +335,82 @@ trading_days_per_year = 252
 period_days = 365
 ```
 
-## Technologies clés
+## Technologies cles
 
 | Composant | Technologie |
 |-----------|------------|
-| Stockage | Parquet Apache, DuckDB |
-| API | FastAPI, Uvicorn |
+| Stockage | Apache Parquet, Delta Lake (delta-rs) |
+| Entrepot | DuckDB (OLAP embarque, schema en etoile) |
+| Transforms SQL | dbt-duckdb (staging + marts, tests, lineage) |
+| API | FastAPI, Uvicorn, Pydantic |
 | Tableau de bord | Streamlit, Plotly |
-| Orchestration | Apache Airflow |
-| Streaming | Kafka (Redpanda), WebSocket |
+| Orchestration | Apache Airflow 2.8.1 |
+| Streaming | Kafka (Redpanda), WebSocket Binance |
 | Stockage objet | MinIO (S3-compatible) |
 | Cache | Redis (TTL, fallback gracieux) |
 | Monitoring | Prometheus, Grafana |
-| Qualité données | Validation custom (bronze/silver/gold) |
-| Traitement des données | PyArrow (pas de pandas) |
-| CI/CD | GitHub Actions (ruff, mypy, pytest) |
-| Conteneurisation | Docker, Docker Compose |
+| Traitement | PyArrow (pas de pandas — ADR-003) |
+| Distribue | PySpark (correlation rolling, volatilite) |
+| CI/CD | GitHub Actions (ruff, mypy, pytest, bandit) |
+| Conteneurisation | Docker, Docker Compose (9 profils) |
 
 ## Docker Compose Profiles
 
 | Profil | Services | Usage |
 |--------|----------|-------|
-| `api` | api, streamlit | Runtime par défaut |
+| *(default)* | api, streamlit | Services de base (API + dashboard) |
 | `pipeline` | pipeline | Bootstrap one-shot (ingestion initiale) |
-| `airflow` | postgres, airflow-init, webserver, scheduler | Orchestration planifiée |
-| `streaming` | redpanda, redpanda-init, producer, consumer, console | Ingestion temps réel |
-| `storage` | minio | Stockage objet S3-compatible |
+| `airflow` | postgres, airflow-init, webserver, scheduler | Orchestration planifiee (:8081) |
+| `streaming` | redpanda, redpanda-init, producer, consumer, console | Ingestion temps reel (:8080) |
+| `storage` | minio | Stockage objet S3-compatible (:9000) |
 | `cache` | redis | Cache API (TTL 300s) |
-| `monitoring` | prometheus, grafana | Observabilité (métriques, alertes) |
-| `benchmarks` | postgres-benchmarks | Base de données benchmarks |
-| `full` | Tous les services ci-dessus | Stack complète |
+| `monitoring` | prometheus, grafana | Observabilite (:9090, :3000) |
+| `benchmarks` | postgres-benchmarks | Base de donnees benchmarks (:5433) |
+| `spark` | spark | Transformations PySpark |
+| `full` | Tous les services ci-dessus | Stack complete |
 
 ## Documentation
 
-- [Architecture (modèle C4)](docs/architecture/c4_architecture.md)
-- [Spécification API (OpenAPI)](docs/architecture/api_specification.yaml)
-- [Données Catalogue](docs/rapport/09_catalogue_donnees.md)
-- [Conformité RGPD](docs/rapport/07_rgpd.md)
+- [Architecture C4](docs/architecture/c4_architecture.md)
+- [Specification API (OpenAPI 3.0)](docs/architecture/api_specification.yaml)
+- [Catalogue de donnees](docs/rapport/09_catalogue_donnees.md)
+- [Conformite RGPD](docs/rapport/07_rgpd.md)
 
-### Enregistrements de décisions d'architecture
+### Decisions d'architecture (ADR)
 
 - [ADR-001 : Stockage Parquet](docs/architecture/adr/001_storage_parquet.md)
 - [ADR-002 : DuckDB Warehouse](docs/architecture/adr/002_duckdb_warehouse.md)
-- [ADR-003 : PyArrow sur Pandas](docs/architecture/adr/003_no_pandas.md)
+- [ADR-003 : PyArrow (pas de pandas)](docs/architecture/adr/003_no_pandas.md)
 - [ADR-004 : FastAPI](docs/architecture/adr/004_fastapi_exposure.md)
-- [ADR-005 : Flux d'air Orchestration](docs/architecture/adr/005_airflow_orchestration.md)
+- [ADR-005 : Airflow Orchestration](docs/architecture/adr/005_airflow_orchestration.md)
+- [ADR-006 : Delta Lake](docs/architecture/adr/006_delta_lake.md)
+- [ADR-007 : dbt Transforms](docs/architecture/adr/007_dbt_transforms.md)
 
-## Formules financières
+## Formules financieres
 
-**Renvois de journaux :**
+**Rendements logarithmiques :**
 ```
 r_t = ln(P_t / P_{t-1})
 ```
 
-**Volatilité annualisée :**
+**Volatilite annualisee :**
 ```
-σ = std(r) × √365
-```
-
-**Rapport de netteté :**
-```
-S = (E[R] - Rf) / σ
+sigma = std(r) * sqrt(365)
 ```
 
-**Écart de portefeuille :**
+**Ratio de Sharpe :**
 ```
-σ²_p = w' × Cov × w
+S = (E[R] - Rf) / sigma
+```
+
+**Variance du portefeuille :**
+```
+sigma^2_p = w' * Cov * w
 ```
 
 ## Licence
 
-Ce projet fait partie d'une certification Data Engineer (RNCP Niveau 7).
+Ce projet fait partie d'une certification Data Engineer (RNCP Niveau 7 — Expert en infrastructures de donnees massives).
 
 ## Auteur
 
