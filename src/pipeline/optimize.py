@@ -278,9 +278,16 @@ def _frontier_scalars(
     # Fall back to pseudo-inverse if the matrix is singular (e.g. highly
     # correlated assets or insufficient data points).
     cov_arr = np.array([[float(x) for x in row] for row in cov_matrix])
+
+    # Sanitize NaN/Inf values that can arise from missing prices or
+    # zero-variance symbols (e.g. yfinance gaps).
+    if not np.all(np.isfinite(cov_arr)):
+        logger.warning("Covariance matrix contains NaN/Inf — replacing with 0")
+        cov_arr = np.nan_to_num(cov_arr, nan=0.0, posinf=0.0, neginf=0.0)
+
     try:
         inv_cov = inv(cov_arr).tolist()
-    except LinAlgError:
+    except (LinAlgError, ValueError):
         logger.warning("Covariance matrix is singular — using pseudo-inverse")
         inv_cov = np.linalg.pinv(cov_arr).tolist()
 
@@ -387,9 +394,14 @@ def optimize_minimum_variance(cov_matrix: list[list[float]]) -> list[float]:
     ones = [1.0] * n
 
     cov_arr = np.array([[float(x) for x in row] for row in cov_matrix])
+
+    if not np.all(np.isfinite(cov_arr)):
+        logger.warning("Covariance matrix contains NaN/Inf — replacing with 0")
+        cov_arr = np.nan_to_num(cov_arr, nan=0.0, posinf=0.0, neginf=0.0)
+
     try:
         inv_cov = inv(cov_arr).tolist()
-    except LinAlgError:
+    except (LinAlgError, ValueError):
         logger.warning("Covariance matrix is singular — using pseudo-inverse")
         inv_cov = np.linalg.pinv(cov_arr).tolist()
     inv_cov_ones = matrix_vector_multiply(inv_cov, ones)
