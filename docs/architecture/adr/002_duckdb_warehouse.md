@@ -15,11 +15,11 @@ Nous avons besoin d'une interface SQL pour les requêtes analytiques sur notre D
 - Prise en charge du schéma en étoile (faits et dimensions)
 - Intégration avec les fichiers Parquet existants
 - Faible surcharge opérationnelle (projet de certification)
-- Assez rapide pour une utilisation interactive requêtes
+- Assez rapide pour des requêtes interactives
 
 Options considérées :
 1. PostgreSQL
-2. CanardDB
+2. DuckDB
 3. SQLite
 4. Apache Spark SQL
 5. ClickHouse
@@ -28,7 +28,7 @@ Options considérées :
 
 ## Décision
 
-**Nous utiliserons DuckDB comme entrepôt de données intégré moteur.**
+**Nous utiliserons DuckDB comme moteur d'entrepôt de données intégré.**
 
 ---
 
@@ -36,13 +36,13 @@ Options considérées :
 
 ### Matrice de comparaison :
 
-| Critère | PostgreSQL | CanardDB | SQLite | SparkSQL | ClickHouse |
+| Critère | PostgreSQL | DuckDB | SQLite | SparkSQL | ClickHouse |
 |-----------|------------|--------|--------|-----------|------------|
 | Complexité de configuration | Moyen | Zéro | Zéro | Élevé | Moyen |
 | Parquet natif | Non | Oui | Non | Oui | Limité |
 | OLAP optimisé | Non | Oui | Non | Oui | Oui |
 | Mode intégré | Non | Oui | Oui | Non | Non |
-| Efficacité de la mémoire | Bon | Excellent | Bon | Pauvre | Bon |
+| Efficacité de la mémoire | Bon | Excellent | Bon | Faible | Bon |
 | Courbe d'apprentissage | Faible | Faible | Faible | Élevé | Moyen |
 
 ### Facteurs clés :
@@ -70,16 +70,16 @@ Options considérées :
 - Surcharge massive pour les petites données (à l'échelle de ~ Mo)
 - Complexité de la gestion des clusters
 - Temps de démarrage lent
-- Serait approprié à la To échelle
+- Serait approprié à l'échelle du To
 
 ---
 
 ## Conséquences
 
-### Positif[
+### Positif
 - Aucune surcharge opérationnelle
 - Interroger Parquet directement (pas d'ETL)
-- Analyse rapide requêtes (exécution vectorisée)
+- Requêtes analytiques rapides (exécution vectorisée)
 - Connexion en mémoire (aucun fichier d'entrepôt à maintenir)
 - Excellente intégration Python/PyArrow
 

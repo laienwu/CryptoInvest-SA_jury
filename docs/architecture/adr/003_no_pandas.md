@@ -18,15 +18,15 @@ Choix de bibliothèque de manipulation de données pour le pipeline ETL. Le pipe
 
 Options considéré :
 1. Pandas
-2. PyArrow (Flèche Apache)
-3. Polaires
+2. PyArrow (Apache Arrow)
+3. Polars
 4. Pure Python + NumPy
 
 ---
 
 ## Décision
 
-**Nous utiliserons PyArrow directement pour la manipulation des données, en évitant les Pandas dépendance.**
+**Nous utiliserons PyArrow directement pour la manipulation des données, en évitant la dépendance à Pandas.**
 
 ---
 
@@ -34,14 +34,14 @@ Options considéré :
 
 ### Comparaison :
 
-| Critère | Pandas | PyArrow | Polaires |
+| Critère | Pandas | PyArrow | Polars |
 |-----------|--------|---------|--------|
-| Efficacité de la mémoire | Pauvre | Excellent | Excellent |
+| Efficacité de la mémoire | Faible | Excellent | Excellent |
 | Parquet natif | Via PyArrow | Natif | Natif |
 | Type de sécurité | Faible | Fort | Fort |
 | Complexité des API | Faible | Moyen | Moyen |
 | Maturité de l'écosystème | Excellent | Bon | Croissance |
-| Poids de dépendance | Lourd | Lumière | Lumière |
+| Poids de dépendance | Lourd | Léger | Léger |
 
 ### Facteurs clés :
 
@@ -75,22 +75,22 @@ Options considéré :
 ### Compromis accepté :
 - L'API PyArrow est plus détaillée que Pandas pour certaines opérations
 - Moins de méthodes « pratiques »
-- Moins de débordement de pile couverture
+- Moins de couverture Stack Overflow
 
 ---
 
 ## Conséquences
 
-### Positif[
+### Positif
 - Utilisation de la mémoire 10 à 50 fois inférieure
-- E/S Parquet plus rapides (non conversion)
+- E/S Parquet plus rapides (sans conversion)
 - Garanties de type plus fortes
 - Intégration DuckDB sans copie
 - Image Docker plus légère
 
 ### Négatif
 - Code plus détaillé pour les transformations
-- Apprentissage en équipe courbe
+- Courbe d'apprentissage pour l'équipe
 - Moins de tutoriels/exemples en ligne
 - Certaines opérations nécessitent une implémentation manuelle
 
@@ -182,7 +182,7 @@ result = duckdb.query("""
 ## Références
 
 - [Documentation Apache Arrow Python](https://arrow.apache.org/docs/python/)
-- [Pourquoi la flèche sur les pandas](https://towardsdatascience.com/stop-using-pandas-and-start-using-arrow-7e12e63c2fca)
+- [Pourquoi Arrow plutôt que Pandas](https://towardsdatascience.com/stop-using-pandas-and-start-using-arrow-7e12e63c2fca)
 - [Fonctions de calcul PyArrow](https://arrow.apache.org/docs/python/compute.html)
 
 ---

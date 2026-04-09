@@ -19,25 +19,25 @@ Nous devons stocker des données de prix de séries chronologiques provenant de 
 Options considérées :
 1. Fichiers CSV
 2. Fichiers JSON
-3. Parquet Apache
-4. Lac Delta
+3. Apache Parquet
+4. Delta Lake
 5. Tables PostgreSQL
 
 ---
 
 ## Décision
 
-**Nous utiliserons Apache Parquet comme format de stockage principal pour les données Lac.**
+**Nous utiliserons Apache Parquet comme format de stockage principal pour le Data Lake.**
 
 ---
 
 ## Justification
 
-### Pourquoi le parquet plutôt que les alternatives :
+### Pourquoi Parquet plutôt que les alternatives :
 
-| Critère | CSV | JSON | Parquet | Lac Delta | PostgreSQL |
+| Critère | CSV | JSON | Parquet | Delta Lake | PostgreSQL |
 |-----------|-----|------|---------|------------|------------|
-| Requêtes en colonnes | Pauvre | Pauvre | Excellent | Excellent | Bon |
+| Requêtes en colonnes | Faible | Faible | Excellent | Excellent | Bon |
 | Compression | Aucun | Aucun | Snappy/Zstd | Snappy/Zstd | Limité |
 | Application du schéma | Aucun | Partielle | Fort | Fort | Fort |
 | Complexité de l'outillage | Faible | Faible | Faible | Moyen | Moyen |
@@ -75,17 +75,17 @@ Options considérées :
 - Schéma auto-documenté dans les fichiers
 - 80 % de réduction de stockage par rapport à CSV
 - Aucun serveur de base de données à gérer
-- Sauvegarde facile (il suffit de copier fichiers)
+- Sauvegarde facile (il suffit de copier les fichiers)
 
 ### Négatif
 - Non lisible par l'homme (contrairement à CSV/JSON)
 - Nécessite la bibliothèque PyArrow
 - Aucune mise à jour au niveau des lignes (modèle d'ajout uniquement)
-- Moins familier à certaines équipes membres
+- Moins familier pour certains membres de l'équipe
 
 ### Neutre
 - Courbe d'apprentissage pour l'API PyArrow
-- Besoin d'outils de parquet pour l'inspection des fichiers
+- Besoin d'outils Parquet pour l'inspection des fichiers
 
 ---
 

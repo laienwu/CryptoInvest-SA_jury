@@ -2,8 +2,9 @@
 Portfolio Optimization DAG
 
 Orchestrates two parallel branches:
-  Crypto:       ingest → transform → optimize → frontier → backtest
+  Crypto:       ingest → transform → optimize → frontier → backtest → monte_carlo
   Traditional:  ingest_trad → transform_trad → optimize_trad → frontier_trad → backtest_trad
+  Both branches → dbt_run (after both backtests complete)
 
 Schedule: Hourly
 """
