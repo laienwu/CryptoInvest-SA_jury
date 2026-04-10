@@ -26,6 +26,46 @@ Plate-forme d'ingenierie de donnees pour l'optimisation de portefeuille crypto +
 - **Qualite des donnees** - Validation bronze/silver/gold (contrats de donnees)
 - **CI/CD** - GitHub Actions (ruff, mypy, pytest, coverage, bandit, pip-audit)
 
+## Project
+Data Engineer certification project (RNCP Level 7 - Expert en infrastructures de données massives).
+Business case: portfolio optimization with Binance crypto data + traditional assets via yfinance.
+
+## Certification Status: ✅ ALL 21 COMPETENCIES COMPLETE
+
+### Bloc 1: Pilotage projet (C1-C7)
+| ID | Compétence | Status | Implementation |
+|----|------------|--------|----------------|
+| C1-C4 | Analyse besoin, cartographie, cadre technique, veille | ✅ | `docs/rapport/01-04` |
+| C5-C7 | Planifier, superviser, communiquer | ✅ | `docs/rapport/05-06` + business docs |
+
+### Bloc 2: Collecte, stockage, mise à disposition (C8-C12)
+| ID | Compétence | Status | Implementation |
+|----|------------|--------|----------------|
+| C8 | Automatiser extraction (API, scraping, fichier, BDD, big data) | ✅ | 6 sources: API, CSV, JSON, Scraping, PostgreSQL, yfinance |
+| C9 | Requêtes SQL d'extraction | ✅ | `storage/duckdb.py` SQL queries |
+| C10 | Règles d'agrégation multi-sources | ✅ | `ingest_sources.py` + `transform.py` |
+| C11 | Créer base de données (MERISE, RGPD) | ✅ | `docs/rapport/10_merise.md` (MCD/MLD/MPD) |
+| C12 | Partager via API REST | ✅ | `src/api/main.py` FastAPI |
+
+### Bloc 3: Data Warehouse (C13-C17)
+| ID | Compétence | Status | Implementation |
+|----|------------|--------|----------------|
+| C13 | Modéliser faits/dimensions | ✅ | `fact_prices`, `dim_symbol`, `dim_date` |
+| C14 | Créer entrepôt | ✅ | `storage/duckdb.py` DuckDB adapter |
+| C15 | Intégrer ETL in/out | ✅ | Airflow DAG `dags/portfolio_dag.py` |
+| C16 | Gérer l'entrepôt | ✅ | Airflow monitoring, scheduling |
+| C17 | Variations dimensions | ✅ | `docs/rapport/08_scd_dimensions.md` |
+
+### Bloc 4: Data Lake (C18-C21)
+| ID | Compétence | Status | Implementation |
+|----|------------|--------|----------------|
+| C18 | Concevoir architecture | ✅ | `data/` zones + Docker |
+| C19 | Intégrer composants | ✅ | Parquet + DuckDB + Docker Compose |
+| C20 | Gérer catalogue | ✅ | `docs/rapport/09_catalogue_donnees.md` |
+| C21 | Règles gouvernance (RGPD) | ✅ | `docs/rapport/07_rgpd.md` |
+
+---
+
 ## Architecture
 
 ```
@@ -407,6 +447,88 @@ S = (E[R] - Rf) / sigma
 ```
 sigma^2_p = w' * Cov * w
 ```
+
+---
+
+## Commandes rapides
+
+
+```bash
+# 1. Start infrastructure
+docker compose --profile full up -d
+docker compose up -d streamlit
+
+# 2. Show multi-source ingestion (C8)
+python -c "from src.pipeline import ingest_all_sources; ingest_all_sources()"
+
+# 3. Show transformation (C10)
+python -c "from src.pipeline import transform_data; transform_data()"
+
+# 4. Show optimization
+python -c "from src.pipeline import optimize_portfolio; optimize_portfolio()"
+
+# 5. Show efficient frontier
+python -c "from src.pipeline.optimize import compute_and_save_frontier; compute_and_save_frontier()"
+
+# 6. Show backtesting
+python -c "from src.pipeline.backtest import run_backtest; run_backtest()"
+
+# 7. Show API (C12)
+curl http://localhost:8000/portfolio
+curl http://localhost:8000/portfolio/frontier
+curl http://localhost:8000/portfolio/backtest
+curl http://localhost:8000/portfolio/trad
+curl http://localhost:8000/portfolio/trad/frontier
+curl http://localhost:8000/portfolio/trad/backtest
+
+# 8. Show Dashboard (C12)
+# Open http://localhost:8501
+# - Dashboard page: KPIs, Pie chart, Correlation heatmap
+# - Symbols page: Price charts with symbol selector
+# - Metrics page: Raw metrics exploration
+# - Frontier page: Efficient frontier visualization
+# - Backtest page: Walk-forward test results
+# - Monte Carlo page: Simulation fan chart + histogram
+# - Live Prices page: Real-time price ticker
+# - Rebalancing page: Portfolio rebalancing alerts
+# - Signals page: Trading signals (SMA, RSI, MACD, Bollinger)
+# - Regime page: Market regime detection (bull/bear/sideways)
+# - Cost Analysis page: Transaction cost model
+# - Alpha/Beta page: CAPM analysis vs benchmarks
+# - Sortino Risk page: Downside risk metrics
+# - Comparison page: Crypto vs Traditional portfolio
+# - Constrained page: Constrained optimization (min/max weights)
+# - Correlation Network page: Rolling pairwise correlations
+# - Position Sizing page: Kelly, vol-target, fixed-fractional
+# - Stress Test page: Portfolio stress scenarios
+# - Drawdown page: Drawdown analysis and recovery
+# - Attribution page: Performance attribution decomposition
+# - Black-Litterman page: Views-based Bayesian optimization
+# - HRP page: Hierarchical Risk Parity (clustering allocation)
+# - VaR page: Value-at-Risk comparison (3 methods)
+# - Shrinkage page: Ledoit-Wolf covariance shrinkage
+# - Max Diversification page: Diversification ratio maximization
+# - Min Variance page: Global minimum volatility portfolio
+# - Factors page: Multi-factor exposure analysis
+# - Tail Risk page: Higher moments (skewness, kurtosis, JB, Omega, Calmar)
+# - Decay page: Portfolio weight drift over time
+# - Pairs page: Cointegration analysis and z-score signals
+# - Strategy Showdown page: All 6 optimizers compared side-by-side
+# - Multi Backtest page: Overlaid equity curves for all strategies
+
+# 9. Show Airflow DAG (C15, C16)
+# Open http://localhost:8081
+
+# 10. Show DuckDB queries (C9, C14)
+python -c "
+import duckdb
+conn = duckdb.connect('data/warehouse.duckdb')
+print(conn.execute('SELECT * FROM fact_prices LIMIT 5').fetchall())
+"
+```
+
+
+---
 
 ## Licence
 
