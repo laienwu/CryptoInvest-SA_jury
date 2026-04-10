@@ -14,7 +14,7 @@ Nous avons besoin d'une interface SQL pour les requêtes analytiques sur notre D
 - Prise en charge SQL pour les utilisateurs professionnels (Sophie, analystes)
 - Prise en charge du schéma en étoile (faits et dimensions)
 - Intégration avec les fichiers Parquet existants
-- Faible surcharge opérationnelle (projet de certification)
+- Faible surcharge opérationnelle
 - Assez rapide pour des requêtes interactives
 
 Options considérées :
@@ -47,7 +47,7 @@ Options considérées :
 
 ### Facteurs clés :
 
-1. **Zéro infrastructure** : DuckDB s'exécute en cours de processus, aucun serveur à gérer. Parfait pour la portée du projet de certification.
+1. **Zéro infrastructure** : DuckDB s'exécute en cours de processus, aucun serveur à gérer. Parfait pour une premiere POC.
 
 2. **Parquet-native** : interroge les fichiers Parquet directement sans ETL :
    ```sql
@@ -108,7 +108,7 @@ Options considérées :
 
 ## Implémentation
 
-### Star Schema
+### Schema en étoile
 
 ```
         ┌──────────────┐

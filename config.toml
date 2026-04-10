@@ -4,11 +4,11 @@ symbols = [
     "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT",
     "DOGEUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT", "ATOMUSDT", "FILUSDT",
     # Mid caps
-    "MATICUSDT", "NEARUSDT", "AAVEUSDT", "UNIUSDT", "LTCUSDT", "TRXUSDT",
+    "POLUSDT", "NEARUSDT", "AAVEUSDT", "UNIUSDT", "LTCUSDT", "TRXUSDT",
     "ICPUSDT", "APTUSDT", "ARBUSDT", "OPUSDT", "SUIUSDT", "INJUSDT",
-    "FETUSDT", "RUNEUSDT", "THETAUSDT", "ALGOUSDT", "VETUSDT", "FTMUSDT",
+    "FETUSDT", "RUNEUSDT", "THETAUSDT", "ALGOUSDT", "VETUSDT", "SEIUSDT",
     # DeFi / Layer 2
-    "GRTUSDT", "DYDXUSDT", "SNXUSDT", "MKRUSDT", "COMPUSDT",
+    "GRTUSDT", "DYDXUSDT", "SNXUSDT", "WLDUSDT", "COMPUSDT",
     "SUSHIUSDT", "CRVUSDT", "LDOUSDT", "PENDLEUSDT", "ENSUSDT",
     # Meme / Small caps
     "SHIBUSDT", "PEPEUSDT", "FLOKIUSDT", "BOMEUSDT",
@@ -42,7 +42,7 @@ symbols = [
     # Healthcare / Consumer
     "JNJ", "PG", "KO",
     # European
-    "ASML.AS", "MC.PA", "SAP.DE",
+    "ASML.AS", "MC.PA", "SAP",
 ]
 trading_days_per_year = 252
 period_days = 365

@@ -31,6 +31,13 @@ from src.storage import Storage, get_storage
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_float(value: float, default: float = 0.0) -> float:
+    """Replace NaN/Inf with a default value for JSON-safe output."""
+    if math.isnan(value) or math.isinf(value):
+        return default
+    return value
+
+
 # =============================================================================
 # Exceptions
 # =============================================================================
@@ -582,8 +589,8 @@ def compute_efficient_frontier(
         asset_vol = math.sqrt(cov_matrix[i][i])
         assets.append({
             "symbol_index": i,
-            "volatility": round(asset_vol, 6),
-            "return": round(mean_returns[i], 6),
+            "volatility": round(_sanitize_float(asset_vol), 6),
+            "return": round(_sanitize_float(mean_returns[i]), 6),
         })
 
     # Capital Market Line: tangent to the frontier at the max-Sharpe point.
@@ -809,9 +816,9 @@ def optimize_portfolio(
         "symbols": symbols,
         "weights": weights_dict,
         "weights_list": [round(w, 6) for w in optimal_weights],
-        "expected_return": round(expected_return, 6),
-        "volatility": round(volatility, 6),
-        "sharpe_ratio": round(sharpe_ratio, 6),
+        "expected_return": round(_sanitize_float(expected_return), 6),
+        "volatility": round(_sanitize_float(volatility), 6),
+        "sharpe_ratio": round(_sanitize_float(sharpe_ratio), 6),
         "risk_free_rate": risk_free_rate,
         "method": method,
     }
@@ -911,9 +918,9 @@ def calculate_equal_weight_portfolio(
     return {
         "symbols": symbols,
         "weights": {symbol: 1.0 / n for symbol in symbols},
-        "expected_return": expected_return,
-        "volatility": volatility,
-        "sharpe_ratio": sharpe_ratio,
+        "expected_return": _sanitize_float(expected_return),
+        "volatility": _sanitize_float(volatility),
+        "sharpe_ratio": _sanitize_float(sharpe_ratio),
     }
 
 
@@ -988,9 +995,9 @@ def optimize_yfinance_portfolio(
         "symbols": symbols,
         "weights": weights_dict,
         "weights_list": [round(w, 6) for w in optimal_weights],
-        "expected_return": round(expected_return, 6),
-        "volatility": round(volatility, 6),
-        "sharpe_ratio": round(sharpe_ratio, 6),
+        "expected_return": round(_sanitize_float(expected_return), 6),
+        "volatility": round(_sanitize_float(volatility), 6),
+        "sharpe_ratio": round(_sanitize_float(sharpe_ratio), 6),
         "risk_free_rate": risk_free_rate,
         "method": "scipy",
     }
