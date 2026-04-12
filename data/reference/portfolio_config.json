@@ -3,7 +3,7 @@
     "name": "Crypto Diversified Portfolio",
     "description": "Multi-asset crypto portfolio optimized for risk-adjusted returns",
     "created_at": "2025-01-01",
-    "version": "1.0"
+    "version": "2.0"
   },
   "constraints": {
     "min_weight": 0.0,
@@ -17,13 +17,30 @@
     "rebalance_frequency": "monthly"
   },
   "sector_classification": {
-    "Currency": ["BTCUSDT"],
-    "Smart Contracts": ["ETHUSDT", "SOLUSDT", "ADAUSDT", "AVAXUSDT"],
+    "Currency": ["BTCUSDT", "LTCUSDT"],
+    "Smart Contracts": [
+      "ETHUSDT", "SOLUSDT", "ADAUSDT", "AVAXUSDT", "NEARUSDT",
+      "TRXUSDT", "ICPUSDT", "APTUSDT", "SUIUSDT", "ALGOUSDT",
+      "SEIUSDT", "HBARUSDT"
+    ],
     "Exchange": ["BNBUSDT"],
     "Payments": ["XRPUSDT"],
-    "Meme": ["DOGEUSDT"],
-    "Interoperability": ["DOTUSDT"],
-    "Scaling": ["MATICUSDT"]
+    "Interoperability": ["DOTUSDT", "ATOMUSDT"],
+    "Oracle": ["LINKUSDT"],
+    "Storage": ["FILUSDT"],
+    "Scaling": ["POLUSDT", "ARBUSDT", "OPUSDT"],
+    "DeFi": [
+      "AAVEUSDT", "UNIUSDT", "INJUSDT", "RUNEUSDT", "DYDXUSDT",
+      "SNXUSDT", "COMPUSDT", "SUSHIUSDT", "CRVUSDT", "LDOUSDT",
+      "PENDLEUSDT"
+    ],
+    "AI": ["FETUSDT", "RENDERUSDT"],
+    "Media": ["THETAUSDT"],
+    "Supply Chain": ["VETUSDT"],
+    "Indexing": ["GRTUSDT"],
+    "Identity": ["WLDUSDT", "ENSUSDT"],
+    "Meme": ["DOGEUSDT", "SHIBUSDT", "PEPEUSDT", "FLOKIUSDT", "BOMEUSDT"],
+    "Gaming": ["SANDUSDT", "MANAUSDT", "AXSUSDT", "GALAUSDT", "IMXUSDT"]
   },
   "benchmarks": {
     "btc_weight": 0.5,

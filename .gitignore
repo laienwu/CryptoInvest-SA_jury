@@ -47,3 +47,5 @@ logs/
 #Pdf
 pdf/
 *.pdf!/data/
+
+docs/code source

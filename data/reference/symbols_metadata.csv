@@ -1,11 +1,52 @@
 symbol,name,sector,category,launch_year,market_cap_rank,is_stablecoin,consensus
 BTCUSDT,Bitcoin,Currency,Layer 1,2009,1,false,Proof of Work
 ETHUSDT,Ethereum,Smart Contracts,Layer 1,2015,2,false,Proof of Stake
-BNBUSDT,Binance Coin,Exchange,Utility,2017,4,false,Proof of Stake
+BNBUSDT,Binance Coin,Exchange,Utility,2017,4,false,Proof of Staked Authority
 SOLUSDT,Solana,Smart Contracts,Layer 1,2020,5,false,Proof of History
-ADAUSDT,Cardano,Smart Contracts,Layer 1,2017,8,false,Proof of Stake
-XRPUSDT,XRP,Payments,Layer 1,2012,6,false,Consensus
+XRPUSDT,XRP,Payments,Layer 1,2012,6,false,XRP Ledger Consensus
+ADAUSDT,Cardano,Smart Contracts,Layer 1,2017,8,false,Ouroboros Proof of Stake
 DOGEUSDT,Dogecoin,Meme,Layer 1,2013,9,false,Proof of Work
-DOTUSDT,Polkadot,Interoperability,Layer 0,2020,12,false,Nominated PoS
-MATICUSDT,Polygon,Scaling,Layer 2,2019,13,false,Proof of Stake
 AVAXUSDT,Avalanche,Smart Contracts,Layer 1,2020,10,false,Avalanche Consensus
+DOTUSDT,Polkadot,Interoperability,Layer 0,2020,12,false,Nominated Proof of Stake
+LINKUSDT,Chainlink,Oracle,Middleware,2017,14,false,Proof of Stake
+ATOMUSDT,Cosmos,Interoperability,Layer 0,2019,30,false,Tendermint BFT
+FILUSDT,Filecoin,Storage,Infrastructure,2020,35,false,Proof of Spacetime
+POLUSDT,Polygon,Scaling,Layer 2,2019,15,false,Proof of Stake
+NEARUSDT,NEAR Protocol,Smart Contracts,Layer 1,2020,20,false,Doomslug Proof of Stake
+AAVEUSDT,Aave,DeFi,Lending,2020,40,false,Ethereum
+UNIUSDT,Uniswap,DeFi,DEX,2020,18,false,Ethereum
+LTCUSDT,Litecoin,Currency,Layer 1,2011,22,false,Proof of Work
+TRXUSDT,TRON,Smart Contracts,Layer 1,2017,11,false,Delegated Proof of Stake
+ICPUSDT,Internet Computer,Smart Contracts,Layer 1,2021,28,false,Threshold Relay
+APTUSDT,Aptos,Smart Contracts,Layer 1,2022,32,false,Proof of Stake
+ARBUSDT,Arbitrum,Scaling,Layer 2,2023,36,false,Optimistic Rollup
+OPUSDT,Optimism,Scaling,Layer 2,2022,38,false,Optimistic Rollup
+SUIUSDT,Sui,Smart Contracts,Layer 1,2023,45,false,Narwhal-Bullshark
+INJUSDT,Injective,DeFi,Layer 1,2020,42,false,Tendermint BFT
+FETUSDT,Fetch.ai,AI,Layer 1,2019,50,false,Proof of Stake
+RUNEUSDT,THORChain,DeFi,Layer 1,2019,60,false,Tendermint BFT
+THETAUSDT,Theta Network,Media,Layer 1,2018,55,false,Multi-Level BFT
+ALGOUSDT,Algorand,Smart Contracts,Layer 1,2019,62,false,Pure Proof of Stake
+VETUSDT,VeChain,Supply Chain,Layer 1,2018,48,false,Proof of Authority
+SEIUSDT,Sei,Smart Contracts,Layer 1,2023,70,false,Tendermint BFT
+GRTUSDT,The Graph,Indexing,Infrastructure,2020,80,false,Proof of Stake
+DYDXUSDT,dYdX,DeFi,DEX,2021,85,false,Cosmos SDK
+SNXUSDT,Synthetix,DeFi,Derivatives,2018,90,false,Ethereum
+WLDUSDT,Worldcoin,Identity,Layer 2,2023,52,false,Ethereum
+COMPUSDT,Compound,DeFi,Lending,2020,95,false,Ethereum
+SUSHIUSDT,SushiSwap,DeFi,DEX,2020,120,false,Ethereum
+CRVUSDT,Curve DAO,DeFi,DEX,2020,100,false,Ethereum
+LDOUSDT,Lido DAO,DeFi,Staking,2021,33,false,Ethereum
+PENDLEUSDT,Pendle,DeFi,Yield,2021,68,false,Ethereum
+ENSUSDT,Ethereum Name Service,Identity,Infrastructure,2021,110,false,Ethereum
+SHIBUSDT,Shiba Inu,Meme,Layer 1,2020,16,false,Ethereum
+PEPEUSDT,Pepe,Meme,Layer 1,2023,25,false,Ethereum
+FLOKIUSDT,Floki,Meme,Layer 1,2021,75,false,Ethereum
+BOMEUSDT,Book of Meme,Meme,Layer 1,2024,150,false,Solana
+SANDUSDT,The Sandbox,Gaming,Metaverse,2019,55,false,Ethereum
+MANAUSDT,Decentraland,Gaming,Metaverse,2017,58,false,Ethereum
+AXSUSDT,Axie Infinity,Gaming,Metaverse,2018,65,false,Ronin
+GALAUSDT,Gala,Gaming,Metaverse,2020,72,false,Ethereum
+IMXUSDT,Immutable,Gaming,Layer 2,2021,53,false,StarkNet
+RENDERUSDT,Render,AI,Infrastructure,2020,46,false,Solana
+HBARUSDT,Hedera,Smart Contracts,Layer 1,2019,24,false,Hashgraph

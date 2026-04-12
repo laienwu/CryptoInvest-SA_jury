@@ -32,10 +32,10 @@ class PipelineConfig:
         default_factory=lambda: [
             "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT",
             "DOGEUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT", "ATOMUSDT", "FILUSDT",
-            "MATICUSDT", "NEARUSDT", "AAVEUSDT", "UNIUSDT", "LTCUSDT", "TRXUSDT",
+            "POLUSDT", "NEARUSDT", "AAVEUSDT", "UNIUSDT", "LTCUSDT", "TRXUSDT",
             "ICPUSDT", "APTUSDT", "ARBUSDT", "OPUSDT", "SUIUSDT", "INJUSDT",
-            "FETUSDT", "RUNEUSDT", "THETAUSDT", "ALGOUSDT", "VETUSDT", "FTMUSDT",
-            "GRTUSDT", "DYDXUSDT", "SNXUSDT", "MKRUSDT", "COMPUSDT",
+            "FETUSDT", "RUNEUSDT", "THETAUSDT", "ALGOUSDT", "VETUSDT", "SEIUSDT",
+            "GRTUSDT", "DYDXUSDT", "SNXUSDT", "WLDUSDT", "COMPUSDT",
             "SUSHIUSDT", "CRVUSDT", "LDOUSDT", "PENDLEUSDT", "ENSUSDT",
             "SHIBUSDT", "PEPEUSDT", "FLOKIUSDT", "BOMEUSDT",
             "SANDUSDT", "MANAUSDT", "AXSUSDT", "GALAUSDT", "IMXUSDT",
@@ -176,7 +176,7 @@ _DEFAULT_YFINANCE_SYMBOLS = [
     # Healthcare / Consumer
     "JNJ", "PG", "KO",
     # European
-    "ASML.AS", "MC.PA", "SAP.DE",
+    "ASML.AS", "MC.PA", "SAP",
 ]
 
 

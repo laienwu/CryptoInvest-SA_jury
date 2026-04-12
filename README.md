@@ -1,10 +1,31 @@
 # Optimisation du portefeuille Binance
 
-[![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-green.svg)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/tests-1201%20passed-brightgreen.svg)]()
-[![CI](https://github.com/yourusername/binance-portfolio/actions/workflows/ci.yml/badge.svg)]()
+[![Python 3.13+](https://img.shields.io/badge/python-3.13+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.40+-FF4B4B.svg?logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![DuckDB](https://img.shields.io/badge/DuckDB-1.1+-FFF000.svg?logo=duckdb&logoColor=black)](https://duckdb.org/)
+[![Apache Airflow](https://img.shields.io/badge/Airflow-2.10+-017CEE.svg?logo=apacheairflow&logoColor=white)](https://airflow.apache.org/)
+[![dbt](https://img.shields.io/badge/dbt-1.9+-FF694A.svg?logo=dbt&logoColor=white)](https://www.getdbt.com/)
+[![Apache Kafka](https://img.shields.io/badge/Kafka-Redpanda-231F20.svg?logo=apachekafka&logoColor=white)](https://redpanda.com/)
+[![Apache Spark](https://img.shields.io/badge/PySpark-3.5+-E25A1C.svg?logo=apachespark&logoColor=white)](https://spark.apache.org/)
+[![Delta Lake](https://img.shields.io/badge/Delta_Lake-0.22+-00ADD4.svg?logo=databricks&logoColor=white)](https://delta.io/)
+[![Apache Parquet](https://img.shields.io/badge/Parquet-PyArrow-50ABF1.svg?logo=apacheparquet&logoColor=white)](https://parquet.apache.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1.svg?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis-7+-DC382D.svg?logo=redis&logoColor=white)](https://redis.io/)
+[![MinIO](https://img.shields.io/badge/MinIO-S3-C72E49.svg?logo=minio&logoColor=white)](https://min.io/)
+[![Prometheus](https://img.shields.io/badge/Prometheus-2.x-E6522C.svg?logo=prometheus&logoColor=white)](https://prometheus.io/)
+[![Grafana](https://img.shields.io/badge/Grafana-10+-F46800.svg?logo=grafana&logoColor=white)](https://grafana.com/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Pydantic](https://img.shields.io/badge/Pydantic-2.x-E92063.svg?logo=pydantic&logoColor=white)](https://docs.pydantic.dev/)
+[![Plotly](https://img.shields.io/badge/Plotly-5+-3F4F75.svg?logo=plotly&logoColor=white)](https://plotly.com/python/)
+[![Ruff](https://img.shields.io/badge/lint-ruff-D7FF64.svg?logo=ruff&logoColor=black)](https://docs.astral.sh/ruff/)
+[![mypy](https://img.shields.io/badge/types-mypy_strict-2A6DB2.svg)](https://mypy-lang.org/)
+[![pytest](https://img.shields.io/badge/tests-pytest_748-0A9EDC.svg?logo=pytest&logoColor=white)](https://pytest.org/)
+[![GitHub Actions](https://img.shields.io/badge/CI-GitHub_Actions-2088FF.svg?logo=githubactions&logoColor=white)](https://github.com/features/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+## Project
+Data Engineer certification project (RNCP Level 7 - Expert en infrastructures de données massives).
 Plate-forme d'ingenierie de donnees pour l'optimisation de portefeuille crypto + actifs traditionnels. Projet de certification Data Engineer (RNCP Niveau 7 - Expert en infrastructures de donnees massives).
 
 ## Caracteristiques
@@ -26,11 +47,7 @@ Plate-forme d'ingenierie de donnees pour l'optimisation de portefeuille crypto +
 - **Qualite des donnees** - Validation bronze/silver/gold (contrats de donnees)
 - **CI/CD** - GitHub Actions (ruff, mypy, pytest, coverage, bandit, pip-audit)
 
-## Project
-Data Engineer certification project (RNCP Level 7 - Expert en infrastructures de données massives).
-Business case: portfolio optimization with Binance crypto data + traditional assets via yfinance.
-
-## Certification Status: ✅ ALL 21 COMPETENCIES COMPLETE
+## Status: ✅ 21 COMPETENCES COMPLETES
 
 ### Bloc 1: Pilotage projet (C1-C7)
 | ID | Compétence | Status | Implementation |
@@ -71,33 +88,33 @@ Business case: portfolio optimization with Binance crypto data + traditional ass
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        DATA SOURCES (6)                             │
-│  [Binance API] [CSV] [JSON] [Scraping] [PostgreSQL] [yfinance]     │
+│  [Binance API] [CSV] [JSON] [Scraping] [PostgreSQL] [yfinance]      │
 └──────────┬──────────────────────────────────────────────────────────┘
            │
            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    STREAMING (optionnel)                            │
-│    Binance WebSocket → Kafka (Redpanda) → Consumer → Parquet       │
+│    Binance WebSocket → Kafka (Redpanda) → Consumer → Parquet        │
 └──────────┬──────────────────────────────────────────────────────────┘
            │
            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         DATA LAKE                                   │
-│  ┌─────────┐    ┌─────────┐    ┌─────────┐                         │
-│  │ BRONZE  │───▶│ SILVER  │───▶│  GOLD   │  + Delta Lake (ACID)    │
-│  │  (raw)  │    │(metrics)│    │(weights)│                         │
-│  └─────────┘    └─────────┘    └─────────┘                         │
+│  ┌─────────┐    ┌─────────┐    ┌─────────┐                          │
+│  │ BRONZE  │───▶│ SILVER  │───▶│  GOLD   │  + Delta Lake (ACID)     │
+│  │  (raw)  │    │(metrics)│    │(weights)│                          │
+│  └─────────┘    └─────────┘    └─────────┘                          │
 └──────────┬──────────────────────────────────────────────────────────┘
            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                      DATA WAREHOUSE                                 │
-│   fact_prices │ dim_symbol │ dim_date │ dbt models (staging+marts) │
+│   fact_prices │ dim_symbol │ dim_date │ dbt models (staging+marts)  │
 │                        DuckDB + Star Schema                         │
 └──────────┬──────────────────────────────────────────────────────────┘
            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         EXPOSURE                                    │
-│   FastAPI (:8000) │ Streamlit (:8501) │ Prometheus+Grafana (:9090) │
+│   FastAPI (:8000) │ Streamlit (:8501) │ Prometheus+Grafana (:9090)  │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -370,7 +387,7 @@ interval = "1d"
 period_days = 30
 
 [yfinance]
-symbols = ["SPY", "EFA", "GLD", "SLV", "TLT", "AAPL", "MSFT", "ASML.AS", "MC.PA", "SAP.DE"]
+symbols = ["SPY", "EFA", "GLD", "SLV", "TLT", "AAPL", "MSFT", "ASML.AS", "MC.PA", "SAP"]
 trading_days_per_year = 252
 period_days = 365
 ```
