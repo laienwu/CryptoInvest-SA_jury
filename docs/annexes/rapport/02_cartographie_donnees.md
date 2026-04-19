@@ -35,7 +35,7 @@ Le projet exploite **6 types de sources** heterogenes pour satisfaire la compete
 
 | Flux | URL | Description |
 |------|-----|-------------|
-| Klines | `wss://stream.binance.com:9443/ws/{symbol}@kline_1d` | Bougies en temps reel |
+| Klines | `wss://stream.binance.com:9443/ws/{symbol}@kline_{interval}` | Bougies en temps reel (intervalle via `KAFKA_STREAM_INTERVAL`, defaut `1d` en prod, `1m` en demo) |
 | Order Book | `wss://stream.binance.com:9443/ws/{symbol}@depth20@100ms` | Carnet d'ordres (top 20 niveaux) |
 
 ### 1.2 Source 2 : Yahoo Finance / yfinance (actifs traditionnels)

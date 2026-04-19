@@ -252,6 +252,7 @@ services:
       retries: 5
     profiles:
       - streaming
+      - full
 
   redpanda-init:
     image: redpandadata/redpanda:v24.1.1
@@ -269,6 +270,7 @@ services:
     restart: "no"
     profiles:
       - streaming
+      - full
 
   stream-producer:
     build:
@@ -278,6 +280,7 @@ services:
     env_file: .env
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=redpanda:9092
+      - KAFKA_STREAM_INTERVAL=${KAFKA_STREAM_INTERVAL:-1m}
     volumes:
       - ./config.toml:/app/config.toml:ro
     depends_on:
@@ -286,6 +289,7 @@ services:
     restart: unless-stopped
     profiles:
       - streaming
+      - full
 
   stream-consumer:
     build:
@@ -305,6 +309,7 @@ services:
     restart: unless-stopped
     profiles:
       - streaming
+      - full
 
   redpanda-console:
     image: redpandadata/console:v2.6.0
@@ -317,6 +322,7 @@ services:
         condition: service_healthy
     profiles:
       - streaming
+      - full
 
   # ===========================================================================
   # REDIS — API response cache (--profile cache)

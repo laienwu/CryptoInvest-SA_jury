@@ -28,9 +28,9 @@ dag = DAG(
     "portfolio_optimization",
     default_args=default_args,
     description="ETL pipeline for crypto + traditional portfolio optimization",
-    schedule_interval="@hourly",
+    schedule_interval="@daily",
     start_date=datetime(2025, 1, 1),
-    catchup=False,
+    catchup=True,
     tags=["portfolio", "etl", "binance", "yfinance"],
 )
 

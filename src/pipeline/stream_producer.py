@@ -35,7 +35,7 @@ def _build_stream_url(symbols: list[str], interval: str = "1d") -> str:
     return f"{BINANCE_WS_BASE}/{'/'.join(streams)}"
 
 
-def _parse_kline_event(data: dict[str, Any]) -> dict[str, Any] | None:
+def _parse_kline_event(data: dict[str, Any], interval: str = "1d") -> dict[str, Any] | None:
     """Parse a Binance kline WebSocket event into a flat record."""
     if data.get("e") != "kline":
         return None
@@ -44,9 +44,14 @@ def _parse_kline_event(data: dict[str, Any]) -> dict[str, Any] | None:
     if not k.get("x"):  # Only closed candles
         return None
 
+    # Daily candles keep date-only timestamps (Bronze Parquet schema).
+    # Sub-daily intervals include time so each close is a distinct record.
+    ts = datetime.fromtimestamp(k["t"] / 1000, tz=UTC)
+    timestamp = ts.strftime("%Y-%m-%d") if interval == "1d" else ts.isoformat()
+
     return {
         "symbol": k["s"],
-        "timestamp": datetime.fromtimestamp(k["t"] / 1000, tz=UTC).strftime("%Y-%m-%d"),
+        "timestamp": timestamp,
         "open": float(k["o"]),
         "high": float(k["h"]),
         "low": float(k["l"]),
@@ -60,6 +65,7 @@ def run_producer(
     symbols: list[str] | None = None,
     bootstrap_servers: str | None = None,
     topic: str | None = None,
+    interval: str | None = None,
 ) -> None:
     """
     Run the Kafka producer: Binance WebSocket → Kafka topic.
@@ -68,6 +74,7 @@ def run_producer(
         symbols: Trading pairs to stream. Defaults to config symbols.
         bootstrap_servers: Kafka broker address.
         topic: Kafka topic name.
+        interval: Kline interval (e.g. "1d", "1m"). Defaults to KAFKA_STREAM_INTERVAL env or "1d".
     """
     cfg = load_config()
     if symbols is None:
@@ -76,8 +83,10 @@ def run_producer(
         bootstrap_servers = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:19092")
     if topic is None:
         topic = os.environ.get("KAFKA_TOPIC", "klines-raw")
+    if interval is None:
+        interval = os.environ.get("KAFKA_STREAM_INTERVAL", "1d")
 
-    logger.info("Starting producer for %d symbols → %s", len(symbols), topic)
+    logger.info("Starting producer for %d symbols @ %s → %s", len(symbols), interval, topic)
 
     producer = KafkaProducer(
         bootstrap_servers=bootstrap_servers,
@@ -95,7 +104,7 @@ def run_producer(
     signal.signal(signal.SIGINT, _shutdown)
     signal.signal(signal.SIGTERM, _shutdown)
 
-    ws_url = _build_stream_url(symbols)
+    ws_url = _build_stream_url(symbols, interval=interval)
     logger.info("Connecting to %s", ws_url)
 
     produced_count = 0
@@ -103,7 +112,7 @@ def run_producer(
     def on_message(_ws: Any, message: str) -> None:
         nonlocal produced_count
         data = json.loads(message)
-        record = _parse_kline_event(data)
+        record = _parse_kline_event(data, interval=interval)
         if record:
             producer.send(topic, key=record["symbol"], value=record)
             produced_count += 1

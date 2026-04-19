@@ -15,9 +15,11 @@ docker compose --profile full up -d
 # Vérifier que tout tourne (11 services en mode full)
 docker compose ps
 
-# Pré-charger les données fraîches (crypto + traditionnel)
-python scripts/bootstrap.py
+# Pré-charger les données fraîches (crypto + traditionnel) — one-shot via profile pipeline
+docker compose --profile pipeline up --abort-on-container-exit pipeline
 ```
+
+> **Note Docker :** toutes les commandes `python` / `dbt` de ce guide s'exécutent *dans* les containers via `docker compose exec`. Les `curl` tournent sur l'hôte (ports publiés sur `localhost`).
 
 **Endpoints à garder ouverts dans le navigateur :**
 - `http://localhost:8000/docs` — Swagger UI (45 endpoints)
@@ -41,7 +43,7 @@ python scripts/bootstrap.py
 
 **Commande :**
 ```bash
-python -c "from src.pipeline import ingest_all_sources; ingest_all_sources()"
+docker compose exec api python -c "from src.pipeline import ingest_all_sources; ingest_all_sources()"
 ```
 
 **Montrer :** Les logs montrant les **6 sources hétérogènes** invoquées : `BinanceAPISource`, `CSVSource`, `JSONSource`, `ScrapingSource` (CoinGecko), `PostgreSQLSource` (benchmarks), `YFinanceSource` (33 actifs traditionnels).
@@ -54,7 +56,7 @@ python -c "from src.pipeline import ingest_all_sources; ingest_all_sources()"
 
 **Commande :**
 ```bash
-python -c "from src.pipeline import transform_data; transform_data()"
+docker compose exec api python -c "from src.pipeline import transform_data; transform_data()"
 ```
 
 **Montrer :** Logs de calcul des rendements, volatilité annualisée, corrélation, covariance (sanitization NaN/Inf).
@@ -65,12 +67,12 @@ python -c "from src.pipeline import transform_data; transform_data()"
 
 ## Étape 4 — DuckDB Star Schema + dbt C9/C11/C13 (75s)
 
-**Commande :**
-```python
+**Commande (DuckDB dans le container `api`) :**
+```bash
+docker compose exec api python <<'PY'
 from src.storage.duckdb import DuckDBStorage
 
 with DuckDBStorage() as db:
-    # Requête sur le schéma en étoile
     print(db.query("""
         SELECT s.symbol, s.sector,
                COUNT(*) AS nb_obs,
@@ -82,11 +84,12 @@ with DuckDBStorage() as db:
         ORDER BY prix_moyen DESC
         LIMIT 10
     """))
+PY
 ```
 
-**Puis :**
+**Puis (dbt installé dans l'image Airflow) :**
 ```bash
-cd dbt_project && dbt run && dbt test
+docker compose exec airflow-scheduler bash -c "cd /opt/airflow/dbt_project && dbt run && dbt test"
 ```
 
 **Dire :** « C9, C11, C13 : DWH en étoile sur DuckDB — `fact_prices`, `dim_symbol`, `dim_date`. Six modèles dbt (staging + marts) avec tests automatiques et lineage — c'est l'ADR-007. DuckDB lit directement les Parquet sans serveur (ADR-002). »
@@ -97,7 +100,7 @@ cd dbt_project && dbt run && dbt test
 
 **Commande :**
 ```bash
-curl -s http://localhost:8000/strategies/compare | python -m json.tool
+curl -s http://localhost:8000/portfolio/compare-strategies | python -m json.tool
 ```
 
 **Montrer :** JSON comparant Markowitz, HRP (Hierarchical Risk Parity), Risk Parity, Black-Litterman, Min Variance, Max Diversification — rendement, volatilité, Sharpe pour chaque.
@@ -154,7 +157,7 @@ docker compose --profile streaming up -d
 docker compose logs -f stream-producer | head -20
 ```
 
-**Montrer :** Logs du producer envoyant klines + order book depth vers Redpanda, consumer écrivant en micro-batch Parquet dans Bronze.
+**Montrer :** Logs du producer envoyant klines + order book depth vers Redpanda, consumer écrivant en micro-batch Parquet dans Bronze. Pour la démo, l'intervalle par défaut est `1m` (variable `KAFKA_STREAM_INTERVAL`, modifiable dans `.env`) afin qu'un message arrive chaque minute ; en production on reste sur `1d`.
 
 **Dire :** « Ingestion temps réel optionnelle : Binance WebSocket → Redpanda (Kafka-compatible, zéro JVM) → consumer micro-batch → Bronze Parquet. Architecture parallèle au batch, pas de duplication car profiles Docker séparés. »
 
@@ -172,12 +175,15 @@ docker compose logs -f stream-producer | head -20
 
 ## Étape 11 — Tests & Qualité (optionnel, 30s)
 
-**Commande :**
+**Commandes (les images prod ne contiennent ni `tests/` ni les dev-deps — on passe par un container jetable qui monte le repo) :**
 ```bash
-uv run pytest tests/ -q 2>&1 | tail -5
-uv run ruff check src/
-uv run mypy src/
+docker compose run --rm --no-deps -v "$PWD:/app" -w /app api uv sync --extra dev
+docker compose run --rm --no-deps -v "$PWD:/app" -w /app api uv run pytest tests/ -q 2>&1 | tail -5
+docker compose run --rm --no-deps -v "$PWD:/app" -w /app api uv run ruff check src/
+docker compose run --rm --no-deps -v "$PWD:/app" -w /app api uv run mypy src/
 ```
+
+> Alternative plus simple : ouvrir l'onglet GitHub Actions du dernier run CI — même résultat sans rejouer en live.
 
 **Dire :** « **1201 tests** passants, zéro failure sur 37+ fichiers de test. `ruff` et `mypy --strict` avec zéro erreur sur `src/`. Test anti-drift OpenAPI qui diff la spec YAML et le code généré. CI GitHub Actions : ruff + mypy + pytest + coverage + bandit + pip-audit. »
 
@@ -208,7 +214,7 @@ uv run mypy src/
 | Problème | Fallback |
 |----------|----------|
 | Binance API rate-limited | Dire « la résilience est codée, passer à la source suivante » |
-| Dashboard vide | `python scripts/bootstrap.py` puis rafraîchir |
+| Dashboard vide | `docker compose --profile pipeline up --abort-on-container-exit pipeline` puis rafraîchir |
 | Airflow DAG rouge | Ouvrir logs de la tâche échouée, expliquer retry policy |
 | yfinance ticker retourne NaN | Montrer `_sanitize_float()` dans `optimize.py` — safety net |
 | Conteneur down | `docker compose --profile full up -d <service>` |
