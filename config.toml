@@ -47,3 +47,19 @@ symbols = [
 trading_days_per_year = 252
 period_days = 365
 risk_free_rate = 0.05
+
+[symbol_selector]
+# Daily Binance trading-universe builder. All keys are optional —
+# omitting one falls back to the SymbolSelectorConfig default in src/config.py.
+min_quote_volume = 50000000.0       # USD; liquidity floor
+min_daily_range = 0.02              # (high - low) / low; 2% intraday range floor
+min_abs_price_change_pct = 1.0      # |24h % change| floor
+momentum_filter_enabled = true
+top_n = 30
+min_universe_size = 10              # below this, select_universe raises
+quote_asset = "USDT"
+leveraged_suffixes = ["UP", "DOWN", "BULL", "BEAR"]
+stablecoin_blocklist = [
+    "USDCUSDT", "BUSDUSDT", "FDUSDUSDT", "TUSDUSDT",
+    "DAIUSDT", "USDPUSDT", "PAXGUSDT",
+]

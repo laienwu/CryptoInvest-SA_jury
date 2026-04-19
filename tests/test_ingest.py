@@ -1,7 +1,7 @@
 """
 Tests for src/pipeline/ingest.py
 
-Covers: fetch_klines, _make_request, BinanceAPIError, ingest_data, ingest_incremental.
+Covers: fetch_klines, make_binance_request, BinanceAPIError, ingest_data, ingest_incremental.
 All network calls are mocked — no real Binance API calls.
 """
 
@@ -13,9 +13,9 @@ import pytest
 
 from src.pipeline.ingest import (
     BinanceAPIError,
-    _make_request,
     fetch_klines,
     ingest_data,
+    make_binance_request,
 )
 
 
@@ -37,7 +37,7 @@ def test_binance_api_error_no_status_code() -> None:
 
 
 # =============================================================================
-# _make_request
+# make_binance_request
 # =============================================================================
 
 
@@ -65,7 +65,7 @@ def test_make_request_success() -> None:
     mock_response.json.return_value = _mock_kline_response()
 
     with patch("requests.get", return_value=mock_response):
-        result = _make_request("https://api.binance.com/api/v3/klines", {"symbol": "BTCUSDT"})
+        result = make_binance_request("https://api.binance.com/api/v3/klines", {"symbol": "BTCUSDT"})
 
     assert isinstance(result, list)
     assert len(result) == 1
@@ -78,7 +78,7 @@ def test_make_request_non_200_raises() -> None:
 
     with patch("requests.get", return_value=mock_response):
         with pytest.raises(BinanceAPIError) as exc_info:
-            _make_request("https://api.binance.com/api/v3/klines", {}, max_retries=1)
+            make_binance_request("https://api.binance.com/api/v3/klines", {}, max_retries=1)
 
     assert exc_info.value.status_code == 400
 
@@ -88,7 +88,7 @@ def test_make_request_timeout_raises() -> None:
 
     with patch("requests.get", side_effect=req.exceptions.Timeout):
         with pytest.raises(BinanceAPIError):
-            _make_request("https://api.binance.com/api/v3/klines", {}, max_retries=1)
+            make_binance_request("https://api.binance.com/api/v3/klines", {}, max_retries=1)
 
 
 def test_make_request_connection_error_raises() -> None:
@@ -96,7 +96,7 @@ def test_make_request_connection_error_raises() -> None:
 
     with patch("requests.get", side_effect=req.exceptions.ConnectionError("refused")):
         with pytest.raises(BinanceAPIError):
-            _make_request("https://api.binance.com/api/v3/klines", {}, max_retries=1)
+            make_binance_request("https://api.binance.com/api/v3/klines", {}, max_retries=1)
 
 
 def test_make_request_exponential_backoff() -> None:
@@ -113,7 +113,7 @@ def test_make_request_exponential_backoff() -> None:
     with patch("requests.get", side_effect=flaky):
         with patch("time.sleep"):  # don't actually sleep
             with pytest.raises(BinanceAPIError):
-                _make_request("https://api.binance.com/api/v3/klines", {}, max_retries=3)
+                make_binance_request("https://api.binance.com/api/v3/klines", {}, max_retries=3)
 
     assert call_count == 3
 

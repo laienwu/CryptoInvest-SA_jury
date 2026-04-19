@@ -8,13 +8,15 @@ from pathlib import Path
 
 import pytest
 
-from src.config import load_config
+from src.config import load_config, load_symbol_selector_config, load_yfinance_config
 
 
 @pytest.fixture(autouse=True)
 def _clear_config_cache() -> None:
-    """Clear load_config LRU cache between tests."""
+    """Clear LRU caches on config loaders between tests."""
     load_config.cache_clear()
+    load_yfinance_config.cache_clear()
+    load_symbol_selector_config.cache_clear()
 
 
 @pytest.fixture

@@ -239,6 +239,120 @@ def load_yfinance_config(config_path: Path | None = None) -> YFinanceConfig:
 
 
 # =============================================================================
+# Symbol selector (daily Binance trading-universe builder)
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class SymbolSelectorConfig:
+    """Immutable configuration for the daily Binance symbol selector."""
+
+    # Ranking / filter thresholds
+    min_quote_volume: float = 50_000_000.0
+    min_daily_range: float = 0.02
+    min_abs_price_change_pct: float = 1.0
+    momentum_filter_enabled: bool = True
+    top_n: int = 30
+    min_universe_size: int = 10
+
+    # Quote/market filters
+    quote_asset: str = "USDT"
+    leveraged_suffixes: tuple[str, ...] = ("UP", "DOWN", "BULL", "BEAR")
+    stablecoin_blocklist: tuple[str, ...] = (
+        "USDCUSDT",
+        "BUSDUSDT",
+        "FDUSDUSDT",
+        "TUSDUSDT",
+        "DAIUSDT",
+        "USDPUSDT",
+        "PAXGUSDT",
+    )
+
+    # HTTP
+    binance_api_base: str = "https://api.binance.com"
+    rate_limit_delay: float = 0.5
+    max_retries: int = 3
+
+
+@functools.lru_cache(maxsize=4)
+def load_symbol_selector_config(config_path: Path | None = None) -> SymbolSelectorConfig:
+    """
+    Load symbol selector configuration from the ``[symbol_selector]`` section
+    of config.toml, overlaid with ``SELECTOR_*`` environment variables.
+
+    Precedence (highest wins):
+        1. Environment variables (SELECTOR_MIN_QUOTE_VOLUME, SELECTOR_TOP_N, ...)
+        2. config.toml ``[symbol_selector]`` values
+        3. SymbolSelectorConfig defaults
+    """
+    if config_path is None:
+        config_path = _PROJECT_ROOT / "config.toml"
+
+    toml_data = _read_toml(config_path)
+    section = toml_data.get("symbol_selector", {})
+
+    kwargs: dict[str, Any] = {}
+
+    _float_keys = ("min_quote_volume", "min_daily_range", "min_abs_price_change_pct", "rate_limit_delay")
+    _int_keys = ("top_n", "min_universe_size", "max_retries")
+    _str_keys = ("quote_asset", "binance_api_base")
+    _tuple_keys = ("leveraged_suffixes", "stablecoin_blocklist")
+
+    for key in _float_keys:
+        if key in section:
+            kwargs[key] = float(section[key])
+    for key in _int_keys:
+        if key in section:
+            kwargs[key] = int(section[key])
+    for key in _str_keys:
+        if key in section:
+            kwargs[key] = str(section[key])
+    for key in _tuple_keys:
+        if key in section:
+            kwargs[key] = tuple(section[key])
+    if "momentum_filter_enabled" in section:
+        kwargs["momentum_filter_enabled"] = bool(section["momentum_filter_enabled"])
+
+    env_min_qv = os.environ.get("SELECTOR_MIN_QUOTE_VOLUME")
+    if env_min_qv:
+        kwargs["min_quote_volume"] = float(env_min_qv)
+
+    env_min_range = os.environ.get("SELECTOR_MIN_DAILY_RANGE")
+    if env_min_range:
+        kwargs["min_daily_range"] = float(env_min_range)
+
+    env_min_pct = os.environ.get("SELECTOR_MIN_ABS_PRICE_CHANGE_PCT")
+    if env_min_pct:
+        kwargs["min_abs_price_change_pct"] = float(env_min_pct)
+
+    env_momentum = os.environ.get("SELECTOR_MOMENTUM_FILTER_ENABLED")
+    if env_momentum is not None:
+        kwargs["momentum_filter_enabled"] = env_momentum.strip().lower() in {"1", "true", "yes"}
+
+    env_top_n = os.environ.get("SELECTOR_TOP_N")
+    if env_top_n:
+        kwargs["top_n"] = int(env_top_n)
+
+    env_min_size = os.environ.get("SELECTOR_MIN_UNIVERSE_SIZE")
+    if env_min_size:
+        kwargs["min_universe_size"] = int(env_min_size)
+
+    env_quote = os.environ.get("SELECTOR_QUOTE_ASSET")
+    if env_quote:
+        kwargs["quote_asset"] = env_quote
+
+    env_blocklist = os.environ.get("SELECTOR_STABLECOIN_BLOCKLIST")
+    if env_blocklist:
+        kwargs["stablecoin_blocklist"] = tuple(s.strip() for s in env_blocklist.split(",") if s.strip())
+
+    env_suffixes = os.environ.get("SELECTOR_LEVERAGED_SUFFIXES")
+    if env_suffixes:
+        kwargs["leveraged_suffixes"] = tuple(s.strip() for s in env_suffixes.split(",") if s.strip())
+
+    return SymbolSelectorConfig(**kwargs)
+
+
+# =============================================================================
 # Database configuration (infrastructure, separate from pipeline parameters)
 # =============================================================================
 

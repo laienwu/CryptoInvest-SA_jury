@@ -1,12 +1,17 @@
 """
 Portfolio Optimization DAG
 
-Orchestrates two parallel branches:
+Orchestrates two parallel branches plus an independent daily universe task:
+  Universe:     select_universe (independent — persists universe_YYYYMMDD + universe_latest)
   Crypto:       ingest → transform → optimize → frontier → backtest → monte_carlo
   Traditional:  ingest_trad → transform_trad → optimize_trad → frontier_trad → backtest_trad
   Both branches → dbt_run (after both backtests complete)
 
-Schedule: Hourly
+``select_universe`` currently runs without affecting the ingest paths. Downstream
+trading code reads the artifact via ``storage.load_output("universe_latest")``.
+Rewiring ``run_ingest`` to consume the universe is a planned follow-up.
+
+Schedule: Daily
 """
 
 from datetime import datetime, timedelta
@@ -33,6 +38,17 @@ dag = DAG(
     catchup=True,
     tags=["portfolio", "etl", "binance", "yfinance"],
 )
+
+
+# =============================================================================
+# Universe selection (independent daily task)
+# =============================================================================
+
+
+def run_select_universe() -> str:
+    from src.pipeline.symbol_selector import select_universe
+    payload = select_universe()
+    return f"Universe selected: {payload['universe_size']} symbols"
 
 
 # =============================================================================
@@ -114,6 +130,16 @@ def run_backtest_trad() -> str:
     sharpe = result.get("metrics", {}).get("strategy", {}).get("sharpe_ratio", "N/A")
     return f"Backtest trad complete: strategy sharpe={sharpe}"
 
+
+# =============================================================================
+# Universe task (independent root)
+# =============================================================================
+
+select_universe_task = PythonOperator(
+    task_id="select_universe",
+    python_callable=run_select_universe,
+    dag=dag,
+)
 
 # =============================================================================
 # Crypto tasks

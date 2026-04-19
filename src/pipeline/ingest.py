@@ -56,7 +56,7 @@ class BinanceAPIError(Exception):
 # =============================================================================
 
 
-def _make_request(
+def make_binance_request(
     url: str,
     params: dict[str, Any],
     rate_limit_delay: float = 0.5,
@@ -193,7 +193,7 @@ def fetch_klines(
             "limit": page_size,
         }
 
-        raw_klines = _make_request(url, params, rate_limit_delay, max_retries)
+        raw_klines = make_binance_request(url, params, rate_limit_delay, max_retries)
 
         if not raw_klines:
             break
@@ -464,7 +464,7 @@ def fetch_current_prices(symbols: list[str] | None = None) -> dict[str, float]:
     for symbol in symbols:
         params = {"symbol": symbol}
         try:
-            response = _make_request(url, params, cfg.rate_limit_delay, cfg.max_retries)
+            response = make_binance_request(url, params, cfg.rate_limit_delay, cfg.max_retries)
             prices[symbol] = float(response["price"])
             time.sleep(cfg.rate_limit_delay)
         except BinanceAPIError as e:

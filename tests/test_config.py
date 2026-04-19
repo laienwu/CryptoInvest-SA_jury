@@ -12,7 +12,14 @@ from pathlib import Path
 
 import pytest
 
-from src.config import PipelineConfig, YFinanceConfig, load_config, load_yfinance_config
+from src.config import (
+    PipelineConfig,
+    SymbolSelectorConfig,
+    YFinanceConfig,
+    load_config,
+    load_symbol_selector_config,
+    load_yfinance_config,
+)
 
 
 class TestDefaults:
@@ -203,3 +210,89 @@ class TestYFinanceEnvVarOverrides:
         monkeypatch.setenv("YFINANCE_PERIOD_DAYS", "90")
         cfg = load_yfinance_config(toml_file)
         assert cfg.period_days == 90
+
+
+class TestSymbolSelectorDefaults:
+    """Defaults for the daily symbol-selector config."""
+
+    def test_default_thresholds(self):
+        cfg = SymbolSelectorConfig()
+        assert cfg.min_quote_volume == 50_000_000.0
+        assert cfg.min_daily_range == 0.02
+        assert cfg.min_abs_price_change_pct == 1.0
+        assert cfg.top_n == 30
+        assert cfg.min_universe_size == 10
+        assert cfg.momentum_filter_enabled is True
+
+    def test_default_quote_asset_and_suffixes(self):
+        cfg = SymbolSelectorConfig()
+        assert cfg.quote_asset == "USDT"
+        assert cfg.leveraged_suffixes == ("UP", "DOWN", "BULL", "BEAR")
+        assert "USDCUSDT" in cfg.stablecoin_blocklist
+
+    def test_frozen(self):
+        cfg = SymbolSelectorConfig()
+        with pytest.raises(AttributeError):
+            cfg.top_n = 10
+
+
+class TestSymbolSelectorLoadFromToml:
+    """Loading [symbol_selector] config from TOML."""
+
+    def test_load_overrides(self, tmp_path):
+        toml_file = tmp_path / "config.toml"
+        toml_file.write_text(
+            "[symbol_selector]\n"
+            "min_quote_volume = 100000000\n"
+            "top_n = 25\n"
+            "momentum_filter_enabled = false\n"
+            'leveraged_suffixes = ["UP", "DOWN"]\n'
+        )
+        cfg = load_symbol_selector_config(toml_file)
+        assert cfg.min_quote_volume == 100_000_000.0
+        assert cfg.top_n == 25
+        assert cfg.momentum_filter_enabled is False
+        assert cfg.leveraged_suffixes == ("UP", "DOWN")
+
+    def test_missing_file_uses_defaults(self, tmp_path):
+        cfg = load_symbol_selector_config(tmp_path / "nonexistent.toml")
+        assert cfg.top_n == 30
+        assert cfg.quote_asset == "USDT"
+
+    def test_partial_toml_merges_with_defaults(self, tmp_path):
+        toml_file = tmp_path / "config.toml"
+        toml_file.write_text("[symbol_selector]\ntop_n = 15\n")
+        cfg = load_symbol_selector_config(toml_file)
+        assert cfg.top_n == 15
+        assert cfg.min_quote_volume == 50_000_000.0
+
+
+class TestSymbolSelectorEnvOverrides:
+    """Environment-variable overrides for the selector config."""
+
+    def test_env_min_quote_volume(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("SELECTOR_MIN_QUOTE_VOLUME", "75000000")
+        cfg = load_symbol_selector_config(tmp_path / "missing.toml")
+        assert cfg.min_quote_volume == 75_000_000.0
+
+    def test_env_top_n(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("SELECTOR_TOP_N", "20")
+        cfg = load_symbol_selector_config(tmp_path / "missing.toml")
+        assert cfg.top_n == 20
+
+    def test_env_momentum_filter_disabled(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("SELECTOR_MOMENTUM_FILTER_ENABLED", "false")
+        cfg = load_symbol_selector_config(tmp_path / "missing.toml")
+        assert cfg.momentum_filter_enabled is False
+
+    def test_env_stablecoin_blocklist(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("SELECTOR_STABLECOIN_BLOCKLIST", "USDCUSDT, TUSDUSDT")
+        cfg = load_symbol_selector_config(tmp_path / "missing.toml")
+        assert cfg.stablecoin_blocklist == ("USDCUSDT", "TUSDUSDT")
+
+    def test_env_overrides_toml(self, tmp_path, monkeypatch):
+        toml_file = tmp_path / "config.toml"
+        toml_file.write_text("[symbol_selector]\ntop_n = 40\n")
+        monkeypatch.setenv("SELECTOR_TOP_N", "15")
+        cfg = load_symbol_selector_config(toml_file)
+        assert cfg.top_n == 15
