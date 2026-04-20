@@ -45,6 +45,7 @@ class TradingConfig:
     max_daily_loss_pct: float = 0.05
     min_equity_floor_usdt: float = 100.0
     max_cost_fraction_of_risk: float = 0.20
+    post_stop_cooldown_minutes: int = 60  # re-entry lockout after a stop fill
 
     # Persistence
     ledger_path: Path = _PROJECT_ROOT / "data" / "trading" / "ledger.duckdb"
@@ -89,7 +90,7 @@ def load_trading_config(config_path: Path | None = None) -> TradingConfig:
         "rate_limit_delay",
     )
     _int_keys = ("candle_lookback", "sma_short", "sma_long", "max_open_positions",
-                 "max_retries", "recv_window_ms")
+                 "max_retries", "recv_window_ms", "post_stop_cooldown_minutes")
     _str_keys = ("candle_interval",)
 
     for key in _float_keys:
@@ -127,6 +128,7 @@ def load_trading_config(config_path: Path | None = None) -> TradingConfig:
         ("TRADING_MAX_OPEN_POSITIONS", "max_open_positions", int),
         ("TRADING_MAX_DAILY_LOSS_PCT", "max_daily_loss_pct", float),
         ("TRADING_MIN_EQUITY_FLOOR_USDT", "min_equity_floor_usdt", float),
+        ("TRADING_POST_STOP_COOLDOWN_MINUTES", "post_stop_cooldown_minutes", int),
     ):
         raw = os.environ.get(env_name)
         if raw:

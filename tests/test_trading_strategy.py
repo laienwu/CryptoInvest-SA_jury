@@ -27,3 +27,8 @@ def test_hold_when_no_crossover() -> None:
     s = SmaCrossoverStrategy(short_window=3, long_window=5)
     closes = [10.0] * 20
     assert s.generate_signal(closes) == "HOLD"
+
+
+def test_startup_candle_count_returns_long_window() -> None:
+    assert SmaCrossoverStrategy(short_window=20, long_window=50).startup_candle_count == 50
+    assert SmaCrossoverStrategy(short_window=3, long_window=5).startup_candle_count == 5

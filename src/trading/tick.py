@@ -124,7 +124,7 @@ def run_tick(
             logger.warning("Daily-loss kill switch tripped — no new entries this tick")
             return summary
 
-        _reconcile(client, ledger, summary, now)
+        _reconcile(client, ledger, cfg, summary, now)
 
         exchange_info = _load_exchange_info(client, universe, summary)
         _close_on_sell_signals(client, ledger, strategy_impl, cfg, exchange_info, summary, now)
@@ -206,6 +206,7 @@ def _load_exchange_info(
 def _reconcile(
     client: BinanceClient,
     ledger: TradeLedger,
+    cfg: TradingConfig,
     summary: dict[str, Any],
     now: datetime,
 ) -> None:
@@ -240,16 +241,22 @@ def _reconcile(
                 realized_pnl=pnl,
                 closed_at=now,
             )
+            if cfg.post_stop_cooldown_minutes > 0:
+                ledger.lock_pair(
+                    symbol=pos.symbol,
+                    locked_until=now + timedelta(minutes=cfg.post_stop_cooldown_minutes),
+                    reason="stop_fill_cooldown",
+                )
             summary["reconciled"] += 1
             logger.info("Reconciled stop fill for %s: pnl=%.4f USDT", pos.symbol, pnl)
 
 
-def _fetch_closes(symbol: str, cfg: TradingConfig) -> list[float]:
+def _fetch_closes(symbol: str, cfg: TradingConfig, lookback: int) -> list[float]:
     """Fetch recent closed bars. Drop the last bar — it may still be open."""
     now = datetime.now(UTC)
     # 5m interval × (lookback+1) bars, pad a bit for safety
     minutes_per_bar = _interval_minutes(cfg.candle_interval)
-    start = now - timedelta(minutes=minutes_per_bar * (cfg.candle_lookback + 2))
+    start = now - timedelta(minutes=minutes_per_bar * (lookback + 2))
     bars = fetch_klines(
         symbol=symbol,
         interval=cfg.candle_interval,
@@ -283,9 +290,13 @@ def _open_on_buy_signals(
     now: datetime,
 ) -> None:
     held = ledger.get_open_symbols()
+    lookback = max(cfg.candle_lookback, strategy.startup_candle_count)
 
     for symbol in universe:
         if symbol in held:
+            continue
+        if ledger.is_pair_locked(symbol, now):
+            summary["orders_skipped"] += 1
             continue
         if not can_open_new_position(ledger, cfg.max_open_positions):
             logger.info("Max open positions (%d) reached — stopping entries",
@@ -298,7 +309,7 @@ def _open_on_buy_signals(
             continue
 
         try:
-            closes = _fetch_closes(symbol, cfg)
+            closes = _fetch_closes(symbol, cfg, lookback)
         except BinanceAPIError as exc:
             summary["errors"].append(f"klines({symbol}): {exc}")
             summary["orders_skipped"] += 1
@@ -380,6 +391,7 @@ def _place_entry(
             entry_price=price,
             stop_price=stop_trigger,
             strategy="sma_crossover",
+            entry_tag="sma_cross_up",
             now_utc=now,
         )
         order = client.place_market_order(symbol, "BUY", qty, coid)
@@ -425,12 +437,13 @@ def _close_on_sell_signals(
     summary: dict[str, Any],
     now: datetime,
 ) -> None:
+    lookback = max(cfg.candle_lookback, strategy.startup_candle_count)
     for pos in ledger.get_open_positions():
         filters = exchange_info.get(pos.symbol)
         if filters is None:
             continue
         try:
-            closes = _fetch_closes(pos.symbol, cfg)
+            closes = _fetch_closes(pos.symbol, cfg, lookback)
         except BinanceAPIError as exc:
             summary["errors"].append(f"klines({pos.symbol}): {exc}")
             continue

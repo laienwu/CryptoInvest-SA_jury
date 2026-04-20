@@ -96,3 +96,48 @@ def test_attach_stop_records_stop_metadata(ledger: TradeLedger) -> None:
     open_pos = ledger.get_open_positions()[0]
     assert open_pos.stop_order_id == "stop-coid-1"
     assert open_pos.stop_price == 97.0
+
+
+def test_entry_tag_round_trips_through_open_positions(ledger: TradeLedger) -> None:
+    ledger.record_intent(
+        "c1", "BTCUSDT", "BUY", 1.0, 100.0, 97.0, "sma",
+        entry_tag="sma_cross_up",
+    )
+    ledger.mark_placed("c1", "exch-1")
+    ledger.mark_filled("c1", 1.0, 100.0)
+    pos = ledger.get_open_positions()[0]
+    assert pos.entry_tag == "sma_cross_up"
+
+
+def test_lock_pair_blocks_is_pair_locked(ledger: TradeLedger) -> None:
+    now = datetime.now(UTC)
+    ledger.lock_pair("BTCUSDT", locked_until=now + timedelta(minutes=30),
+                     reason="stop_fill_cooldown")
+    assert ledger.is_pair_locked("BTCUSDT", now) is True
+    assert ledger.is_pair_locked("ETHUSDT", now) is False
+
+
+def test_is_pair_locked_auto_clears_expired_lock(ledger: TradeLedger) -> None:
+    past = datetime.now(UTC) - timedelta(minutes=1)
+    ledger.lock_pair("BTCUSDT", locked_until=past, reason="stale")
+    # First read auto-GCs the expired lock.
+    assert ledger.is_pair_locked("BTCUSDT") is False
+    # And a fresh lock takes effect.
+    future = datetime.now(UTC) + timedelta(hours=1)
+    ledger.lock_pair("BTCUSDT", locked_until=future, reason="fresh")
+    assert ledger.is_pair_locked("BTCUSDT") is True
+
+
+def test_unlock_pair_removes_lock(ledger: TradeLedger) -> None:
+    future = datetime.now(UTC) + timedelta(hours=1)
+    ledger.lock_pair("BTCUSDT", future, "x")
+    ledger.unlock_pair("BTCUSDT")
+    assert ledger.is_pair_locked("BTCUSDT") is False
+
+
+def test_lock_pair_upserts_on_conflict(ledger: TradeLedger) -> None:
+    t1 = datetime.now(UTC) + timedelta(minutes=10)
+    t2 = datetime.now(UTC) + timedelta(hours=2)
+    ledger.lock_pair("BTCUSDT", t1, "first")
+    ledger.lock_pair("BTCUSDT", t2, "second")  # upsert — no IntegrityError
+    assert ledger.is_pair_locked("BTCUSDT") is True

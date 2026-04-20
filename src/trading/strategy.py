@@ -29,6 +29,11 @@ class Strategy(Protocol):
         """Identifier recorded on every trade row in the ledger."""
         ...
 
+    @property
+    def startup_candle_count(self) -> int:
+        """Minimum number of closed bars required before a signal is meaningful."""
+        ...
+
     def generate_signal(self, closes: list[float]) -> Signal:
         """Return BUY / SELL / HOLD for the most recent *closed* bar."""
         ...
@@ -41,6 +46,11 @@ class SmaCrossoverStrategy:
     short_window: int = 20
     long_window: int = 50
     name: str = "sma_crossover"
+
+    @property
+    def startup_candle_count(self) -> int:
+        """Enough bars to compute the slow SMA (the longer window gates signals)."""
+        return self.long_window
 
     def generate_signal(self, closes: list[float]) -> Signal:
         if len(closes) < self.long_window:

@@ -96,6 +96,7 @@ def _cfg(tmp_path: Path, **overrides: Any) -> TradingConfig:
         risk_per_trade=0.01, stop_loss_pct=0.03,
         max_open_positions=5, max_daily_loss_pct=0.05,
         min_equity_floor_usdt=100.0, max_cost_fraction_of_risk=0.5,
+        post_stop_cooldown_minutes=60,
         ledger_path=tmp_path / "ledger.duckdb",
     )
     base.update(overrides)
@@ -214,6 +215,58 @@ def test_tick_reconciles_filled_stop(tmp_path: Path) -> None:
         assert summary["reconciled"] == 1
         # After reconciliation the position is closed → no open positions.
         assert ledger.get_open_position_count() == 0
+
+
+def test_tick_tags_entry_with_signal_reason(tmp_path: Path) -> None:
+    cfg = _cfg(tmp_path)
+    client = FakeClient(last_price=100.0)
+    storage = FakeStorage(["BTCUSDT"])
+    with TradeLedger(cfg.ledger_path) as ledger, \
+         patch("src.trading.tick.fetch_klines", return_value=_ramp_up_closes(last=100.0)):
+        run_tick(cfg=cfg, storage=storage, client=client, ledger=ledger,
+                 strategy=SmaCrossoverStrategy(3, 5))
+        opens = ledger.get_open_positions()
+    assert len(opens) == 1
+    assert opens[0].entry_tag == "sma_cross_up"
+
+
+def test_tick_skips_locked_pair(tmp_path: Path) -> None:
+    cfg = _cfg(tmp_path)
+    client = FakeClient(last_price=100.0)
+    storage = FakeStorage(["BTCUSDT"])
+    now = datetime.now(UTC)
+    with TradeLedger(cfg.ledger_path) as ledger:
+        ledger.lock_pair("BTCUSDT", now + timedelta(minutes=30), reason="cooldown")
+        with patch("src.trading.tick.fetch_klines", return_value=_ramp_up_closes(last=100.0)):
+            summary = run_tick(cfg=cfg, storage=storage, client=client, ledger=ledger,
+                               now_utc=now, strategy=SmaCrossoverStrategy(3, 5))
+    assert summary["orders_placed"] == 0
+    assert len(client.market_orders) == 0
+
+
+def test_tick_locks_pair_after_stop_fill_reconcile(tmp_path: Path) -> None:
+    cfg = _cfg(tmp_path, post_stop_cooldown_minutes=90)
+    client = FakeClient()
+    storage = FakeStorage(["BTCUSDT"])
+
+    def fake_get_order(**kwargs: Any) -> dict[str, Any]:
+        return {"status": "FILLED", "executedQty": "1.0", "cummulativeQuoteQty": "95.0"}
+    client.get_order = fake_get_order  # type: ignore[assignment]
+
+    now = datetime.now(UTC)
+    with TradeLedger(cfg.ledger_path) as ledger:
+        ledger.record_intent("c1", "BTCUSDT", "BUY", 1.0, 100.0, 95.0, "sma")
+        ledger.mark_filled("c1", 1.0, 100.0)
+        ledger.attach_stop("c1", stop_order_id="stop-1", stop_price=95.0)
+
+        with patch("src.trading.tick.fetch_klines", return_value=_flat_closes()):
+            run_tick(cfg=cfg, storage=storage, client=client, ledger=ledger,
+                     now_utc=now, strategy=SmaCrossoverStrategy(3, 5))
+
+        # The reconcile path set a cooldown that still applies moments later.
+        assert ledger.is_pair_locked("BTCUSDT", now + timedelta(minutes=10)) is True
+        # And it expires after the cooldown window.
+        assert ledger.is_pair_locked("BTCUSDT", now + timedelta(minutes=120)) is False
 
 
 def test_tick_errors_when_universe_missing(tmp_path: Path) -> None:

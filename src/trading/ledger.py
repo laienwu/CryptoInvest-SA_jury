@@ -36,6 +36,13 @@ STATUS_FAILED = "failed"
 OPEN_STATUSES: tuple[str, ...] = (STATUS_PLACED, STATUS_FILLED)
 
 
+def _to_naive_utc(ts: datetime) -> datetime:
+    """Convert a tz-aware datetime to naive UTC; leave naive inputs untouched."""
+    if ts.tzinfo is None:
+        return ts
+    return ts.astimezone(UTC).replace(tzinfo=None)
+
+
 @dataclass(frozen=True)
 class OpenPosition:
     """A snapshot of an open position the tick needs to manage."""
@@ -49,6 +56,7 @@ class OpenPosition:
     stop_price: float | None
     stop_order_id: str | None
     filled_at: datetime | None
+    entry_tag: str | None = None
 
 
 class TradeLedger:
@@ -87,6 +95,7 @@ class TradeLedger:
                 symbol               TEXT NOT NULL,
                 side                 TEXT NOT NULL,
                 strategy             TEXT,
+                entry_tag            TEXT,
                 status               TEXT NOT NULL,
                 intended_qty         DOUBLE,
                 filled_qty           DOUBLE,
@@ -104,6 +113,25 @@ class TradeLedger:
             )
             """
         )
+        self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS symbol_locks (
+                symbol       TEXT PRIMARY KEY,
+                locked_until TIMESTAMP NOT NULL,
+                reason       TEXT
+            )
+            """
+        )
+        # Backfill for ledgers created before entry_tag landed.
+        self._ensure_column("trades", "entry_tag", "TEXT")
+
+    def _ensure_column(self, table: str, column: str, col_type: str) -> None:
+        rows = self.conn.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = ?",
+            [table],
+        ).fetchall()
+        if not any(r[0] == column for r in rows):
+            self.conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")  # noqa: S608
 
     # -- writes --------------------------------------------------------------
 
@@ -116,6 +144,7 @@ class TradeLedger:
         entry_price: float,
         stop_price: float | None,
         strategy: str,
+        entry_tag: str | None = None,
         now_utc: datetime | None = None,
     ) -> None:
         """Insert a new entry trade in the ``intent`` state."""
@@ -124,11 +153,11 @@ class TradeLedger:
             self.conn.execute(
                 """
                 INSERT INTO trades (
-                    client_order_id, symbol, side, strategy, status,
+                    client_order_id, symbol, side, strategy, entry_tag, status,
                     intended_qty, entry_price, stop_price, opened_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                [client_order_id, symbol, side, strategy, STATUS_INTENT,
+                [client_order_id, symbol, side, strategy, entry_tag, STATUS_INTENT,
                  intended_qty, entry_price, stop_price, now],
             )
         except Exception as e:
@@ -233,7 +262,8 @@ class TradeLedger:
         rows = self.conn.execute(
             """
             SELECT client_order_id, exchange_order_id, symbol, side,
-                   filled_qty, entry_price, stop_price, stop_order_id, filled_at
+                   filled_qty, entry_price, stop_price, stop_order_id,
+                   filled_at, entry_tag
               FROM trades
              WHERE status IN (?, ?)
              ORDER BY opened_at
@@ -251,9 +281,57 @@ class TradeLedger:
                 stop_price=float(r[6]) if r[6] is not None else None,
                 stop_order_id=r[7],
                 filled_at=r[8],
+                entry_tag=r[9],
             )
             for r in rows
         ]
+
+    # -- symbol locks --------------------------------------------------------
+
+    def lock_pair(self, symbol: str, locked_until: datetime, reason: str | None = None) -> None:
+        """Prevent new entries on ``symbol`` until ``locked_until`` (UTC)."""
+        # DuckDB TIMESTAMP is naive and would otherwise coerce tz-aware inputs
+        # to local time. Normalize to naive UTC so the round-trip is lossless.
+        stored = _to_naive_utc(locked_until)
+        try:
+            self.conn.execute(
+                """
+                INSERT INTO symbol_locks (symbol, locked_until, reason)
+                     VALUES (?, ?, ?)
+                ON CONFLICT (symbol) DO UPDATE
+                        SET locked_until = excluded.locked_until,
+                            reason       = excluded.reason
+                """,
+                [symbol, stored, reason],
+            )
+        except Exception as e:
+            raise LedgerError(f"lock_pair({symbol}) failed: {e}",
+                              operation="lock_pair") from e
+
+    def unlock_pair(self, symbol: str) -> None:
+        self._update(
+            "DELETE FROM symbol_locks WHERE symbol = ?",
+            [symbol],
+            operation="unlock_pair",
+        )
+
+    def is_pair_locked(self, symbol: str, now_utc: datetime | None = None) -> bool:
+        now = now_utc or datetime.now(UTC)
+        row = self.conn.execute(
+            "SELECT locked_until FROM symbol_locks WHERE symbol = ?",
+            [symbol],
+        ).fetchone()
+        if not row:
+            return False
+        locked_until = row[0]
+        # DuckDB TIMESTAMP columns come back tz-naive; we always store UTC.
+        if locked_until.tzinfo is None:
+            locked_until = locked_until.replace(tzinfo=UTC)
+        # Lazy GC: auto-clear expired locks so they don't accumulate forever.
+        if locked_until <= now:
+            self.conn.execute("DELETE FROM symbol_locks WHERE symbol = ?", [symbol])
+            return False
+        return True
 
     def get_open_position_count(self) -> int:
         row = self.conn.execute(
