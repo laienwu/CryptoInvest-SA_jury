@@ -63,3 +63,18 @@ stablecoin_blocklist = [
     "USDCUSDT", "BUSDUSDT", "FDUSDUSDT", "TUSDUSDT",
     "DAIUSDT", "USDPUSDT", "PAXGUSDT",
 ]
+
+[trading]
+# Automated trading tick (Airflow every 5 minutes). Testnet-only — mainnet is
+# hard-blocked at the BinanceClient layer. Secrets live in .env, never here.
+dry_run = true                         # default posture: no real orders
+candle_interval = "5m"
+candle_lookback = 120                  # bars fetched per symbol per tick
+sma_short = 20
+sma_long = 50
+risk_per_trade = 0.01                  # 1% of equity at risk per entry
+stop_loss_pct = 0.03                   # 3% below entry
+max_open_positions = 10
+max_daily_loss_pct = 0.05              # daily-loss kill switch
+min_equity_floor_usdt = 100.0
+max_cost_fraction_of_risk = 0.20       # skip trades where fees eat >20% of risk budget
