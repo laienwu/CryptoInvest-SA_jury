@@ -334,14 +334,23 @@ class BinanceClient:
 # -- helpers -----------------------------------------------------------------
 
 
+_COID_ALLOWED: frozenset[str] = frozenset(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+)
+
+
 def new_client_order_id(prefix: str = "bot") -> str:
     """
     Deterministic-ish idempotency key.
 
-    Binance allows up to 36 chars, alphanumeric + ``-`` / ``_``. We use a
-    short prefix + hex UUID to stay well under the limit.
+    Binance allows up to 36 chars against ``^[a-zA-Z0-9-_]{1,36}$``. Callers
+    sometimes fold the symbol into the prefix for debuggability (``e-BTCUSD-...``),
+    and some modern Binance pairs contain CJK characters that blow past the
+    regex. We silently drop any disallowed character so the boundary holds
+    regardless of what the caller passes.
     """
-    return f"{prefix}-{uuid.uuid4().hex[:24]}"
+    clean_prefix = "".join(c for c in prefix if c in _COID_ALLOWED) or "bot"
+    return f"{clean_prefix}-{uuid.uuid4().hex[:24]}"
 
 
 def _format_qty(qty: float) -> str:

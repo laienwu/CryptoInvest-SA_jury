@@ -95,6 +95,22 @@ def test_new_client_order_id_prefixed_and_unique() -> None:
     assert len(a) <= 36
 
 
+def test_new_client_order_id_strips_non_ascii_from_prefix() -> None:
+    # A Binance pair name containing CJK characters folded into the prefix
+    # (as the tick does for debuggability) must not leak past the boundary.
+    import re
+    coid = new_client_order_id(prefix="e-币安人生US")
+    assert re.match(r"^[a-zA-Z0-9\-_]{1,36}$", coid)
+    assert coid.startswith("e-US-")  # CJK glyphs silently stripped
+
+
+def test_new_client_order_id_falls_back_when_prefix_is_all_disallowed() -> None:
+    coid = new_client_order_id(prefix="币安人生")
+    import re
+    assert re.match(r"^[a-zA-Z0-9\-_]{1,36}$", coid)
+    assert coid.startswith("bot-")
+
+
 def test_sync_time_applies_offset_to_signed_requests(monkeypatch: pytest.MonkeyPatch) -> None:
     """sync_time() calibrates against /api/v3/time; offset flows into signed timestamps."""
     import time as _time
