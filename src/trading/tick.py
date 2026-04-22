@@ -35,7 +35,7 @@ from src.trading.filters import (
     quantize_price,
     quantize_qty,
 )
-from src.trading.ledger import TradeLedger
+from src.trading.ledger import OpenPosition, TradeLedger
 from src.trading.risk import (
     can_open_new_position,
     compute_position_qty,
@@ -225,6 +225,13 @@ def _reconcile(
     """
     for pos in ledger.get_open_positions():
         if not pos.stop_order_id:
+            # Orphaned ``placed`` row — the entry reached the exchange (we have
+            # an exchange_order_id) but the tick never advanced to ``filled``
+            # (process killed mid-entry, or a pre-fix tick left it behind).
+            # Check the entry on exchange: if it's in a terminal non-fill state,
+            # retire the ledger row so it stops blocking re-entry on the symbol.
+            if pos.exchange_order_id:
+                _reconcile_orphan_placed(client, ledger, pos, summary)
             continue
         try:
             order = client.get_order(
@@ -257,6 +264,39 @@ def _reconcile(
                 )
             summary["reconciled"] += 1
             logger.info("Reconciled stop fill for %s: pnl=%.4f USDT", pos.symbol, pnl)
+
+
+# Binance order statuses that mean "entry will never fill" — safe to retire.
+_ENTRY_TERMINAL_FAILURE: frozenset[str] = frozenset(
+    {"EXPIRED", "CANCELED", "REJECTED", "EXPIRED_IN_MATCH"}
+)
+
+
+def _reconcile_orphan_placed(
+    client: BinanceClient,
+    ledger: TradeLedger,
+    pos: OpenPosition,
+    summary: dict[str, Any],
+) -> None:
+    """Retire a ``placed`` ledger row whose entry order never advanced to ``filled``."""
+    try:
+        order = client.get_order(symbol=pos.symbol, order_id=pos.exchange_order_id)
+    except BinanceAPIError as exc:
+        summary["errors"].append(f"reconcile_orphan({pos.symbol}): {exc}")
+        return
+    status = str(order.get("status", ""))
+    if status in _ENTRY_TERMINAL_FAILURE:
+        note = f"orphan placed: entry {status} (exchange_order_id={pos.exchange_order_id})"
+        with contextlib.suppress(LedgerError):
+            ledger.mark_failed(pos.client_order_id, note)
+        logger.info("Retired orphan placed row for %s: %s", pos.symbol, status)
+    else:
+        # FILLED/PARTIALLY_FILLED/NEW → real position or still pending. Don't
+        # auto-advance; the operator needs to see this and attach a stop manually.
+        logger.warning(
+            "Orphan placed row on %s still has exchange status %s — leaving for ops",
+            pos.symbol, status,
+        )
 
 
 def _fetch_closes(symbol: str, cfg: TradingConfig, lookback: int) -> list[float]:
@@ -410,7 +450,8 @@ def _place_entry(
         quote_qty = float(order.get("cummulativeQuoteQty", 0.0) or 0.0)
         avg_fill = (quote_qty / executed_qty) if executed_qty > 0 and quote_qty > 0 else price
 
-        if str(order.get("status", "")) in ("FILLED", "PARTIALLY_FILLED"):
+        entry_status = str(order.get("status", ""))
+        if entry_status in ("FILLED", "PARTIALLY_FILLED"):
             ledger.mark_filled(coid, executed_qty, avg_fill, filled_at=now)
 
             stop_coid = new_client_order_id(prefix=f"s-{symbol[:6]}")
@@ -428,7 +469,17 @@ def _place_entry(
                 symbol, executed_qty, avg_fill, stop_trigger, coid, stop_coid,
             )
             _ = stop_order
-        summary["orders_placed"] += 1
+            summary["orders_placed"] += 1
+        else:
+            # MARKET order landed on the exchange but didn't fill (e.g. EXPIRED
+            # due to thin testnet liquidity). Without this branch the ledger row
+            # rots at ``placed`` forever — it has no ``stop_order_id`` so
+            # reconcile skips it, and ``held`` blocks re-entry on the symbol.
+            note = f"entry {entry_status or 'unknown'} with executedQty={executed_qty}"
+            with contextlib.suppress(LedgerError):
+                ledger.mark_failed(coid, note)
+            summary["errors"].append(f"place({symbol}): {note}")
+            logger.warning("Entry did not fill on %s: %s", symbol, note)
 
     except (BinanceAPIError, LedgerError) as exc:
         summary["errors"].append(f"place({symbol}): {exc}")

@@ -273,6 +273,59 @@ def test_tick_locks_pair_after_stop_fill_reconcile(tmp_path: Path) -> None:
         assert ledger.is_pair_locked("BTCUSDT", now + timedelta(minutes=120)) is False
 
 
+def test_tick_marks_failed_when_market_entry_does_not_fill(tmp_path: Path) -> None:
+    """If MARKET returns EXPIRED with executedQty=0, ledger must not rot at ``placed``."""
+    cfg = _cfg(tmp_path)
+    client = FakeClient(last_price=100.0)
+    storage = FakeStorage(["BTCUSDT"])
+
+    def non_filling_market(symbol: str, side: str, qty: float,
+                           client_order_id: str) -> dict[str, Any]:
+        # Shape mirrors a real Binance EXPIRED MARKET response.
+        return {
+            "symbol": symbol, "orderId": "exch-expired", "clientOrderId": client_order_id,
+            "status": "EXPIRED", "executedQty": "0", "cummulativeQuoteQty": "0",
+        }
+    client.place_market_order = non_filling_market  # type: ignore[assignment]
+
+    with TradeLedger(cfg.ledger_path) as ledger, \
+         patch("src.trading.tick.fetch_klines", return_value=_ramp_up_closes(last=100.0)):
+        summary = run_tick(cfg=cfg, storage=storage, client=client, ledger=ledger,
+                           strategy=SmaCrossoverStrategy(3, 5))
+        # No stop placed because the MARKET never filled.
+        assert len(client.stop_orders) == 0
+        # No open position left rotting in the ledger.
+        assert ledger.get_open_position_count() == 0
+        # And the tick reports the failure rather than pretending it placed an order.
+        assert summary["orders_placed"] == 0
+        assert any("EXPIRED" in e for e in summary["errors"])
+
+
+def test_tick_reconciles_orphan_placed_rows_with_terminal_entry_status(tmp_path: Path) -> None:
+    """A pre-existing ``placed`` row whose entry is EXPIRED on exchange must be retired."""
+    cfg = _cfg(tmp_path)
+    client = FakeClient()
+    storage = FakeStorage(["BTCUSDT"])
+
+    def fake_get_order(symbol: str, order_id: str | None = None,
+                       orig_client_order_id: str | None = None) -> dict[str, Any]:
+        return {"status": "EXPIRED", "executedQty": "0"}
+    client.get_order = fake_get_order  # type: ignore[assignment]
+
+    with TradeLedger(cfg.ledger_path) as ledger:
+        ledger.record_intent("orphan-c1", "BTCUSDT", "BUY", 1.0, 100.0, 97.0, "sma")
+        ledger.mark_placed("orphan-c1", "exch-orphan")
+        # Intentionally no mark_filled / attach_stop — simulates a mid-entry crash.
+        assert ledger.get_open_position_count() == 1
+
+        with patch("src.trading.tick.fetch_klines", return_value=_flat_closes()):
+            run_tick(cfg=cfg, storage=storage, client=client, ledger=ledger,
+                     strategy=SmaCrossoverStrategy(3, 5))
+
+        # Reconcile saw the terminal entry status and retired the row.
+        assert ledger.get_open_position_count() == 0
+
+
 def test_tick_errors_when_universe_missing(tmp_path: Path) -> None:
     cfg = _cfg(tmp_path)
 
