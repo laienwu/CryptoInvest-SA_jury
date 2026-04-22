@@ -95,6 +95,45 @@ def test_new_client_order_id_prefixed_and_unique() -> None:
     assert len(a) <= 36
 
 
+def test_sync_time_applies_offset_to_signed_requests(monkeypatch: pytest.MonkeyPatch) -> None:
+    """sync_time() calibrates against /api/v3/time; offset flows into signed timestamps."""
+    import time as _time
+    import urllib.parse as _urlparse
+
+    client = _client(dry_run=False)
+    # Simulate an exchange that is 5s ahead of our local clock.
+    local_at_sync_ms = int(_time.time() * 1000)
+    simulated_server_ms = local_at_sync_ms + 5000
+
+    def fake_get_server_time(_self: Any = None) -> int:
+        return simulated_server_ms
+
+    monkeypatch.setattr(BinanceClient, "get_server_time", fake_get_server_time)
+    client.sync_time()
+    # Offset should be ~5000ms (allow small jitter for the local_ms sampled inside sync_time).
+    assert 4900 <= client._time_offset_ms <= 5100
+
+    captured: dict[str, Any] = {}
+
+    class FakeResp:
+        status_code = 200
+        headers: dict[str, str] = {}
+        def json(self) -> dict[str, Any]:
+            return {"balances": []}
+
+    def fake_request(method: str, url: str, headers: dict[str, str], timeout: int) -> FakeResp:
+        captured["url"] = url
+        return FakeResp()
+
+    with patch("src.trading.binance_client.requests.request", side_effect=fake_request):
+        client.get_account()
+
+    qs = _urlparse.parse_qs(_urlparse.urlparse(captured["url"]).query)
+    sent_ts = int(qs["timestamp"][0])
+    # The sent timestamp should be near (now + offset) = near simulated_server_ms.
+    assert abs(sent_ts - simulated_server_ms) < 1000
+
+
 def test_signed_request_hits_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     """signed_request should append timestamp + signature and call requests.request."""
     captured: dict[str, Any] = {}

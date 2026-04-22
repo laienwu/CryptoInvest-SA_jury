@@ -95,6 +95,7 @@ def run_tick(
             max_retries=cfg.max_retries,
             recv_window_ms=cfg.recv_window_ms,
         )
+        client.sync_time()
     if ledger is None:
         ledger = TradeLedger(cfg.ledger_path)
     strategy_impl: Strategy
@@ -185,16 +186,23 @@ def _load_exchange_info(
     universe: list[str],
     summary: dict[str, Any],
 ) -> dict[str, SymbolFilters]:
+    # Universe is ranked on mainnet but we trade on testnet, so some entries
+    # may not exist here. Binance fails the whole batched ``symbols=[...]``
+    # call on any invalid symbol, so fetch the full exchangeInfo and let the
+    # caller's ``.get(symbol) is None`` path drop anything testnet can't trade.
+    universe_set = set(universe)
     try:
-        info = client.get_exchange_info(universe)
+        info = client.get_exchange_info()
     except BinanceAPIError as exc:
         summary["errors"].append(f"exchange_info: {exc}")
         return {}
     out: dict[str, SymbolFilters] = {}
     for entry in info.get("symbols", []):
         sym = entry.get("symbol")
+        if sym not in universe_set:
+            continue
         filters = entry.get("filters", [])
-        if not sym or not isinstance(filters, list):
+        if not isinstance(filters, list):
             continue
         try:
             out[sym] = parse_symbol_filters(sym, filters)

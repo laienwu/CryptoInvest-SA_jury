@@ -79,6 +79,10 @@ class BinanceClient:
         self.rate_limit_delay = rate_limit_delay
         self.max_retries = max_retries
         self.recv_window_ms = recv_window_ms
+        # Offset (ms) added to the local timestamp on every signed request so
+        # Binance's recvWindow check accepts us despite local clock drift. Stays
+        # at 0 until ``sync_time()`` is called; the tick syncs once per run.
+        self._time_offset_ms: int = 0
 
     # -- internals -----------------------------------------------------------
 
@@ -103,7 +107,7 @@ class BinanceClient:
         """
         params = dict(params or {})
         params.setdefault("recvWindow", self.recv_window_ms)
-        params["timestamp"] = int(time.time() * 1000)
+        params["timestamp"] = int(time.time() * 1000) + self._time_offset_ms
 
         query = urllib.parse.urlencode(params, doseq=True)
         signature = self._sign(query)
@@ -146,6 +150,42 @@ class BinanceClient:
         raise last_exc or BinanceAPIError(f"{method} {path} failed after retries")
 
     # -- public (unsigned) ---------------------------------------------------
+
+    def get_server_time(self) -> int:
+        """Unsigned GET /api/v3/time — used to calibrate the local clock offset."""
+        url = f"{self.base_url}/api/v3/time"
+        data = make_binance_request(
+            url, {},
+            rate_limit_delay=self.rate_limit_delay,
+            max_retries=self.max_retries,
+        )
+        assert isinstance(data, dict)
+        return int(data["serverTime"])
+
+    def sync_time(self) -> None:
+        """
+        Calibrate ``_time_offset_ms`` against Binance's server clock.
+
+        Binance rejects signed requests whose timestamp is more than ~1s
+        ahead of server time (recvWindow only cushions *lagging* clocks).
+        Callers (the tick) should invoke this once per run so the client
+        survives OS-level clock drift.
+
+        Failure is non-fatal: the offset stays at its previous value and
+        signed requests proceed. If the clock is already close enough,
+        they'll succeed; if not, the underlying timestamp error propagates
+        with the same signal a caller would get today.
+        """
+        try:
+            server_ms = self.get_server_time()
+        except BinanceAPIError as e:
+            logger.warning("sync_time: /api/v3/time failed, offset stays at %dms: %s",
+                           self._time_offset_ms, e)
+            return
+        local_ms = int(time.time() * 1000)
+        self._time_offset_ms = server_ms - local_ms
+        logger.info("sync_time: offset=%+dms (local=%d, server=%d)",
+                    self._time_offset_ms, local_ms, server_ms)
 
     def get_exchange_info(self, symbols: list[str] | None = None) -> dict[str, Any]:
         """Fetch ``/api/v3/exchangeInfo`` (unsigned, cached by caller)."""

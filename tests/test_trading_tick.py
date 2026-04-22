@@ -39,7 +39,11 @@ class FakeClient:
     def get_account(self) -> dict[str, Any]:
         return {"balances": [{"asset": "USDT", "free": str(self.equity), "locked": "0"}]}
 
-    def get_exchange_info(self, symbols: list[str]) -> dict[str, Any]:
+    def get_exchange_info(self, symbols: list[str] | None = None) -> dict[str, Any]:
+        # The real client is now called without symbols so the tick can drop
+        # universe entries testnet doesn't list; return filters for whatever
+        # the current test set uses (BTCUSDT/ETHUSDT cover every existing test).
+        supported = symbols if symbols is not None else ["BTCUSDT", "ETHUSDT"]
         return {
             "symbols": [
                 {
@@ -51,7 +55,7 @@ class FakeClient:
                         {"filterType": "MIN_NOTIONAL", "minNotional": "1"},
                     ],
                 }
-                for s in symbols
+                for s in supported
             ],
         }
 
