@@ -339,6 +339,11 @@ def _open_on_buy_signals(
 ) -> None:
     held = ledger.get_open_symbols()
     lookback = max(cfg.candle_lookback, strategy.startup_candle_count)
+    # Track USDT committed within this tick. Each successful entry consumes
+    # ``notional = qty * price`` of real balance; without this, sizing keeps
+    # using the opening equity as if no money had been spent and the 4th+
+    # entry hits Binance with ``insufficient balance``.
+    remaining_usdt = equity_usdt
 
     for symbol in universe:
         if symbol in held:
@@ -406,7 +411,16 @@ def _open_on_buy_signals(
             summary["orders_skipped"] += 1
             continue
 
-        _place_entry(client, ledger, cfg, symbol, qty, price, filters, summary, now)
+        if notional > remaining_usdt:
+            logger.info("Skip %s: notional %.2f > remaining USDT %.2f",
+                        symbol, notional, remaining_usdt)
+            summary["orders_skipped"] += 1
+            continue
+
+        committed = _place_entry(
+            client, ledger, cfg, symbol, qty, price, filters, summary, now,
+        )
+        remaining_usdt -= committed
 
 
 def _place_entry(
@@ -419,11 +433,14 @@ def _place_entry(
     filters: SymbolFilters,
     summary: dict[str, Any],
     now: datetime,
-) -> None:
+) -> float:
+    """Place a MARKET entry + protective stop. Returns the notional committed,
+    or 0.0 if the entry didn't fill — so the caller can decrement its running
+    USDT budget and stop sizing trades it can no longer afford."""
     coid = new_client_order_id(prefix=f"e-{symbol[:6]}")
     if ledger.has_client_order_id(coid):  # vanishingly rare; stay safe
         summary["orders_skipped"] += 1
-        return
+        return 0.0
 
     stop_trigger = price * (1.0 - cfg.stop_loss_pct)
     stop_limit = stop_trigger * (1.0 - _STOP_LIMIT_SLIPPAGE)
@@ -470,21 +487,23 @@ def _place_entry(
             )
             _ = stop_order
             summary["orders_placed"] += 1
-        else:
-            # MARKET order landed on the exchange but didn't fill (e.g. EXPIRED
-            # due to thin testnet liquidity). Without this branch the ledger row
-            # rots at ``placed`` forever — it has no ``stop_order_id`` so
-            # reconcile skips it, and ``held`` blocks re-entry on the symbol.
-            note = f"entry {entry_status or 'unknown'} with executedQty={executed_qty}"
-            with contextlib.suppress(LedgerError):
-                ledger.mark_failed(coid, note)
-            summary["errors"].append(f"place({symbol}): {note}")
-            logger.warning("Entry did not fill on %s: %s", symbol, note)
+            return executed_qty * avg_fill
+        # MARKET order landed on the exchange but didn't fill (e.g. EXPIRED
+        # due to thin testnet liquidity). Without this branch the ledger row
+        # rots at ``placed`` forever — it has no ``stop_order_id`` so
+        # reconcile skips it, and ``held`` blocks re-entry on the symbol.
+        note = f"entry {entry_status or 'unknown'} with executedQty={executed_qty}"
+        with contextlib.suppress(LedgerError):
+            ledger.mark_failed(coid, note)
+        summary["errors"].append(f"place({symbol}): {note}")
+        logger.warning("Entry did not fill on %s: %s", symbol, note)
+        return 0.0
 
     except (BinanceAPIError, LedgerError) as exc:
         summary["errors"].append(f"place({symbol}): {exc}")
         with contextlib.suppress(LedgerError):
             ledger.mark_failed(coid, str(exc))
+        return 0.0
 
 
 def _close_on_sell_signals(

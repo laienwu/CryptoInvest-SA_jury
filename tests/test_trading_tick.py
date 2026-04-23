@@ -7,13 +7,10 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-import pytest
-
 from src.trading.config import TradingConfig
 from src.trading.ledger import TradeLedger
 from src.trading.strategy import SmaCrossoverStrategy
 from src.trading.tick import run_tick
-
 
 # --- fakes ------------------------------------------------------------------
 
@@ -271,6 +268,46 @@ def test_tick_locks_pair_after_stop_fill_reconcile(tmp_path: Path) -> None:
         assert ledger.is_pair_locked("BTCUSDT", now + timedelta(minutes=10)) is True
         # And it expires after the cooldown window.
         assert ledger.is_pair_locked("BTCUSDT", now + timedelta(minutes=120)) is False
+
+
+def test_tick_stops_placing_when_running_usdt_budget_exhausted(tmp_path: Path) -> None:
+    """Running budget should block entries the account can no longer afford."""
+    # ``_ramp_up_closes`` drops the last bar in ``_fetch_closes``, so the tick
+    # sizes off the second-to-last close (28.0). Matching ``last_price`` to that
+    # keeps the fake's synthetic ``cummulativeQuoteQty`` consistent with the
+    # order price the tick actually used.
+    # Equity 1k USDT, 1% risk with 3% stop → notional per trade ≈ 333 USDT.
+    # Three entries should land (≈999 USDT) and the fourth must be skipped
+    # for lack of balance rather than submitted to the exchange.
+    cfg = _cfg(tmp_path, max_open_positions=10, max_cost_fraction_of_risk=100.0)
+    client = FakeClient(equity=1_000.0, last_price=28.0)
+    storage = FakeStorage(["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT"])
+
+    def buy_info(_symbols: list[str] | None = None) -> dict[str, Any]:
+        return {
+            "symbols": [
+                {
+                    "symbol": s,
+                    "filters": [
+                        {"filterType": "LOT_SIZE", "stepSize": "0.0001",
+                         "minQty": "0.0001", "maxQty": "1000"},
+                        {"filterType": "PRICE_FILTER", "tickSize": "0.01"},
+                        {"filterType": "MIN_NOTIONAL", "minNotional": "1"},
+                    ],
+                }
+                for s in ("BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT")
+            ],
+        }
+    client.get_exchange_info = buy_info  # type: ignore[assignment]
+
+    with TradeLedger(cfg.ledger_path) as ledger, \
+         patch("src.trading.tick.fetch_klines", return_value=_ramp_up_closes(last=100.0)):
+        summary = run_tick(cfg=cfg, storage=storage, client=client, ledger=ledger,
+                           strategy=SmaCrossoverStrategy(3, 5))
+
+    assert summary["orders_placed"] == 3
+    assert summary["orders_skipped"] >= 1
+    assert len(client.market_orders) == 3
 
 
 def test_tick_marks_failed_when_market_entry_does_not_fill(tmp_path: Path) -> None:
