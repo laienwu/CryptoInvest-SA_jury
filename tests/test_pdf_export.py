@@ -6,7 +6,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.pipeline.pdf_export import PDFExportError, generate_portfolio_report
+# ``fpdf2`` lives in the optional ``pdf`` extra. CI syncs only ``dev`` +
+# ``optimize``, so skip the whole module when the backend isn't installed.
+pytest.importorskip("fpdf")
+
+from src.pipeline.pdf_export import PDFExportError, generate_portfolio_report  # noqa: E402
 
 
 @pytest.fixture()
