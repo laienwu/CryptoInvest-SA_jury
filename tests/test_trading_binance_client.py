@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
+from src.pipeline.ingest import BinanceAPIError
 from src.trading.binance_client import (
     BinanceClient,
     _format_price,
@@ -174,3 +175,22 @@ def test_signed_request_hits_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "signature=" in captured["url"]
     assert "timestamp=" in captured["url"]
     assert captured["headers"]["X-MBX-APIKEY"] == "test-key"
+
+
+def test_signed_request_extracts_binance_code_on_error() -> None:
+    """A -2013 ``Order does not exist`` response surfaces as structured context."""
+
+    class FakeResp:
+        status_code = 400
+        text = '{"code":-2013,"msg":"Order does not exist."}'
+        headers: dict[str, str] = {}
+        def json(self) -> dict[str, Any]:
+            return {"code": -2013, "msg": "Order does not exist."}
+
+    client = _client(dry_run=False)
+    with patch("src.trading.binance_client.requests.request", return_value=FakeResp()):
+        with pytest.raises(BinanceAPIError) as exc_info:
+            client.get_order(symbol="BTCUSDT", orig_client_order_id="missing")
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.binance_code == -2013
+    assert "Order does not exist" in exc_info.value.message

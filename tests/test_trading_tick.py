@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
+from src.pipeline.ingest import BinanceAPIError
 from src.trading.config import TradingConfig
 from src.trading.ledger import TradeLedger
 from src.trading.strategy import SmaCrossoverStrategy
@@ -360,6 +361,69 @@ def test_tick_reconciles_orphan_placed_rows_with_terminal_entry_status(tmp_path:
                      strategy=SmaCrossoverStrategy(3, 5))
 
         # Reconcile saw the terminal entry status and retired the row.
+        assert ledger.get_open_position_count() == 0
+
+
+def test_tick_retires_filled_position_when_stop_missing_on_exchange(tmp_path: Path) -> None:
+    """-2013 from get_order during reconcile → ledger row retired, symbol unblocks."""
+    cfg = _cfg(tmp_path)
+    client = FakeClient()
+    storage = FakeStorage(["BTCUSDT"])
+
+    def missing_stop(symbol: str, order_id: str | None = None,
+                     orig_client_order_id: str | None = None) -> dict[str, Any]:
+        raise BinanceAPIError(
+            "GET /api/v3/order failed: Order does not exist.",
+            status_code=400,
+            binance_code=-2013,
+        )
+    client.get_order = missing_stop  # type: ignore[assignment]
+
+    with TradeLedger(cfg.ledger_path) as ledger:
+        ledger.record_intent("stuck-c1", "BTCUSDT", "BUY", 1.0, 100.0, 95.0, "sma")
+        ledger.mark_filled("stuck-c1", 1.0, 100.0)
+        ledger.attach_stop("stuck-c1", stop_order_id="stop-missing", stop_price=95.0)
+        assert ledger.get_open_position_count() == 1
+
+        with patch("src.trading.tick.fetch_klines", return_value=_flat_closes()):
+            summary = run_tick(cfg=cfg, storage=storage, client=client, ledger=ledger,
+                               strategy=SmaCrossoverStrategy(3, 5))
+
+        # Row retired, symbol is re-entry-eligible, tick didn't surface a recurring error.
+        assert ledger.get_open_position_count() == 0
+        assert summary["reconciled"] == 1
+        assert not any("Order does not exist" in e for e in summary["errors"])
+
+        closed = ledger.list_closed_trades(limit=5)
+        stuck = next(r for r in closed if r.client_order_id == "stuck-c1")
+        assert stuck.status == "failed"
+        assert stuck.notes is not None and "-2013" in stuck.notes
+
+
+def test_tick_retires_orphan_placed_row_when_entry_missing_on_exchange(tmp_path: Path) -> None:
+    """-2013 on orphan-entry lookup retires the row so the symbol unblocks."""
+    cfg = _cfg(tmp_path)
+    client = FakeClient()
+    storage = FakeStorage(["BTCUSDT"])
+
+    def missing_entry(symbol: str, order_id: str | None = None,
+                      orig_client_order_id: str | None = None) -> dict[str, Any]:
+        raise BinanceAPIError(
+            "GET /api/v3/order failed: Order does not exist.",
+            status_code=400,
+            binance_code=-2013,
+        )
+    client.get_order = missing_entry  # type: ignore[assignment]
+
+    with TradeLedger(cfg.ledger_path) as ledger:
+        ledger.record_intent("orph-c1", "BTCUSDT", "BUY", 1.0, 100.0, 97.0, "sma")
+        ledger.mark_placed("orph-c1", "exch-gone")
+        # No mark_filled, no attach_stop → orphan ``placed`` row.
+
+        with patch("src.trading.tick.fetch_klines", return_value=_flat_closes()):
+            run_tick(cfg=cfg, storage=storage, client=client, ledger=ledger,
+                     strategy=SmaCrossoverStrategy(3, 5))
+
         assert ledger.get_open_position_count() == 0
 
 

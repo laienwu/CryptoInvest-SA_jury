@@ -28,12 +28,36 @@ def test_binance_api_error_message() -> None:
     err = BinanceAPIError("test error", status_code=429)
     assert err.message == "test error"
     assert err.status_code == 429
-    assert str(err) == "test error"
+    assert err.binance_code is None
+    assert "test error" in str(err)
+    assert "http=429" in str(err)
 
 
 def test_binance_api_error_no_status_code() -> None:
     err = BinanceAPIError("timeout")
     assert err.status_code is None
+    assert err.binance_code is None
+    assert str(err) == "timeout"
+
+
+def test_binance_api_error_with_binance_code() -> None:
+    err = BinanceAPIError("Order does not exist.", status_code=400, binance_code=-2013)
+    assert err.binance_code == -2013
+    assert "binance_code=-2013" in str(err)
+
+
+def test_make_request_extracts_binance_code() -> None:
+    mock_response = MagicMock()
+    mock_response.status_code = 400
+    mock_response.json.return_value = {"code": -2013, "msg": "Order does not exist."}
+
+    with patch("requests.get", return_value=mock_response):
+        with pytest.raises(BinanceAPIError) as exc_info:
+            make_binance_request("https://api.binance.com/api/v3/order", {}, max_retries=1)
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.binance_code == -2013
+    assert "Order does not exist." in exc_info.value.message
 
 
 # =============================================================================

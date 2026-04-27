@@ -12,10 +12,14 @@ orthogonal to the analytics warehouse (``data/trading/ledger.duckdb`` vs.
 
 from __future__ import annotations
 
+import json
+import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 try:
     import duckdb
@@ -59,21 +63,74 @@ class OpenPosition:
     entry_tag: str | None = None
 
 
+@dataclass(frozen=True)
+class ClosedTradeRow:
+    """Read-only row for dashboard order/trade listings."""
+
+    client_order_id: str
+    symbol: str
+    side: str
+    status: str
+    strategy: str | None
+    entry_tag: str | None
+    intended_qty: float | None
+    filled_qty: float | None
+    entry_price: float | None
+    exit_price: float | None
+    realized_pnl: float | None
+    opened_at: datetime | None
+    filled_at: datetime | None
+    closed_at: datetime | None
+    notes: str | None
+
+
+@dataclass(frozen=True)
+class ActiveLock:
+    """An active per-symbol cooldown."""
+
+    symbol: str
+    locked_until: datetime
+    reason: str | None
+
+
+@dataclass(frozen=True)
+class TickRun:
+    """One row of tick history, as persisted by run_tick()."""
+
+    run_at: datetime
+    dry_run: bool
+    universe_size: int | None
+    equity_usdt: float | None
+    signals_buy: int
+    signals_sell: int
+    signals_hold: int
+    orders_placed: int
+    orders_skipped: int
+    positions_closed: int
+    reconciled: int
+    kill_switch: bool
+    error_count: int
+    errors_json: str | None
+
+
 class TradeLedger:
     """Thin DuckDB wrapper around the ``trades`` table."""
 
-    def __init__(self, db_path: str | Path):
+    def __init__(self, db_path: str | Path, *, read_only: bool = False):
         if not DUCKDB_AVAILABLE:
             raise LedgerError("DuckDB not installed. Run: uv add duckdb", operation="ledger_init")
 
         self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.read_only = read_only
+        if not read_only:
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
         try:
-            self.conn = duckdb.connect(str(self.db_path))
+            self.conn = duckdb.connect(str(self.db_path), read_only=read_only)
         except Exception as e:  # pragma: no cover - defensive
             raise LedgerError(f"Failed to open ledger at {self.db_path}: {e}",
                               operation="ledger_init") from e
-        self._create_schema()
+        if not read_only:
+            self._create_schema()
 
     # -- lifecycle -----------------------------------------------------------
 
@@ -122,6 +179,26 @@ class TradeLedger:
             )
             """
         )
+        self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS tick_runs (
+                run_at            TIMESTAMP NOT NULL,
+                dry_run           BOOLEAN,
+                universe_size     INTEGER,
+                equity_usdt       DOUBLE,
+                signals_buy       INTEGER,
+                signals_sell      INTEGER,
+                signals_hold      INTEGER,
+                orders_placed     INTEGER,
+                orders_skipped    INTEGER,
+                positions_closed  INTEGER,
+                reconciled        INTEGER,
+                kill_switch       BOOLEAN,
+                error_count       INTEGER,
+                errors_json       TEXT
+            )
+            """
+        )
         # Backfill for ledgers created before entry_tag landed.
         self._ensure_column("trades", "entry_tag", "TEXT")
 
@@ -149,6 +226,10 @@ class TradeLedger:
     ) -> None:
         """Insert a new entry trade in the ``intent`` state."""
         now = now_utc or datetime.now(UTC)
+        logger.debug(
+            "ledger record_intent coid=%s sym=%s side=%s qty=%s entry=%s stop=%s",
+            client_order_id, symbol, side, intended_qty, entry_price, stop_price,
+        )
         try:
             self.conn.execute(
                 """
@@ -243,6 +324,7 @@ class TradeLedger:
         )
 
     def _update(self, sql: str, params: list[Any], operation: str) -> None:
+        logger.debug("ledger %s params=%s", operation, params)
         try:
             self.conn.execute(sql, params)
         except Exception as e:
@@ -361,3 +443,183 @@ class TradeLedger:
             [STATUS_CLOSED, day_start, day_end],
         ).fetchone()
         return float(row[0]) if row else 0.0
+
+    # -- tick history --------------------------------------------------------
+
+    def record_tick_run(self, summary: dict[str, Any]) -> None:
+        """Append the summary dict returned by ``run_tick`` to ``tick_runs``.
+
+        Schema is permissive: missing keys default to None/0 so older callers
+        can't break the write. Errors during recording are swallowed with a
+        ``LedgerError`` since a failed audit write should never mask the tick
+        result itself — the caller decides how loud to be.
+        """
+        signals = summary.get("signals") or {}
+        errors = summary.get("errors") or []
+        run_at_raw = summary.get("now_utc")
+        if isinstance(run_at_raw, str):
+            try:
+                run_at = datetime.fromisoformat(run_at_raw)
+            except ValueError:
+                run_at = datetime.now(UTC)
+        elif isinstance(run_at_raw, datetime):
+            run_at = run_at_raw
+        else:
+            run_at = datetime.now(UTC)
+
+        logger.debug(
+            "ledger record_tick_run run_at=%s placed=%s skipped=%s closed=%s errors=%d",
+            run_at, summary.get("orders_placed"), summary.get("orders_skipped"),
+            summary.get("positions_closed"), len(errors),
+        )
+        try:
+            self.conn.execute(
+                """
+                INSERT INTO tick_runs (
+                    run_at, dry_run, universe_size, equity_usdt,
+                    signals_buy, signals_sell, signals_hold,
+                    orders_placed, orders_skipped, positions_closed,
+                    reconciled, kill_switch, error_count, errors_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    _to_naive_utc(run_at),
+                    bool(summary.get("dry_run", False)),
+                    summary.get("universe_size"),
+                    summary.get("equity_usdt"),
+                    int(signals.get("BUY", 0) or 0),
+                    int(signals.get("SELL", 0) or 0),
+                    int(signals.get("HOLD", 0) or 0),
+                    int(summary.get("orders_placed", 0) or 0),
+                    int(summary.get("orders_skipped", 0) or 0),
+                    int(summary.get("positions_closed", 0) or 0),
+                    int(summary.get("reconciled", 0) or 0),
+                    bool(summary.get("kill_switch", False)),
+                    len(errors),
+                    json.dumps(errors) if errors else None,
+                ],
+            )
+        except Exception as e:
+            raise LedgerError(f"record_tick_run failed: {e}",
+                              operation="record_tick_run") from e
+
+    # -- dashboard reads -----------------------------------------------------
+
+    def list_closed_trades(self, limit: int = 50) -> list[ClosedTradeRow]:
+        """Recent trade rows ordered by most-recently-touched first.
+
+        Includes all statuses (intent/placed/filled/closed/canceled/failed) so
+        the dashboard's "recent orders" view covers the full lifecycle.
+        """
+        rows = self.conn.execute(
+            """
+            SELECT client_order_id, symbol, side, status, strategy, entry_tag,
+                   intended_qty, filled_qty, entry_price, exit_price,
+                   realized_pnl, opened_at, filled_at, closed_at, notes
+              FROM trades
+             ORDER BY COALESCE(closed_at, filled_at, opened_at) DESC NULLS LAST
+             LIMIT ?
+            """,
+            [int(limit)],
+        ).fetchall()
+        return [
+            ClosedTradeRow(
+                client_order_id=r[0],
+                symbol=r[1],
+                side=r[2],
+                status=r[3],
+                strategy=r[4],
+                entry_tag=r[5],
+                intended_qty=float(r[6]) if r[6] is not None else None,
+                filled_qty=float(r[7]) if r[7] is not None else None,
+                entry_price=float(r[8]) if r[8] is not None else None,
+                exit_price=float(r[9]) if r[9] is not None else None,
+                realized_pnl=float(r[10]) if r[10] is not None else None,
+                opened_at=r[11],
+                filled_at=r[12],
+                closed_at=r[13],
+                notes=r[14],
+            )
+            for r in rows
+        ]
+
+    def realized_pnl_by_day(self, days: int = 30) -> list[tuple[date, float]]:
+        """Daily realized P&L for the last ``days`` days, oldest first.
+
+        Only closed trades contribute. Days with no closed trades are omitted
+        — the caller is responsible for filling gaps if it wants a continuous
+        axis. Day keys are UTC ``date`` objects.
+        """
+        cutoff = datetime.now(UTC) - timedelta(days=int(days))
+        rows = self.conn.execute(
+            """
+            SELECT CAST(date_trunc('day', closed_at) AS DATE) AS day,
+                   SUM(realized_pnl)                          AS pnl
+              FROM trades
+             WHERE status = ? AND closed_at >= ?
+             GROUP BY day
+             ORDER BY day ASC
+            """,
+            [STATUS_CLOSED, _to_naive_utc(cutoff)],
+        ).fetchall()
+        return [(r[0], float(r[1] or 0.0)) for r in rows]
+
+    def list_active_locks(self, now_utc: datetime | None = None) -> list[ActiveLock]:
+        """Per-symbol cooldowns that have not yet expired."""
+        now = now_utc or datetime.now(UTC)
+        # Read-only connections can't DELETE, so we filter in SQL instead of
+        # relying on ``is_pair_locked``'s lazy GC.
+        rows = self.conn.execute(
+            """
+            SELECT symbol, locked_until, reason
+              FROM symbol_locks
+             WHERE locked_until > ?
+             ORDER BY locked_until ASC
+            """,
+            [_to_naive_utc(now)],
+        ).fetchall()
+        out: list[ActiveLock] = []
+        for sym, locked_until, reason in rows:
+            if locked_until is not None and locked_until.tzinfo is None:
+                locked_until = locked_until.replace(tzinfo=UTC)
+            out.append(ActiveLock(symbol=sym, locked_until=locked_until, reason=reason))
+        return out
+
+    def list_recent_ticks(self, limit: int = 50) -> list[TickRun]:
+        """Most recent tick summaries, newest first."""
+        rows = self.conn.execute(
+            """
+            SELECT run_at, dry_run, universe_size, equity_usdt,
+                   signals_buy, signals_sell, signals_hold,
+                   orders_placed, orders_skipped, positions_closed,
+                   reconciled, kill_switch, error_count, errors_json
+              FROM tick_runs
+             ORDER BY run_at DESC
+             LIMIT ?
+            """,
+            [int(limit)],
+        ).fetchall()
+        out: list[TickRun] = []
+        for r in rows:
+            run_at = r[0]
+            if run_at is not None and run_at.tzinfo is None:
+                run_at = run_at.replace(tzinfo=UTC)
+            out.append(
+                TickRun(
+                    run_at=run_at,
+                    dry_run=bool(r[1]) if r[1] is not None else False,
+                    universe_size=int(r[2]) if r[2] is not None else None,
+                    equity_usdt=float(r[3]) if r[3] is not None else None,
+                    signals_buy=int(r[4] or 0),
+                    signals_sell=int(r[5] or 0),
+                    signals_hold=int(r[6] or 0),
+                    orders_placed=int(r[7] or 0),
+                    orders_skipped=int(r[8] or 0),
+                    positions_closed=int(r[9] or 0),
+                    reconciled=int(r[10] or 0),
+                    kill_switch=bool(r[11]) if r[11] is not None else False,
+                    error_count=int(r[12] or 0),
+                    errors_json=r[13],
+                )
+            )
+        return out

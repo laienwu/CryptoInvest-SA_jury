@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import os
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -49,6 +50,36 @@ logger = logging.getLogger(__name__)
 # Safety margin for the stop-limit price so it actually fills once triggered.
 _STOP_LIMIT_SLIPPAGE: float = 0.002  # 0.2% below the stop trigger on a sell stop
 
+# Binance's "Order does not exist." — returned by /api/v3/order when the
+# orderId / origClientOrderId we're asking about is gone from exchange
+# history. On testnet this happens routinely (periodic resets wipe order
+# history); on mainnet it means someone manually canceled the order outside
+# our code. Either way, the ledger row is unreconcilable and should be retired
+# so it stops blocking re-entry on the symbol and stops spamming tick errors.
+_BINANCE_CODE_ORDER_NOT_FOUND: int = -2013
+
+# Modules whose loggers should follow ``TRADING_LOG_LEVEL`` — everything the
+# tick touches end-to-end.
+_TRADING_LOG_TREES: tuple[str, ...] = ("src.trading", "src.pipeline")
+
+
+def _apply_log_level() -> None:
+    """Honor ``TRADING_LOG_LEVEL`` on the trading/pipeline logger trees.
+
+    Airflow already installs a root handler, so setting just the level is
+    enough — we don't touch handlers. Missing / unknown values leave levels
+    alone so the DAG's default logging isn't disturbed.
+    """
+    raw = os.getenv("TRADING_LOG_LEVEL")
+    if not raw:
+        return
+    level = logging.getLevelName(raw.strip().upper())
+    if not isinstance(level, int):
+        logger.warning("TRADING_LOG_LEVEL=%r is not a valid level", raw)
+        return
+    for name in _TRADING_LOG_TREES:
+        logging.getLogger(name).setLevel(level)
+
 
 def run_tick(
     cfg: TradingConfig | None = None,
@@ -66,7 +97,12 @@ def run_tick(
     """
     if cfg is None:
         cfg = load_trading_config()
+    _apply_log_level()
     now = now_utc or datetime.now(UTC)
+    logger.info(
+        "Tick start: dry_run=%s base=%s ledger=%s interval=%s",
+        cfg.dry_run, cfg.testnet_base_url, cfg.ledger_path, cfg.candle_interval,
+    )
 
     summary: dict[str, Any] = {
         "now_utc": now.isoformat(),
@@ -138,11 +174,25 @@ def run_tick(
         summary["errors"].append(f"{type(exc).__name__}: {exc}")
         logger.exception("Tick aborted: %s", exc)
     finally:
+        # Persist the summary for the dashboard's tick-history view. Swallow
+        # any audit-write failure — a failed audit must not mask the tick
+        # result the caller is about to act on.
+        try:
+            ledger.record_tick_run(summary)
+        except LedgerError as exc:
+            logger.warning("Failed to persist tick_run summary: %s", exc)
         if owns_ledger:
             ledger.close()
         # BinanceClient holds no resources; nothing to release.
         _ = owns_client
 
+    logger.info(
+        "Tick done: placed=%d skipped=%d closed=%d reconciled=%d "
+        "signals=%s kill=%s errors=%d",
+        summary["orders_placed"], summary["orders_skipped"],
+        summary["positions_closed"], summary["reconciled"],
+        summary["signals"], summary["kill_switch"], len(summary["errors"]),
+    )
     return summary
 
 
@@ -223,7 +273,14 @@ def _reconcile(
     Exchange is the source of truth. If the stop was triggered while we
     slept, mark the position closed with the realized P&L.
     """
-    for pos in ledger.get_open_positions():
+    open_positions = ledger.get_open_positions()
+    logger.info("Reconcile: %d open position(s) to check", len(open_positions))
+    for pos in open_positions:
+        logger.debug(
+            "Reconcile %s coid=%s stop=%s exchange_order_id=%s",
+            pos.symbol, pos.client_order_id, pos.stop_order_id,
+            pos.exchange_order_id,
+        )
         if not pos.stop_order_id:
             # Orphaned ``placed`` row — the entry reached the exchange (we have
             # an exchange_order_id) but the tick never advanced to ``filled``
@@ -239,6 +296,9 @@ def _reconcile(
                 orig_client_order_id=pos.stop_order_id,
             )
         except BinanceAPIError as exc:
+            if exc.binance_code == _BINANCE_CODE_ORDER_NOT_FOUND:
+                _retire_missing_stop(ledger, pos, summary)
+                continue
             summary["errors"].append(f"reconcile({pos.symbol}): {exc}")
             continue
 
@@ -272,6 +332,29 @@ _ENTRY_TERMINAL_FAILURE: frozenset[str] = frozenset(
 )
 
 
+def _retire_missing_stop(
+    ledger: TradeLedger,
+    pos: OpenPosition,
+    summary: dict[str, Any],
+) -> None:
+    """Retire a filled-position ledger row whose stop order is gone from the exchange.
+
+    No P&L is booked: we can't infer an exit price without an execution on
+    the exchange. The position is marked ``failed`` (not ``closed``) to signal
+    that realized P&L is unknown — downstream queries that aggregate realized
+    P&L will correctly exclude this row. The symbol becomes re-entry-eligible
+    on the next tick, and the tick stops logging the recurring -2013.
+    """
+    note = (
+        f"stop order {pos.stop_order_id} not found on exchange (-2013); "
+        "likely testnet reset or manual cancel — retiring without realized P&L"
+    )
+    with contextlib.suppress(LedgerError):
+        ledger.mark_failed(pos.client_order_id, note)
+    summary["reconciled"] += 1
+    logger.warning("Retired unreconcilable position %s: %s", pos.symbol, note)
+
+
 def _reconcile_orphan_placed(
     client: BinanceClient,
     ledger: TradeLedger,
@@ -282,6 +365,16 @@ def _reconcile_orphan_placed(
     try:
         order = client.get_order(symbol=pos.symbol, order_id=pos.exchange_order_id)
     except BinanceAPIError as exc:
+        if exc.binance_code == _BINANCE_CODE_ORDER_NOT_FOUND:
+            note = (
+                f"orphan placed: entry order_id={pos.exchange_order_id} not found "
+                "on exchange (-2013); retiring"
+            )
+            with contextlib.suppress(LedgerError):
+                ledger.mark_failed(pos.client_order_id, note)
+            summary["reconciled"] += 1
+            logger.info("Retired orphan placed row for %s: %s", pos.symbol, note)
+            return
         summary["errors"].append(f"reconcile_orphan({pos.symbol}): {exc}")
         return
     status = str(order.get("status", ""))
@@ -339,6 +432,10 @@ def _open_on_buy_signals(
 ) -> None:
     held = ledger.get_open_symbols()
     lookback = max(cfg.candle_lookback, strategy.startup_candle_count)
+    logger.info(
+        "Open-signals scan: universe=%d held=%d tradable=%d equity=%.2f USDT",
+        len(universe), len(held), len(exchange_info), equity_usdt,
+    )
     # Track USDT committed within this tick. Each successful entry consumes
     # ``notional = qty * price`` of real balance; without this, sizing keeps
     # using the opening equity as if no money had been spent and the 4th+
@@ -516,7 +613,9 @@ def _close_on_sell_signals(
     now: datetime,
 ) -> None:
     lookback = max(cfg.candle_lookback, strategy.startup_candle_count)
-    for pos in ledger.get_open_positions():
+    open_positions = ledger.get_open_positions()
+    logger.info("Close-signals scan: %d open position(s)", len(open_positions))
+    for pos in open_positions:
         filters = exchange_info.get(pos.symbol)
         if filters is None:
             continue

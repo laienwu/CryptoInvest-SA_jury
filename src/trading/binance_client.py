@@ -113,6 +113,15 @@ class BinanceClient:
         signature = self._sign(query)
         url = f"{self.base_url}{path}?{query}&signature={signature}"
 
+        # Strip noise from the per-request log line — timestamp / recvWindow
+        # are present on every call and don't help debugging; they only
+        # clutter the transcript.
+        log_params = {
+            k: v for k, v in params.items()
+            if k not in ("timestamp", "recvWindow")
+        }
+        logger.debug("signed_request %s %s params=%s", method, path, log_params)
+
         delay = self.rate_limit_delay
         last_exc: Exception | None = None
 
@@ -128,14 +137,26 @@ class BinanceClient:
                     time.sleep(retry_after)
                     continue
                 if response.status_code != 200:
+                    binance_code: int | None = None
                     try:
-                        msg = response.json().get("msg", response.text[:200])
+                        body = response.json()
+                        msg = body.get("msg", response.text[:200])
+                        raw_code = body.get("code")
+                        if isinstance(raw_code, int):
+                            binance_code = raw_code
                     except ValueError:
                         msg = response.text[:200]
+                    logger.warning(
+                        "Binance error on %s %s: http=%d code=%s msg=%s params=%s",
+                        method, path, response.status_code, binance_code, msg,
+                        log_params,
+                    )
                     raise BinanceAPIError(
                         f"{method} {path} failed: {msg}",
                         status_code=response.status_code,
+                        binance_code=binance_code,
                     )
+                logger.debug("signed_request %s %s ok", method, path)
                 return response.json()
 
             except requests.exceptions.RequestException as e:

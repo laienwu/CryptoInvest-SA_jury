@@ -43,12 +43,33 @@ RETRY_DELAY_MULTIPLIER: float = 2.0
 
 
 class BinanceAPIError(Exception):
-    """Custom exception for Binance API errors."""
+    """Custom exception for Binance API errors.
 
-    def __init__(self, message: str, status_code: int | None = None):
+    ``binance_code`` is Binance's in-body error code (e.g. ``-2013`` for
+    "Order does not exist"), extracted from the JSON response body when
+    present. This is what callers should key off for error classification
+    — HTTP ``status_code`` alone can't distinguish a missing order from a
+    bad signature.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        status_code: int | None = None,
+        binance_code: int | None = None,
+    ):
         self.message = message
         self.status_code = status_code
+        self.binance_code = binance_code
         super().__init__(self.message)
+
+    def __str__(self) -> str:
+        parts = [self.message]
+        if self.binance_code is not None:
+            parts.append(f"[binance_code={self.binance_code}]")
+        if self.status_code is not None:
+            parts.append(f"[http={self.status_code}]")
+        return " ".join(parts)
 
 
 # =============================================================================
@@ -93,12 +114,19 @@ def make_binance_request(
 
             # Check for other errors
             if response.status_code != 200:
+                binance_code: int | None = None
                 try:
-                    error_msg = response.json().get("msg", "Unknown error")
+                    body = response.json()
+                    error_msg = body.get("msg", "Unknown error")
+                    raw_code = body.get("code")
+                    if isinstance(raw_code, int):
+                        binance_code = raw_code
                 except (ValueError, KeyError):
                     error_msg = response.text[:200]
                 raise BinanceAPIError(
-                    f"API error: {error_msg}", status_code=response.status_code
+                    f"API error: {error_msg}",
+                    status_code=response.status_code,
+                    binance_code=binance_code,
                 )
 
             return response.json()
