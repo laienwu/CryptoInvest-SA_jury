@@ -15,15 +15,16 @@
 #            Profile: --profile pipeline
 #
 # Profiles quick reference:
-#   (no profile)        api + streamlit (default runtime)
-#   --profile pipeline  one-shot bootstrap (crypto + trad: ingest → transform → optimize → frontier → backtest)
-#   --profile airflow   Airflow scheduler + webserver + postgres metadata DB
+#   --profile api        FastAPI only (:8000)
+#   --profile dashboard  api + both Streamlit dashboards (analytics :8501, trading :8502)
+#   --profile pipeline   one-shot bootstrap (crypto + trad: ingest → transform → optimize → frontier → backtest)
+#   --profile airflow    Airflow scheduler + webserver + postgres metadata DB
 #   --profile benchmarks postgres-benchmarks only
 #   --profile streaming  Redpanda (Kafka-compatible) + producer + consumer
 #   --profile storage    MinIO (S3-compatible object storage)
 #   --profile cache      Redis API cache
 #   --profile monitoring Prometheus + Grafana observability
-#   --profile full      all of the above
+#   --profile full       all of the above
 # =============================================================================
 
 x-airflow-common: &airflow-common
@@ -71,6 +72,7 @@ services:
     restart: unless-stopped
     profiles:
       - api
+      - dashboard
       - full
 
   streamlit:
@@ -79,6 +81,10 @@ services:
       dockerfile: Dockerfile.streamlit
     ports:
       - "8501:8501"
+    volumes:
+      # Read-only mount: kept consistent with streamlit-trading even though
+      # the analytics app does not open the trading ledger directly.
+      - ./data:/app/data:ro
     environment:
       - API_URL=http://api:8000
       - STREAMLIT_CLIENT_SHOW_ERROR_DETAILS=false
@@ -94,7 +100,41 @@ services:
       retries: 3
     restart: unless-stopped
     profiles:
-      - api
+      - dashboard
+      - full
+
+  # Bot-ops dashboard — separate Streamlit instance for the automated trading
+  # surface (Trading Activity + Theory vs Reality). Same image as `streamlit`,
+  # different entry point, exposed on :8502 so a crash in the bot view does
+  # not take down the analytics dashboard.
+  streamlit-trading:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    ports:
+      - "8502:8501"
+    volumes:
+      # Read-only mount so the Trading Activity page can open the trading
+      # ledger (data/trading/ledger.duckdb) directly. The Airflow worker is
+      # the only writer.
+      - ./data:/app/data:ro
+    environment:
+      - API_URL=http://api:8000
+      - STREAMLIT_CLIENT_SHOW_ERROR_DETAILS=false
+      - STREAMLIT_LOGGER_LEVEL=warning
+      - STREAMLIT_SERVER_HEADLESS=true
+    command: ["streamlit", "run", "src/dashboard/trading_app.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    profiles:
+      - dashboard
       - full
 
   # ===========================================================================
