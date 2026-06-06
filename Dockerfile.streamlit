@@ -7,15 +7,22 @@ RUN pip install "uv>=0.9,<1"
 
 WORKDIR /app
 
-# Install dashboard dependencies
+# Install dashboard dependencies. `duckdb` is needed by the trading
+# dashboard (src/dashboard/trading_app.py, served as the streamlit-trading
+# compose service on :8502) which reads data/trading/ledger.duckdb directly
+# via src.trading.ledger.TradeLedger. The analytics dashboard
+# (src/dashboard/app.py, served on :8501) does not use it.
 RUN uv pip install --system \
     "streamlit>=1.28,<2" \
     "plotly>=5.0,<6" \
     "pandas>=2.0,<3" \
-    "requests>=2.32,<3"
+    "requests>=2.32,<3" \
+    "duckdb>=1.0,<2"
 
-# Copy source code
-COPY src/dashboard/ ./src/dashboard/
+# Copy the whole source tree — the dashboard imports from src.trading.* and
+# src.pipeline.* as well as src.dashboard.*.
+COPY src/ ./src/
+COPY config.toml ./
 
 # Set environment
 ENV PYTHONPATH="/app"

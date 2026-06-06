@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Write",
+      "Edit",
+      "Bash(python:*)",
+      "Bash(uv run python:*)",
+      "Bash(docker compose:*)",
+      "Bash(.venv/Scripts/python -m pytest:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv sync:*)",
+      "Bash(git -C \"E:\\\\Users\\\\laien\\\\Documents\\\\Python_Scripts\\\\binance\" status)",
+      "Bash(git -C \"E:\\\\Users\\\\laien\\\\Documents\\\\Python_Scripts\\\\binance\" diff --stat)",
+      "Bash(git -C \"E:\\\\Users\\\\laien\\\\Documents\\\\Python_Scripts\\\\binance\" log --oneline -5)",
+      "Bash(git -C \"E:\\\\Users\\\\laien\\\\Documents\\\\Python_Scripts\\\\binance\" reset HEAD)",
+      "Bash(git -C \"E:\\\\Users\\\\laien\\\\Documents\\\\Python_Scripts\\\\binance\" add src/pipeline/optimize.py tests/test_efficient_frontier.py)",
+      "Bash(git -C \"E:\\\\Users\\\\laien\\\\Documents\\\\Python_Scripts\\\\binance\" commit -m \"$\\(cat <<''EOF''\n✨ add efficient frontier computation\n\n- Add _linspace, _optimize_for_target_return with grid search fallback\n- Add compute_efficient_frontier \\(frontier curve, max Sharpe, min variance, CML\\)\n- Add compute_and_save_frontier entry point\n- Add 16 tests covering linspace, target-return optimization, frontier structure\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C \"E:\\\\Users\\\\laien\\\\Documents\\\\Python_Scripts\\\\binance\" add src/pipeline/backtest.py tests/test_backtest.py)",
+      "Bash(git -C \"E:\\\\Users\\\\laien\\\\Documents\\\\Python_Scripts\\\\binance\" commit -m \"$\\(cat <<''EOF''\n✨ add walk-forward backtesting engine\n\n- Add backtest module with rolling windows, per-window optimization\n- Compare strategy vs equal-weight and BTC-only benchmarks\n- Compute cumulative values, max drawdown, Sharpe ratio, Calmar ratio\n- Add 25 tests covering windows, metrics, drawdown, portfolio returns\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C \"E:\\\\Users\\\\laien\\\\Documents\\\\Python_Scripts\\\\binance\" add src/api/main.py src/dashboard/app.py src/pipeline/__init__.py)",
+      "Bash(git -C \"E:\\\\Users\\\\laien\\\\Documents\\\\Python_Scripts\\\\binance\" commit -m \"$\\(cat <<''EOF''\n✨ add frontier and backtest to API, dashboard, exports\n\n- Add /portfolio/frontier and /portfolio/backtest API endpoints\n- Add Frontier dashboard page \\(frontier curve, assets, CML, weight viewer\\)\n- Add Backtest dashboard page \\(cumulative chart, metrics table, drawdown\\)\n- Export new functions from pipeline __init__.py\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C \"E:\\\\Users\\\\laien\\\\Documents\\\\Python_Scripts\\\\binance\" log --oneline)",
+      "Bash(git -C \"E:\\\\Users\\\\laien\\\\Documents\\\\Python_Scripts\\\\binance\" log --format=\"%aN\")",
+      "Bash(git -C \"E:\\\\Users\\\\laien\\\\Documents\\\\Python_Scripts\\\\binance\" log --diff-filter=A --name-only --pretty=format: -- \"*.py\")",
+      "Bash(start:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git branch:*)"
+    ]
+  }
+}

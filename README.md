@@ -39,7 +39,7 @@ Plate-forme d'ingenierie de donnees pour l'optimisation de portefeuille crypto +
 - **PySpark analytics** - Rolling correlation, volatility surface, volume analysis
 - **6 strategies d'optimisation** - Markowitz, HRP, Risk Parity, Black-Litterman, Min Variance, Max Diversification
 - **45 endpoints REST** - FastAPI avec OpenAPI, cache Redis, metriques Prometheus
-- **31 pages dashboard** - Streamlit avec graphiques Plotly interactifs
+- **Dashboards Streamlit** - app analytics (graphiques Plotly) + app trading bot dediee
 - **Orchestration** - Airflow DAG (12 taches, 2 branches paralleles crypto + trad)
 - **Stockage S3** - MinIO (S3-compatible) via Storage ABC
 - **Cache API** - Redis avec TTL et fallback gracieux
@@ -114,7 +114,7 @@ Plate-forme d'ingenierie de donnees pour l'optimisation de portefeuille crypto +
            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         EXPOSURE                                    │
-│   FastAPI (:8000) │ Streamlit (:8501) │ Prometheus+Grafana (:9090)  │
+│ FastAPI :8000 │ Streamlit :8501 │ Trading Bot :8502 │ Grafana :9090 │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -152,12 +152,13 @@ Le fichier `.env` contient les identifiants Airflow, PostgreSQL et Kafka. Voir `
 ### Executer avec Docker (recommande)
 
 ```bash
-# Start API + Dashboard (services par defaut)
-docker compose up
+# Start API + both dashboards
+docker compose --profile dashboard up
 
 # Access:
 # - API: http://localhost:8000/docs
-# - Dashboard: http://localhost:8501
+# - Dashboard (analytics): http://localhost:8501
+# - Dashboard (trading bot): http://localhost:8502
 
 # Start streaming ingestion (Kafka)
 docker compose --profile streaming up -d
@@ -194,8 +195,9 @@ optimize_portfolio()
 # 2. Start the API
 uv run uvicorn src.api.main:app --reload
 
-# 3. Start the Dashboard (separate terminal)
-uv run streamlit run src/dashboard/app.py
+# 3. Start the Dashboards (separate terminals)
+uv run streamlit run src/dashboard/app.py --server.port 8501          # analytics
+uv run streamlit run src/dashboard/trading_app.py --server.port 8502  # trading bot
 ```
 
 ## Points de terminaison de l'API (45 endpoints)
@@ -365,8 +367,11 @@ src/
 │   ├── cache.py                # Cache Redis (TTL, fallback)
 │   ├── metrics.py              # Metriques Prometheus metier
 │   └── schemas.py              # Modeles de reponse Pydantic
-└── dashboard/                   # Visualisation
-    └── app.py                  # Streamlit (31 pages, Plotly)
+└── dashboard/                   # Visualisation (deux apps Streamlit)
+    ├── app.py                  # Analytics (:8501) — Plotly, optimisation, risk, backtest
+    ├── trading_app.py          # Trading bot (:8502) — ledger live, theory vs reality
+    ├── trading_page.py         # Page "Trading Activity" (utilisee par trading_app)
+    └── comparison_page.py      # Page "Theory vs Reality" (utilisee par trading_app)
 
 tests/                           # 1201 tests across 53 files
 dags/                            # Airflow DAG (12 taches, 2 branches paralleles)
@@ -415,7 +420,8 @@ period_days = 365
 
 | Profil | Services | Usage |
 |--------|----------|-------|
-| *(default)* | api, streamlit | Services de base (API + dashboard) |
+| `api` | api | FastAPI seule (:8000) |
+| `dashboard` | api, streamlit, streamlit-trading | API + dashboards (analytics :8501, trading bot :8502) |
 | `pipeline` | pipeline | Bootstrap one-shot (ingestion initiale) |
 | `airflow` | postgres, airflow-init, webserver, scheduler | Orchestration planifiee (:8081) |
 | `streaming` | redpanda, redpanda-init, producer, consumer, console | Ingestion temps reel (:8080) |
@@ -473,7 +479,6 @@ sigma^2_p = w' * Cov * w
 ```bash
 # 1. Start infrastructure
 docker compose --profile full up -d
-docker compose up -d streamlit
 
 # 2. Show multi-source ingestion (C8)
 python -c "from src.pipeline import ingest_all_sources; ingest_all_sources()"
@@ -498,8 +503,9 @@ curl http://localhost:8000/portfolio/trad
 curl http://localhost:8000/portfolio/trad/frontier
 curl http://localhost:8000/portfolio/trad/backtest
 
-# 8. Show Dashboard (C12)
-# Open http://localhost:8501
+# 8. Show Dashboards (C12)
+# Open http://localhost:8501  (analytics)
+# Open http://localhost:8502  (trading bot — Trading Activity, Theory vs Reality)
 # - Dashboard page: KPIs, Pie chart, Correlation heatmap
 # - Symbols page: Price charts with symbol selector
 # - Metrics page: Raw metrics exploration

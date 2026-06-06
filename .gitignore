@@ -48,4 +48,5 @@ logs/
 pdf/
 *.pdf!/data/
 
-docs/code source
+docs/
+data/

@@ -53,4 +53,4 @@ jobs:
         run: uv run bandit -r src/ -c pyproject.toml -ll
 
       - name: Dependency audit (pip-audit)
-        run: uv run pip-audit --require-hashes=false --strict
+        run: uv run pip-audit --strict

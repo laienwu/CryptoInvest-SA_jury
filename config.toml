@@ -47,3 +47,35 @@ symbols = [
 trading_days_per_year = 252
 period_days = 365
 risk_free_rate = 0.05
+
+[symbol_selector]
+# Daily Binance trading-universe builder. All keys are optional —
+# omitting one falls back to the SymbolSelectorConfig default in src/config.py.
+min_quote_volume = 50000000.0       # USD; liquidity floor
+min_daily_range = 0.02              # (high - low) / low; 2% intraday range floor
+min_abs_price_change_pct = 1.0      # |24h % change| floor
+momentum_filter_enabled = true
+top_n = 30
+min_universe_size = 10              # below this, select_universe raises
+quote_asset = "USDT"
+leveraged_suffixes = ["UP", "DOWN", "BULL", "BEAR"]
+stablecoin_blocklist = [
+    "USDCUSDT", "BUSDUSDT", "FDUSDUSDT", "TUSDUSDT",
+    "DAIUSDT", "USDPUSDT", "PAXGUSDT",
+]
+
+[trading]
+# Automated trading tick (Airflow every 5 minutes). Testnet-only — mainnet is
+# hard-blocked at the BinanceClient layer. Secrets live in .env, never here.
+dry_run = true                         # default posture: no real orders
+candle_interval = "5m"
+candle_lookback = 120                  # bars fetched per symbol per tick
+sma_short = 20
+sma_long = 50
+risk_per_trade = 0.01                  # 1% of equity at risk per entry
+stop_loss_pct = 0.03                   # 3% below entry
+max_open_positions = 10
+max_daily_loss_pct = 0.05              # daily-loss kill switch
+min_equity_floor_usdt = 100.0
+max_cost_fraction_of_risk = 0.20       # skip trades where fees eat >20% of risk budget
+post_stop_cooldown_minutes = 60        # lock a symbol for N minutes after a stop fill
